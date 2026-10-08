@@ -1,0 +1,181 @@
+{
+  "attribution": "駅座標: © OpenStreetMap contributors (ODbL)",
+  "projection": "equirectangular (lon scaled by cos(center lat)), north up",
+  "svg": {
+    "width": 585,
+    "height": 1760
+  },
+  "stations": [
+    {
+      "order": 1,
+      "name": "大垣",
+      "romaji": "Ōgaki",
+      "lat": 35.367084,
+      "lon": 136.6178,
+      "x": 91.5,
+      "y": 1680
+    },
+    {
+      "order": 2,
+      "name": "東大垣",
+      "romaji": "Higashi-Ōgaki",
+      "lat": 35.375189,
+      "lon": 136.646347,
+      "x": 230,
+      "y": 1631.7
+    },
+    {
+      "order": 3,
+      "name": "横屋",
+      "romaji": "Yokoya",
+      "lat": 35.387254,
+      "lon": 136.659533,
+      "x": 294,
+      "y": 1559.8
+    },
+    {
+      "order": 4,
+      "name": "十九条",
+      "romaji": "Jūkujō",
+      "lat": 35.395891,
+      "lon": 136.660958,
+      "x": 300.9,
+      "y": 1508.3
+    },
+    {
+      "order": 5,
+      "name": "美江寺",
+      "romaji": "Mieji",
+      "lat": 35.413453,
+      "lon": 136.661429,
+      "x": 303.2,
+      "y": 1403.6
+    },
+    {
+      "order": 6,
+      "name": "北方真桑",
+      "romaji": "Kitagata-Makuwa",
+      "lat": 35.439614,
+      "lon": 136.674103,
+      "x": 364.7,
+      "y": 1247.7
+    },
+    {
+      "order": 7,
+      "name": "モレラ岐阜",
+      "romaji": "Malera Gifu",
+      "lat": 35.45527,
+      "lon": 136.669702,
+      "x": 343.4,
+      "y": 1154.3
+    },
+    {
+      "order": 8,
+      "name": "糸貫",
+      "romaji": "Itonuki",
+      "lat": 35.462828,
+      "lon": 136.669739,
+      "x": 343.6,
+      "y": 1109.3
+    },
+    {
+      "order": 9,
+      "name": "本巣",
+      "romaji": "Motosu",
+      "lat": 35.487757,
+      "lon": 136.669847,
+      "x": 344.1,
+      "y": 960.7
+    },
+    {
+      "order": 10,
+      "name": "織部",
+      "romaji": "Oribe",
+      "lat": 35.498881,
+      "lon": 136.66732,
+      "x": 331.8,
+      "y": 894.4
+    },
+    {
+      "order": 11,
+      "name": "木知原",
+      "romaji": "Kochibora",
+      "lat": 35.517764,
+      "lon": 136.650076,
+      "x": 248.1,
+      "y": 781.8
+    },
+    {
+      "order": 12,
+      "name": "谷汲口",
+      "romaji": "Tanigumiguchi",
+      "lat": 35.527067,
+      "lon": 136.642218,
+      "x": 210,
+      "y": 726.4
+    },
+    {
+      "order": 13,
+      "name": "神海",
+      "romaji": "Kōmi",
+      "lat": 35.542542,
+      "lon": 136.641532,
+      "x": 206.7,
+      "y": 634.1
+    },
+    {
+      "order": 14,
+      "name": "高科",
+      "romaji": "Takashina",
+      "lat": 35.555457,
+      "lon": 136.640198,
+      "x": 200.2,
+      "y": 557.1
+    },
+    {
+      "order": 15,
+      "name": "鍋原",
+      "romaji": "Nabera",
+      "lat": 35.565821,
+      "lon": 136.636562,
+      "x": 182.6,
+      "y": 495.4
+    },
+    {
+      "order": 16,
+      "name": "日当",
+      "romaji": "Hinata",
+      "lat": 35.582496,
+      "lon": 136.631428,
+      "x": 157.6,
+      "y": 396
+    },
+    {
+      "order": 17,
+      "name": "高尾",
+      "romaji": "Takao",
+      "lat": 35.601027,
+      "lon": 136.625768,
+      "x": 130.2,
+      "y": 285.5
+    },
+    {
+      "order": 18,
+      "name": "水鳥",
+      "romaji": "Mizudori",
+      "lat": 35.6178,
+      "lon": 136.620746,
+      "x": 105.8,
+      "y": 185.5
+    },
+    {
+      "order": 19,
+      "name": "樽見",
+      "romaji": "Tarumi",
+      "lat": 35.635504,
+      "lon": 136.615428,
+      "x": 80,
+      "y": 80
+    }
+  ]
+}

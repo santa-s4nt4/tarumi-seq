@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#124e3e" />
+  <meta name="description" content="樽見鉄道のGPS走行記録を再生し、現在位置と駅・トンネル・根尾川までの距離を確認するビューア。" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>樽見鉄道 · GPS Sequencer</title>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="樽見鉄道 GPS Sequencer"><span class="brand-mark"><i data-lucide="train-front"></i></span><span>樽見鉄道<span class="brand-en">TARUMI RAILWAY</span></span></a>
+    <div class="header-center"><span class="header-slash">/</span>GPS SEQUENCER<span class="version-label">DEBUG VIEWER</span></div>
+    <div class="header-actions"><span class="date-label">2026.07.17</span><button id="api-button" class="api-badge" aria-haspopup="dialog"><span class="status-dot"></span><span id="api-badge-text">API 接続中</span></button><button id="settings-button" class="icon-button" aria-label="API接続設定"><i data-lucide="settings-2"></i></button></div>
+  </header>
+  <main class="workspace">
+    <section class="map-panel" aria-label="GPS走行マップ">
+      <div id="map"></div>
+      <div class="map-heading"><span class="eyebrow">ROUTE MAP</span><h1>本巣 — 樽見</h1><p id="route-description">往路の記録を表示</p></div>
+      <div class="map-tools"><button id="fit-map" class="map-button" aria-label="ルート全体を表示" title="ルート全体"><i data-lucide="scan"></i></button><button id="follow-map" class="map-button" aria-label="現在地を追従" title="現在地を追従" aria-pressed="false"><i data-lucide="locate-fixed"></i></button><button id="zoom-in" class="map-button" aria-label="地図を拡大"><i data-lucide="plus"></i></button><button id="zoom-out" class="map-button" aria-label="地図を縮小"><i data-lucide="minus"></i></button></div>
+      <div class="map-legend"><span><b class="legend-line"></b>走行軌跡</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span></div>
+      <div class="position-card"><div class="position-card-top"><span class="position-icon"><i data-lucide="navigation"></i></span><span>現在地<span id="position-location">GPS読み込み中</span></span><span id="gps-tag" class="small-tag">RECORDED GPS</span></div><div class="coordinate-line"><span id="latitude">—</span><span class="coordinate-divider">,</span><span id="longitude">—</span><span id="position-match">軌跡とのずれ —</span></div></div>
+      <div id="map-error" class="map-error" role="status" hidden></div>
+    </section>
+    <section class="readout" aria-label="現在地からの予測">
+      <div class="readout-top"><span class="eyebrow">ON THE LINE</span><span class="recording-badge"><span class="record-dot"></span>GPS 記録再生</span></div>
+      <div class="train-speed-readout"><span>記録上の速度</span><div class="metric-value"><strong id="train-speed" class="readout-number">—</strong><span class="unit">km/h</span></div></div>
+      <div class="prediction-columns">
+        <article class="station-block">
+          <div class="section-label"><i data-lucide="train-front"></i>次の駅<span class="section-note">停車開始までの予測</span></div>
+          <div class="metric-identity station-readout"><h2 id="station-name">—</h2><p id="station-romaji">CONNECTING TO API</p></div>
+          <div class="metric arrival"><span class="metric-label">停車までの予測</span><div class="metric-value"><strong id="station-eta" class="readout-number">—</strong><span class="unit">秒後</span></div></div>
+          <div class="metric station-distance"><span class="metric-label">駅までの距離</span><div class="metric-value"><strong id="station-distance" class="readout-number">—</strong><span class="unit" id="station-distance-unit">m</span></div><span id="station-state">応答を待っています</span></div>
+        </article>
+        <article class="tunnel-block">
+          <div class="section-label"><i data-lucide="mountain"></i><span id="tunnel-heading">次のトンネル</span><span id="tunnel-status" class="small-tag">OUTSIDE</span></div>
+          <div class="metric-identity tunnel-readout"><h3 id="tunnel-name">—</h3><p>走行記録に基づく予測</p></div>
+          <div class="metric tunnel-arrival"><span class="metric-label">通過までの予測</span><div class="metric-value"><strong id="tunnel-eta" class="readout-number">—</strong><span class="unit">秒後</span></div></div>
+          <div class="metric tunnel-distance-readout"><span class="metric-label" id="tunnel-detail">API接続中</span><div class="metric-value" id="tunnel-distance-value" hidden><strong id="tunnel-distance" class="readout-number">—</strong><span class="unit">m</span></div></div>
+        </article>
+        <article class="river-block">
+          <div class="section-label"><i data-lucide="waves"></i>川との距離<span id="river-note" class="section-note">根尾川 · 横方向</span></div>
+          <div class="metric-identity river-identity"><h3>根尾川</h3><p>現在地から川まで</p></div>
+          <div class="metric river-readout"><span class="metric-label">横方向の距離</span><div class="metric-value"><strong id="river-distance" class="readout-number">—</strong><span class="unit">m</span><span id="river-side" class="river-side">—</span></div><p id="river-sign">東 + / 西 −</p></div>
+          <div class="profile-chart"><div class="profile-axis"><span>東</span><span>0</span><span>西</span></div><svg id="river-chart" viewBox="0 0 600 110" preserveAspectRatio="none" role="img" aria-label="記録全体の根尾川までの東西距離と現在位置"></svg><div class="chart-caption"><span>記録全体の東西距離</span><span><b class="legend-position"></b>現在地</span></div></div>
+        </article>
+      </div>
+      <div class="data-note"><i data-lucide="info"></i><p>予測は同方向の走行記録に基づく参考値です。駅の秒数は、記録上の停車開始までの予測を表示します。</p></div>
+      <div id="api-error" class="api-error" role="alert" hidden><span id="api-error-message"></span><button id="retry-api">再接続</button></div>
+      <div class="readout-footer"><span id="response-status">API接続中</span><span id="dataset-version">DATASET —</span></div>
+    </section>
+  </main>
+  <footer class="playback-panel" aria-label="GPS再生コントロール">
+    <div class="playback-heading"><div class="playback-title"><i data-lucide="audio-lines"></i><span>GPS PLAYBACK</span><span class="playback-date">2026.07.17</span></div><div class="direction-tabs" role="group" aria-label="走行記録の選択"><button id="front-button" class="selected" aria-pressed="true">往路<span>樽見方面</span></button><button id="back-button" aria-pressed="false">復路<span>本巣方面</span></button></div><span id="sample-count" class="sample-count">— GPS POINTS</span></div>
+    <div class="timeline"><div id="timeline-events" class="timeline-events" aria-label="駅とトンネルのタイムライン"></div><div class="seek-wrap"><div class="seek-progress" id="seek-progress"></div><input id="seek" type="range" min="0" max="1" value="0" step="0.1" aria-label="GPSの再生位置" disabled /></div><div class="timeline-ticks" id="timeline-ticks"></div></div>
+    <div class="transport-row"><div class="transport"><button id="prev-station" class="icon-button" aria-label="前の駅へ"><i data-lucide="skip-back"></i></button><button id="back-10" class="skip-button" aria-label="10秒戻る"><i data-lucide="rotate-ccw"></i><span>10</span></button><button id="play" class="play-button" aria-label="再生" aria-pressed="false" disabled><i data-lucide="play"></i></button><button id="forward-10" class="skip-button" aria-label="10秒進む"><i data-lucide="rotate-cw"></i><span>10</span></button><button id="next-station" class="icon-button" aria-label="次の駅へ"><i data-lucide="skip-forward"></i></button><div class="time-display"><strong id="time-current">00:00</strong><span>/</span><span id="time-end">00:00</span></div></div><div class="playback-metadata"><span id="recorded-time">記録時刻 —</span><label class="speed-control" for="speed"><i data-lucide="gauge"></i><select id="speed" aria-label="再生速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select></label><span class="keyboard-hint"><kbd>Space</kbd> 再生 / 停止</span></div></div>
+  </footer>
+  <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><div class="dialog-header"><div><span class="eyebrow">CONNECTION</span><h2 id="settings-title">API接続設定</h2></div><button type="button" id="close-settings" class="icon-button" aria-label="閉じる"><i data-lucide="x"></i></button></div><label for="endpoint">位置予測APIのURL</label><input id="endpoint" type="url" required spellcheck="false" /><p class="field-note">GPSを POST で送信します。ローカルAPIの場合は http://localhost:8787/api/position を指定してください。</p><p id="settings-error" role="alert"></p><div class="dialog-actions"><button type="button" id="reset-endpoint" class="secondary-button">ローカルURLに戻す</button><button type="button" id="public-endpoint" class="secondary-button">公開APIに接続</button><button type="submit" class="primary-button">接続する</button></div></form><details class="diagnostics"><summary>リクエスト・レスポンス</summary><div class="diagnostic-meta"><span id="request-count">0 REQUESTS</span><span id="request-latency">— ms</span></div><h3>POST /api/position</h3><pre id="request-json">—</pre><h3>RESPONSE</h3><pre id="response-json">—</pre></details></dialog>
+  <div id="loading" class="loading-overlay" role="status"><span class="loading-logo"><i data-lucide="train-front"></i></span><h2>走行記録を読み込んでいます</h2><p id="loading-message">樽見鉄道 · GPS Sequencer</p><button id="reload-data" class="primary-button" hidden>再読み込み</button></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
