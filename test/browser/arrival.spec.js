@@ -6,7 +6,7 @@ test('defaults to local, holds station at arrival, shows speed, switches public 
  await page.addInitScript(()=>localStorage.setItem('tarumi-api-endpoint','https://old.example/api/position'));
  await page.goto('/');
  await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み',{timeout:15000});
- expect(requests[0]).toBe('http://localhost:8787/api/position');
+ expect(requests[0]).toBe('http://127.0.0.1:5173/local-api/api/position');
  await expect(page.locator('#train-speed')).not.toHaveText('—');
  for(const t of [480,510]) {
   await page.locator('#seek').evaluate((el,t)=>{el.value=t;el.dispatchEvent(new Event('input',{bubbles:true}));},t);

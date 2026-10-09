@@ -48,7 +48,7 @@ function renderApiStatus(status) {
   if (status.count) $('request-count').textContent = `${status.count} REQUESTS`;
   if (status.status === 'ok') {
     $('request-latency').textContent = `${status.latency} ms`;
-    $('response-status').textContent = `API 5秒周期 · ${status.latency} ms · 最終GPS ${timeLabel(state.responseT)}`;
+    $('response-status').textContent = `API応答後5秒 · ${status.latency} ms · 最終GPS ${timeLabel(state.responseT)}`;
     const version = status.result.datasetVersion;
     $('dataset-version').textContent = `DATASET ${version?.slice(0, 8) || '—'}`;
     const mismatch = version && version !== data().version;
@@ -94,7 +94,7 @@ function applyTunnelTheme(inTunnel) {
   const theme = inTunnel ? 'dark' : 'light';
   if (document.documentElement.dataset.theme === theme) return;
   document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]').content = inTunnel ? '#101b19' : '#124e3e';
+  document.querySelector('meta[name="theme-color"]').content = inTunnel ? '#331e19' : '#ffffff';
   updateMapTheme();
 }
 
@@ -102,9 +102,16 @@ function updateMapTheme() {
   if (!mapReady) return;
   const dark = document.documentElement.dataset.theme === 'dark';
   map.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
-  map.setPaintProperty('route-halo', 'line-color', dark ? '#142620' : '#fff');
-  map.setPaintProperty('travelled', 'line-color', dark ? '#79b99c' : '#14624b');
-  map.setPaintProperty('tunnels', 'line-color', dark ? '#b9efb4' : '#124e3e');
+  const surface = dark ? '#331e19' : '#ffffff';
+  for (const key of ['colorLand', 'colorGreenspace', 'colorCommercial', 'colorEducation', 'colorMedical', 'colorIndustrial']) map.setConfigProperty('basemap', key, surface);
+  map.setConfigProperty('basemap', 'colorWater', dark ? '#000000' : '#ffffff');
+  // Mapbox's color parser does not accept CSS 8-digit hex. Use opaque palette blends;
+  // Standard also subtracts alpha in its road expressions, so very low alpha is unsafe.
+  for (const key of ['colorRoads', 'colorMotorways', 'colorTrunks']) map.setConfigProperty('basemap', key, dark ? '#5c4b47' : '#e1dddd');
+  map.setPaintProperty('route-halo', 'line-color', surface);
+  map.setPaintProperty('travelled', 'line-color', dark ? '#ffffff' : '#331e19');
+  map.setPaintProperty('tunnels', 'line-color', '#18ff14');
+  map.setPaintProperty('river-distance', 'line-color', dark ? '#ffffff' : '#000000');
 }
 
 function renderLocationText() {
@@ -123,18 +130,18 @@ function initMap() {
     map = new mapboxgl.Map({ container: 'map', accessToken, center: [136.64, 35.56], zoom: 11, minZoom: 9, maxZoom: 17, maxBounds: [[136.3, 35.3], [136.95, 35.85]],
       attributionControl: { compact: true, customAttribution: '駅・川・トンネル © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
       style: 'mapbox://styles/mapbox/standard',
-      config: { basemap: { lightPreset: 'day', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false } }
+      config: { basemap: { lightPreset: 'day', theme: 'monochrome', showRoadLabels: false, colorLand: '#ffffff', colorGreenspace: '#ffffff', colorWater: '#ffffff', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false } }
     });
     map.dragRotate.disable(); map.touchZoomRotate.disableRotation();
     map.on('load', () => {
       mapReady = true;
       for (const name of ['river', 'route', 'travelled', 'river-distance', 'tunnels']) map.addSource(name, { type: 'geojson', data: empty });
-      map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#90bcae', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 12], 'line-opacity': 0.7 } });
+      map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 12], 'line-opacity': 0.25 } });
       map.addLayer({ id: 'route-halo', type: 'line', slot: 'top', source: 'route', paint: { 'line-emissive-strength': 1, 'line-color': '#fff', 'line-width': 7 } });
-      map.addLayer({ id: 'route', type: 'line', slot: 'top', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#1cb769', 'line-width': 3.5 } });
-      map.addLayer({ id: 'travelled', type: 'line', slot: 'top', source: 'travelled', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#14624b', 'line-width': 3.5 } });
-      map.addLayer({ id: 'tunnels', type: 'line', slot: 'top', source: 'tunnels', paint: { 'line-emissive-strength': 1, 'line-color': '#124e3e', 'line-width': 5, 'line-dasharray': [0.6, 0.7] } });
-      map.addLayer({ id: 'river-distance', type: 'line', slot: 'top', source: 'river-distance', paint: { 'line-emissive-strength': 1, 'line-color': '#ee6755', 'line-width': 1.6, 'line-dasharray': [3, 2] } });
+      map.addLayer({ id: 'route', type: 'line', slot: 'top', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 3.5 } });
+      map.addLayer({ id: 'travelled', type: 'line', slot: 'top', source: 'travelled', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#331e19', 'line-width': 3.5 } });
+      map.addLayer({ id: 'tunnels', type: 'line', slot: 'top', source: 'tunnels', paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 5, 'line-dasharray': [0.6, 0.7] } });
+      map.addLayer({ id: 'river-distance', type: 'line', slot: 'top', source: 'river-distance', paint: { 'line-emissive-strength': 1, 'line-color': '#000000', 'line-width': 1.6, 'line-dasharray': [3, 2] } });
       const el = document.createElement('div'); el.className = 'current-marker'; el.setAttribute('aria-label', 'GPS現在地'); el.innerHTML = '<span></span>';
       marker = new mapboxgl.Marker({ element: el }).setLngLat([point().lon, point().lat]).addTo(map);
       updateRouteMap(); updateMapTheme(); fitMap(false);
@@ -214,13 +221,13 @@ function fallbackXY(lon, lat) { return [80 + (lon - 136.61) * 4400, 90 + (35.635
 function drawFallbackMap() {
   if (!state.ready) return;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 500 780'); svg.classList.add('fallback-map');
-  for (const [coords, color, width] of [[data().river, '#90bcae', 5], [rec().records.map(r => [r.lon, r.lat]), '#1cb769', 3]]) {
+  for (const [coords, color, width] of [[data().river, '#18ff14', 5], [rec().records.map(r => [r.lon, r.lat]), '#18ff14', 3]]) {
     const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', coords.map(p => fallbackXY(...p).join(',')).join(' ')); line.setAttribute('fill', 'none'); line.setAttribute('stroke', color); line.setAttribute('stroke-width', width); svg.append(line);
   }
   for (const s of stations) {
     const [x, y] = fallbackXY(s.lon, s.lat); const text = document.createElementNS(svg.namespaceURI, 'text'); text.setAttribute('x', x + 10); text.setAttribute('y', y + 5); text.textContent = s.name; svg.append(text);
   }
-  const circle = document.createElementNS(svg.namespaceURI, 'circle'); circle.id = 'fallback-current'; circle.setAttribute('r', '7'); circle.setAttribute('fill', '#ef6756'); svg.append(circle); $('map').replaceChildren(svg); updateMapPosition();
+  const circle = document.createElementNS(svg.namespaceURI, 'circle'); circle.id = 'fallback-current'; circle.setAttribute('r', '7'); circle.setAttribute('fill', '#331e19'); svg.append(circle); $('map').replaceChildren(svg); updateMapPosition();
 }
 
 let profileScale = 500;
@@ -235,7 +242,7 @@ function buildProfile() {
     if (!Number.isFinite(p.distance)) { continuation = false; continue; }
     path += `${continuation ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.distance).toFixed(1)} `; continuation = true;
   }
-  $('river-chart').innerHTML = `<line x1="0" y1="55" x2="600" y2="55" stroke="#d8e3dc" stroke-dasharray="3 5"/><path d="${path}" fill="none" stroke="#70867d" stroke-width="1.8" vector-effect="non-scaling-stroke"/><line id="profile-cursor" x1="0" x2="0" y1="0" y2="110" stroke="#ef6756" stroke-opacity="0.35"/><circle id="profile-dot" cx="0" cy="55" r="4.8" fill="#ef6756" stroke="white" stroke-width="2"/>`;
+  $('river-chart').innerHTML = `<line x1="0" y1="55" x2="600" y2="55" stroke="#331e1926" stroke-dasharray="3 5"/><path d="${path}" fill="none" stroke="#000000" stroke-width="1.8" vector-effect="non-scaling-stroke"/><line id="profile-cursor" x1="0" x2="0" y1="0" y2="110" stroke="#331e19" stroke-opacity="0.35"/><circle id="profile-dot" cx="0" cy="55" r="4.8" fill="#331e19" stroke="white" stroke-width="2"/>`;
   $('river-chart').setAttribute('aria-label', `根尾川への東西距離。上は東、下は西。表示範囲は±${number(profileScale)}m。10秒間隔の参照値。`);
   $('river-chart').closest('.profile-chart').title = `上下 ±${number(profileScale)}m（範囲外は端へ表示）。線は10秒間隔の参照データ、赤点はAPI応答とGPSからの補間。`;
   renderProfileCursor();

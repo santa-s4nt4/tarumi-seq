@@ -172,3 +172,44 @@ test('keeps the entire playback inside the viewport and aligns prediction metric
   await expect(page.locator('#river-distance')).toBeInViewport();
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
 });
+
+test('local requests use the same origin and tunnel color changes emit no Mapbox expression warnings', async ({ page }) => {
+  const requests = [], mapWarnings = [];
+  page.on('request', request => { if (request.url().includes('/api/position')) requests.push({ url: request.url(), method: request.method() }); });
+  page.on('console', message => { if (/Failed to evaluate expression|Could not parse color|toNonPremultipliedRenderColor/.test(message.text())) mapWarnings.push(message.text()); });
+  await ready(page);
+  await expect(page.locator('.current-marker')).toBeVisible();
+  const meta = JSON.parse(fs.readFileSync('public/data/map-data.json', 'utf8')).front;
+  const entry = meta.events.find(e => e.type === 'tunnel' && e.target === 'entrance');
+  const exit = meta.events.find(e => e.featureId === entry.featureId && e.target === 'exit');
+  for (const inside of [true, false, true, false]) {
+    await seek(page, inside ? entry.t + 5 : exit.t + 5);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', inside ? 'dark' : 'light');
+    await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み');
+    await page.waitForTimeout(1500); // Let Mapbox workers evaluate reloaded tiles.
+  }
+  expect(mapWarnings).toEqual([]);
+  expect(requests.length).toBeGreaterThanOrEqual(5);
+  expect(requests.every(request => request.url.startsWith('http://127.0.0.1:5173/local-api/api/position') && request.method === 'POST')).toBe(true);
+});
+
+test('recovers from one Wrangler connection drop without removing the station or tunnel theme', async ({ page }) => {
+  await ready(page);
+  const meta = JSON.parse(fs.readFileSync('public/data/map-data.json', 'utf8')).front;
+  const entry = meta.events.find(e => e.type === 'tunnel' && e.target === 'entrance');
+  await seek(page, entry.t + 5);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const station = await page.locator('#station-name').textContent();
+  let attempts = 0;
+  await page.route('**/local-api/api/position', async route => {
+    attempts++;
+    if (attempts === 1) await route.fulfill({ status: 500, contentType: 'text/plain', body: 'Error inside ProxyWorker: Network connection lost.' });
+    else await route.continue();
+  });
+  await seek(page, entry.t + 6);
+  await expect.poll(() => attempts).toBe(2);
+  await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み');
+  await expect(page.locator('#station-name')).toHaveText(station);
+  await expect(page.locator('#api-error')).toBeHidden();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
