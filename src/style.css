@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap');
 
 :root { font-family: 'Noto Sans JP', sans-serif; color: var(--text); background: var(--surface); font-synthesis: none;
-  --ground: #ffffff; --green: #18ff14; --empty: #331e19; --ink: #000000;
+  --ground: #ffffff; --green: #18ff14; --empty: #0b0e12; --ink: #000000;
   --surface: var(--ground); --text: var(--ink); --muted: var(--ink); --bright: var(--green);
   --line: #331e1926; --panel: #fffffff5; --hover: #331e190a; --track: #331e1926; --marker: var(--empty);
   --mono: 'IBM Plex Mono', monospace;
@@ -199,7 +199,7 @@ dialog::backdrop { background: var(--surface); backdrop-filter: blur(3px); }
   --text: var(--ground);
   --muted: var(--ground);
   --line: #ffffff33;
-  --panel: #331e19f5;
+  --panel: #0b0e12f5;
   --hover: #ffffff14;
   --track: #ffffff33;
   --marker: var(--green);
@@ -308,4 +308,181 @@ body { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) au
 #profile-cursor { stroke: var(--marker); stroke-opacity: .5; }
 #profile-dot { fill: var(--marker); stroke: var(--surface); }
 #fallback-current { fill: var(--marker); stroke: var(--surface); stroke-width: 2; }
-dialog::backdrop { background: #331e1988; }
+dialog::backdrop { background: #00000099; }
+
+.view-navigation { display:flex; gap:4px; font:11px var(--mono); }
+.view-navigation a { color:inherit; text-decoration:none; padding:8px; border-radius:4px; }
+.view-navigation a[aria-current] { background:var(--hover); }
+#que-zoom-button { padding:8px 10px; white-space:nowrap; font-size:12px; }
+#que-zoom-dialog { width:min(420px, calc(100% - 32px)); background:var(--surface); }
+#que-zoom-dialog h2 { margin:0; font-size:21px; }
+.que-zoom-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.que-zoom-stepper { display:flex; align-items:center; gap:8px; }
+.que-zoom-stepper button { width:40px; height:40px; border:1px solid var(--line); border-radius:6px; background:var(--hover); font-size:22px; }
+.que-zoom-stepper output { min-width:42px; text-align:center; font:16px var(--mono); }
+.que-view-modes { display:flex; gap:6px; margin-bottom:24px; }
+.que-view-modes button { flex:1; padding:10px 4px; border:1px solid var(--line); border-radius:5px; background:var(--hover); font-size:13px; }
+.que-view-modes button[aria-pressed="true"] { background:var(--green); color:#fff; border-color:var(--green); }
+.que-view { --surface:#f3f4f1; --text:#26342d; --green:#389b48; --marker:#389b48; --line:#26342d26; --panel:#f3f4f1ed; --hover:#26342d0a; --que-card-width:clamp(400px,42vw,600px); }
+.que-view .header { height:64px; padding:0 24px; }
+.que-view .header-center { font-size:12px; }
+.que-view .date-label { display:none; }
+.que-view .workspace { display:block; flex:1; min-height:0; height:auto; overflow:hidden; }
+.que-view .map-panel { height:100%; border:0; background:#b5b7b6; }
+.que-view .readout, .que-view .position-card, .que-view .map-heading { display:none; }
+.que-view .map-tools { top:auto; bottom:46px; right:24px; }
+.que-view .map-legend { left:24px; bottom:34px; padding:10px 14px; gap:18px; background:#f3f4f1ed; color:#26342d; }
+.que-view .legend-line { background:#176b37; }
+.que-view .passed-line { background:#a8d5ae; }
+.que-view .river-line { background:#079ee0; opacity:1; }
+.que-view .legend-position { background:#389b48; width:8px; height:8px; border-radius:50%; }
+.que-view .station-marker { pointer-events:none; }
+.que-view .station-marker-name { font-size:11px; opacity:.7; }
+.que-view .station-marker-name small { display:none; }
+.que-view .station-tick { background:white; }
+.que-view .current-marker { width:52px; height:52px; border-radius:50%; background:#389b4826; box-shadow:none; }
+.que-view .current-marker span { width:36px; height:36px; border:0; background:#389b48; box-shadow:none; }
+.cue-overlay { position:absolute; right:28px; top:28px; width:var(--que-card-width); z-index:2; }
+.cue-heading { display:flex; justify-content:space-between; align-items:center; padding:0 3px 12px; color:#26342d; font:11px var(--mono); letter-spacing:.12em; }
+.cue-heading span { font:10px 'Noto Sans JP', sans-serif; letter-spacing:0; }
+#cue-list { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+.cue-card { width:72%; background:#389b48; color:white; padding:28px 36px; border-radius:12px; border:1px solid #ffffff55; box-shadow:0 3px 12px #21402914; }
+.cue-primary { width:100%; padding:42px 46px; }
+.cue-card h2 { margin:0 0 16px; font-size:26px; font-weight:500; line-height:1.5; }
+.cue-primary h2 { font-size:38px; }
+.cue-card p { margin:0; font-size:32px; }
+.cue-card strong { font:64px/1.1 var(--mono); letter-spacing:-.04em; }
+.cue-primary strong { font-size:clamp(96px, 10vw, 136px); }
+.cue-countdown { display:flex; align-items:center; justify-content:space-between; gap:18px; }
+.cue-seconds { display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
+.cue-unit { font-size:24px; }
+.cue-primary .cue-unit { font-size:32px; }
+.cue-kind-icon { display:flex; flex-shrink:0; }
+.cue-kind-icon svg, .cue-kind-icon svg.lucide { width:56px; height:56px; }
+.cue-primary .cue-kind-icon svg { width:96px; height:96px; }
+#cue-status { margin:10px 0 0; text-align:right; font-size:12px; color:#26342d; }
+#cue-retry { display:block; margin:10px 0 0 auto; padding:8px 16px; background:#26342d; color:white; border-radius:5px; }
+.que-view .playback-panel { padding:10px 24px 12px; flex-shrink:0; }
+.que-view .playback-heading { margin-bottom:8px; }
+.que-view .timeline-events, .que-view .timeline-ticks, .que-view .sample-count, .que-view .playback-date, .que-view .keyboard-hint { display:none; }
+.que-view .timeline { padding-top:0; margin-bottom:8px; }
+.que-view .map-error { left:24px; right:auto; max-width:min(460px, calc(100% - 48px)); bottom:95px; }
+.que-view .fallback-map { background:#b5b7b6; transform:perspective(900px) rotateX(35deg); }
+.que-view #fallback-current { fill:#389b48; stroke:none; }
+@media (max-width:900px) {
+  .view-navigation { font-size:9px; }
+  .view-navigation a { padding:6px; }
+  .que-view .header { height:56px; padding:0 12px; gap:8px; }
+  .que-view .header-center, .que-view .brand-en, .que-view .api-badge { display:none; }
+  .que-view .header-actions { gap:6px; }
+  #que-zoom-button { padding:7px; font-size:11px; }
+  .que-view .brand { font-size:14px; gap:8px; }
+  .que-view .brand-mark { width:30px; height:30px; }
+  .que-view { --que-card-width:min(360px, calc(100vw - 24px)); }
+  .cue-overlay { right:12px; top:14px; }
+  #cue-list { display:grid; grid-template-columns:1fr 1fr; align-items:stretch; gap:8px; }
+  #cue-list .cue-card { width:100%; padding:14px; }
+  #cue-list .cue-primary { grid-column:1 / -1; padding:20px 24px; }
+  #cue-list .cue-primary h2 { font-size:26px; }
+  #cue-list .cue-primary strong { font-size:72px; }
+  #cue-list .cue-card:not(.cue-primary) h2 { font-size:14px; }
+  #cue-list .cue-card:not(.cue-primary) strong { font-size:36px; }
+  .cue-card h2 { margin-bottom:10px; }
+  .cue-countdown { gap:8px; }
+  .cue-seconds { gap:4px; }
+  .cue-unit { font-size:14px; }
+  .cue-primary .cue-unit { font-size:22px; }
+  .cue-kind-icon svg, .cue-kind-icon svg.lucide { width:28px; height:28px; }
+  .cue-primary .cue-kind-icon svg { width:64px; height:64px; }
+  .cue-heading { font-size:10px; }
+  .cue-heading span { font-size:9px; }
+  .que-view .map-tools { right:16px; }
+  .que-view .map-legend { left:12px; font-size:10px; gap:12px; padding:8px 10px; }
+  .que-view .playback-panel { padding:8px 12px 10px; }
+  .que-view .playback-title { font-size:10px; }
+}
+
+/* Geographic markers and the speed readout remain readable in both tunnel themes. */
+.que-view .map-panel { background: var(--map-ground, #b5b7b6); }
+.que-view .map-speed-card { position: absolute; z-index: 2; left: 24px; bottom: 38px; width: var(--que-card-width); }
+.map-speed-card h2 { display: flex; justify-content: space-between; align-items: baseline; }
+.map-speed-card h2 span { font-size: 20px; font-weight: 400; }
+.map-speed-card .speed-unit { font: 24px var(--mono); }
+.que-view .map-legend { bottom: 390px; flex-wrap: wrap; max-width: min(420px, calc(100% - 48px)); }
+.que-view .station-marker { opacity: 1; gap: 0; z-index: 1; }
+.que-view .station-tick { display: grid; place-items: center; width: 28px; height: 28px; background: #ffffff; border: 3px solid #176b37; border-radius: 50%; color: #176b37; font-size: 12px; font-weight: 800; box-shadow: 0 2px 10px #00000033; }
+.que-view .station-marker-name { opacity: 1; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 8px 12px; margin-left: 6px; font-size: 16px; font-weight: 700; text-shadow: none; box-shadow: 0 2px 10px #00000022; }
+.que-view .station-marker.next-station .station-marker-name { background: #176b37; color: #fff; border-color: #176b37; }
+.que-view .current-marker { z-index: 2; }
+.tunnel-marker { display: flex; align-items: center; gap: 6px; pointer-events: none; z-index: 1; }
+.tunnel-portal { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px 7px 2px 2px; background: #7457a4; color: white; font: 800 26px/1 sans-serif; box-shadow: 0 2px 8px #00000033; }
+.tunnel-marker-label { padding: 6px 9px; background: var(--panel); border: 1px solid #7457a4; color: var(--text); border-radius: 4px; font-size: 12px; font-weight: 600; }
+.tunnel-marker.exit .tunnel-portal { width: 20px; height: 20px; font-size: 20px; }
+#map-tunnel-banner { position: absolute; left: 24px; top: 28px; z-index: 2; border: 1px solid #987bc9; padding: 12px 18px; border-radius: 6px; background: #191321; color: #d9c8f4; font-size: 14px; font-weight: 600; }
+:root[data-theme="dark"] .que-view { --surface: #0b0e12; --text: #e5ece8; --muted: #b3bdb7; --line: #ffffff26; --panel: #121820f0; --hover: #ffffff12; --map-ground: #3b4850; }
+:root[data-theme="dark"] .que-view .cue-card { background: #173f26; border-color: #3d7650; }
+:root[data-theme="dark"] .que-view .map-legend { background: var(--panel); color: var(--text); }
+:root[data-theme="dark"] .que-view .cue-heading, :root[data-theme="dark"] #cue-status { color: var(--text); }
+:root[data-theme="dark"] .que-view .station-tick { background: #121820; color: #a8d5ae; border-color: #a8d5ae; }
+:root[data-theme="dark"] .que-view .station-marker.next-station .station-marker-name { background: #173f26; border-color: #3d7650; }
+:root[data-theme="dark"] .que-view .fallback-map { background: #10161b; }
+@media (max-width: 900px) {
+  .que-view .map-speed-card { width: 180px; left: 12px; bottom: 34px; }
+  .que-view .map-speed-card { padding:14px 16px; }
+  .que-view .map-speed-card h2 { font-size:16px; }
+  .map-speed-card h2 span { font-size:9px; }
+  .que-view .map-speed-card strong { font-size: 44px; }
+  .que-view .map-speed-card .speed-unit { font-size: 12px; }
+  .que-view .map-legend { bottom: 180px; left: 12px; gap: 9px; max-width: calc(100% - 24px); }
+  .que-view .station-marker-name { padding: 6px 8px; font-size: 13px; }
+  .que-view .station-tick { width: 24px; height: 24px; font-size: 10px; }
+  .tunnel-marker-label { padding: 5px 7px; font-size: 10px; }
+  #map-tunnel-banner { top: auto; bottom: 228px; left: 12px; font-size: 11px; padding: 8px 12px; }
+}
+.que-view .tunnel-line { height: 4px; background: repeating-linear-gradient(90deg, #9a7dc5 0 4px, transparent 4px 7px); }
+@media (min-width:901px) and (max-height:900px) {
+  .cue-card { padding:18px 24px; }
+  .cue-primary { padding:26px 32px; }
+  .cue-card h2 { font-size:22px; margin-bottom:12px; }
+  .cue-primary h2 { font-size:30px; }
+  .cue-card strong { font-size:48px; }
+  .cue-primary strong { font-size:96px; }
+  .cue-kind-icon svg, .cue-kind-icon svg.lucide { width:44px; height:44px; }
+  .cue-primary .cue-kind-icon svg { width:72px; height:72px; }
+  .que-view .map-legend { bottom:300px; }
+}
+
+/* Published timetable selection and simulated train playback. */
+.simulation-button-short { display:none; }
+#simulation-dialog { width:min(640px, calc(100vw - 24px)); max-height:calc(100dvh - 32px); overflow:auto; }
+.simulation-fields { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0; }
+.simulation-fields label { display:flex; flex-direction:column; gap:8px; font-size:12px; }
+.simulation-fields select { width:100%; min-width:0; padding:11px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--text); font-size:13px; }
+.simulation-summary { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:12px 0; }
+.simulation-summary strong { font-size:19px; }
+.simulation-summary span { font-size:12px; white-space:nowrap; }
+#simulation-note { color:#176b37; background:#389b4810; border-radius:5px; padding:10px; font-size:12px; }
+.simulation-stops-scroll { max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:5px; }
+.simulation-preview table { border-collapse:collapse; width:100%; font-size:12px; }
+.simulation-preview th { text-align:left; position:sticky; top:0; background:var(--surface); }
+.simulation-preview th, .simulation-preview td { padding:9px 12px; border-bottom:1px solid var(--line); }
+.simulation-preview td:not(:first-child) { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.simulation-explanation { line-height:1.8; margin-bottom:8px; }
+.simulation-source { color:var(--text); font-size:11px; text-underline-offset:3px; }
+#simulation-error, #simulation-empty { font-size:12px; color:var(--text); }
+.timetable-mode .time-display { font-variant-numeric:tabular-nums; }
+:root[data-theme="dark"] #simulation-note { color:#a8d5ae; }
+@media (max-width:900px) {
+  #simulation-button { padding:7px; font-size:11px; }
+  .simulation-button-long { display:none; }
+  .simulation-button-short { display:inline; }
+  #simulation-dialog { padding:18px; }
+  .simulation-fields { gap:12px; }
+  .simulation-fields label { font-size:11px; }
+  .simulation-fields select { padding:9px 7px; font-size:12px; }
+  .simulation-summary { flex-wrap:wrap; gap:5px; }
+  .simulation-stops-scroll { max-height:210px; }
+  #simulation-dialog .dialog-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  #simulation-dialog .dialog-actions button { flex:1; font-size:12px; padding:10px; }
+  .timetable-mode .time-display { font-size:10px; }
+}

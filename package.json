@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test": "node --test test/*.test.js",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "postbuild": "node scripts/prepare-pages.mjs"
   },
   "dependencies": {
     "lucide": "1.52.0",
