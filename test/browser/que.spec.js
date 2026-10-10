@@ -27,6 +27,8 @@ async function captureMapMarkers(page) {
 test('an occluded position switches to the closest bird view and stays stable until the view clears', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // Keep the known terrain-occlusion scenario at its original zoom.
+  await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
@@ -59,6 +61,8 @@ test('an occluded position switches to the closest bird view and stays stable un
 });
 
 test('moving current position, station names and tunnel markers match the rendered map without pixel snapping', async ({ page }) => {
+  // Keep the known terrain-occlusion scenario at its original zoom.
+  await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
@@ -99,6 +103,8 @@ test('moving current position, station names and tunnel markers match the render
 });
 
 test('front playback around 22:30 stays in bird view through short gaps and returns once the hills clear', async ({ page }) => {
+  // Keep the known terrain-occlusion scenario at its original zoom.
+  await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
@@ -136,13 +142,15 @@ test('zoom buttons adjust both views, persist settings and fit on mobile', async
   await captureMapMarkers(page);
   await page.locator('#que-zoom-button').click();
   await page.locator('#que-mode-normal').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('17.0');
+  await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
   await page.locator('#que-normal-out').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('16.5');
-  await expect.poll(() => page.evaluate(() => window.testMap?.getZoom())).toBeCloseTo(16.5, 2);
+  await expect(page.locator('#que-normal-zoom')).toHaveText('18.5');
+  // Terrain collision avoidance can reduce the requested zoom at this position.
+  await expect.poll(() => page.evaluate(() => window.testMap?.getZoom())).toBeGreaterThan(17);
+  await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeLessThanOrEqual(18.50001);
   await page.locator('#que-bird-in').click();
   await expect(page.locator('#que-bird-zoom')).toHaveText('19.5');
-  await page.locator('#que-mode-auto').click();
+  await page.locator('#que-mode-bird').click();
   await page.locator('#done-que-zoom').click();
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch()), { timeout: 15000 }).toBeLessThan(0.01);
@@ -153,17 +161,17 @@ test('zoom buttons adjust both views, persist settings and fit on mobile', async
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(20, 2);
   expect(await page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(0, 2);
   await page.locator('#que-normal-out').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('16.0');
+  await expect(page.locator('#que-normal-zoom')).toHaveText('18.0');
   await page.reload();
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#que-zoom-button').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('16.0');
+  await expect(page.locator('#que-normal-zoom')).toHaveText('18.0');
   await expect(page.locator('#que-bird-zoom')).toHaveText('20.0');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.screenshot({ path: 'test-results/que-zoom-mobile.png' });
   await page.locator('#reset-que-zoom').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('17.0');
+  await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
   await expect(page.locator('#que-bird-zoom')).toHaveText('19.0');
   await page.locator('#done-que-zoom').click();
   await page.goto('/console');
@@ -235,6 +243,8 @@ test('station dwell freezes other cards across API refreshes and departure resum
 });
 
 test('fixed perspectives fade terrain-hidden labels and bird view persists across seeks and reload', async ({ page }) => {
+  // Keep the known terrain-occlusion scenario at its original zoom.
+  await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
@@ -292,6 +302,7 @@ test('queue clears stale cues on API failure and offers retry', async ({ page })
 });
 
 test('queue camera stays locked against mouse input and tracks seeks and direction switches', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);

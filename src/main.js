@@ -16,10 +16,10 @@ const baseURL = import.meta.env.BASE_URL;
 const pagePath = location.pathname.startsWith(baseURL) ? location.pathname.slice(baseURL.length) : location.pathname;
 const isQue = /^que(?:\/(?:index\.html)?)?$/.test(pagePath);
 const queZoomBounds = { min: 14, max: 20, step: 0.5 };
-let queFollowZoom = 17, queBirdZoom = 19;
+let queFollowZoom = 19, queBirdZoom = 19, videoMode = false;
 try {
   const saved = JSON.parse(localStorage.getItem('tarumi-que-zoom'));
-  if (Number.isFinite(saved?.normal) && Number.isFinite(saved?.bird)) {
+  if (saved?.version === 2 && Number.isFinite(saved.normal) && Number.isFinite(saved.bird)) {
     queFollowZoom = clamp(Math.round(saved.normal * 2) / 2, queZoomBounds.min, queZoomBounds.max);
     queBirdZoom = clamp(Math.round(saved.bird * 2) / 2, queFollowZoom, queZoomBounds.max);
   }
@@ -63,15 +63,15 @@ if (isQue) {
   zoomButton.id = 'que-zoom-button';
   zoomButton.className = 'secondary-button';
   zoomButton.textContent = 'ビュー';
-  zoomButton.setAttribute('aria-label', '地図の表示設定');
+  zoomButton.setAttribute('aria-label', 'ビューの設定');
   zoomButton.setAttribute('aria-haspopup', 'dialog');
   zoomButton.setAttribute('aria-controls', 'que-zoom-dialog');
   $('settings-button').before(zoomButton);
   const zoomDialog = document.createElement('dialog');
   zoomDialog.id = 'que-zoom-dialog';
   zoomDialog.setAttribute('aria-labelledby', 'que-zoom-title');
-  zoomDialog.innerHTML = `<div class="dialog-header"><h2 id="que-zoom-title">地図の表示設定</h2><button id="close-que-zoom" class="icon-button" aria-label="閉じる">×</button></div>
-    <div class="que-view-modes" role="group" aria-label="地図の視点">${[['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定']].map(([mode, label]) => `<button id="que-mode-${mode}" aria-pressed="false">${label}</button>`).join('')}</div>
+  zoomDialog.innerHTML = `<div class="dialog-header"><h2 id="que-zoom-title">ビューの設定</h2><button id="close-que-zoom" class="icon-button" aria-label="閉じる">×</button></div>
+    <div class="que-view-modes" role="group" aria-label="表示モード">${[['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定'], ['video', '動画']].map(([mode, label]) => `<button id="que-mode-${mode}" aria-pressed="false">${label}</button>`).join('')}</div>
     <p class="field-note">＋で近く、−で広く表示します。</p>
     ${[['normal', '通常ビュー'], ['bird', '鳥瞰図']].map(([mode, label]) => `<div class="que-zoom-row"><span>${label}</span><div class="que-zoom-stepper"><button id="que-${mode}-out" aria-label="${label}を引く">−</button><output id="que-${mode}-zoom" aria-live="polite"></output><button id="que-${mode}-in" aria-label="${label}に寄る">＋</button></div></div>`).join('')}
     <div class="dialog-actions"><button id="reset-que-zoom" class="secondary-button">初期値に戻す</button><button id="done-que-zoom" class="primary-button">完了</button></div>`;
@@ -83,15 +83,15 @@ if (isQue) {
       mode === 'normal' ? clamp(queFollowZoom + step * queZoomBounds.step, queZoomBounds.min, queBirdZoom) : queFollowZoom,
       mode === 'bird' ? clamp(queBirdZoom + step * queZoomBounds.step, queFollowZoom, queZoomBounds.max) : queBirdZoom));
   }
-  for (const mode of ['auto', 'normal', 'bird']) $(`que-mode-${mode}`).addEventListener('click', () => setQueViewMode(mode));
-  $('reset-que-zoom').addEventListener('click', () => { setQueZooms(17, 19); setQueViewMode('auto'); });
+  for (const mode of ['auto', 'normal', 'bird', 'video']) $(`que-mode-${mode}`).addEventListener('click', () => setQueViewMode(mode));
+  $('reset-que-zoom').addEventListener('click', () => { setQueZooms(19, 19); setQueViewMode('auto'); });
   renderQueZooms();
 }
 const state = { direction: 'front', time: 0, playing: false, rate: 1, follow: false, response: null, responseT: null, ready: false };
 const occlusionCamera = new OcclusionCamera({ pitch: quePitch, zoom: queFollowZoom, birdZoom: queBirdZoom });
 if (isQue) {
-  try { occlusionCamera.setMode(localStorage.getItem('tarumi-que-view') ?? 'auto', performance.now()); } catch { /* Preferences are optional. */ }
-  renderQueViewMode();
+  try { const mode = localStorage.getItem('tarumi-que-view') ?? 'auto'; videoMode = mode === 'video'; occlusionCamera.setMode(videoMode ? 'auto' : mode, performance.now()); } catch { /* Preferences are optional. */ }
+  updateVideoViewer(); renderQueViewMode();
 }
 const cueQueue = new CueQueue(), cueCards = new Map();
 const cameraTerrainHeights = new Map();
@@ -426,16 +426,36 @@ function setQueZooms(normal, bird) {
   nextOcclusionCheck = 0;
   visibilitySettlesAt = now + occlusionCamera.duration + 120;
   renderQueZooms();
-  try { localStorage.setItem('tarumi-que-zoom', JSON.stringify({ normal, bird })); } catch { /* Preferences are optional. */ }
+  try { localStorage.setItem('tarumi-que-zoom', JSON.stringify({ version: 2, normal, bird })); } catch { /* Preferences are optional. */ }
+}
+
+function updateVideoViewer() {
+  if (!isQue) return;
+  document.body.classList.toggle('video-view', videoMode);
+  const existing = $('que-video');
+  if (!videoMode) { existing?.remove(); return; }
+  const videoId = state.direction === 'front' ? 'm-jjJKsWI24' : '7O6dZcTG2mQ';
+  if (existing?.dataset.videoId === videoId) return;
+  const iframe = document.createElement('iframe');
+  iframe.id = 'que-video'; iframe.dataset.videoId = videoId;
+  iframe.title = `樽見鉄道 車窓風景 · ${state.direction === 'front' ? '往路 本巣→樽見' : '復路 樽見→本巣'}`;
+  iframe.src = `https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0`;
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  iframe.allowFullscreen = true;
+  iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+  if (existing) existing.replaceWith(iframe);
+  else document.querySelector('.map-panel').append(iframe);
 }
 
 function renderQueViewMode() {
-  for (const mode of ['auto', 'normal', 'bird']) $(`que-mode-${mode}`).setAttribute('aria-pressed', String(mode === occlusionCamera.mode));
+  for (const mode of ['auto', 'normal', 'bird', 'video']) $(`que-mode-${mode}`).setAttribute('aria-pressed', String(mode === (videoMode ? 'video' : occlusionCamera.mode)));
 }
 
 function setQueViewMode(mode) {
   const now = performance.now();
-  occlusionCamera.setMode(mode, now);
+  videoMode = mode === 'video';
+  occlusionCamera.setMode(videoMode ? 'auto' : mode, now);
+  updateVideoViewer();
   normalSightline = lastHiddenLocation = null;
   nextOcclusionCheck = 0;
   currentObscured = null;
@@ -694,6 +714,7 @@ function switchDirection(direction) {
   if (simulation) { setPlaying(false); timetableControls.open(direction); return; }
   setPlaying(false); clearTimeout(seekTimer); api.reset();
   state.direction = direction; state.time = range()[0]; state.response = null; state.responseT = null;
+  if (isQue) updateVideoViewer();
   cueQueue.reset();
   for (const dir of ['front', 'back']) { $(`${dir}-button`).classList.toggle('selected', direction === dir); $(`${dir}-button`).setAttribute('aria-pressed', String(direction === dir)); }
   $('route-description').textContent = direction === 'front' ? '往路 · 木知原の手前から樽見までの記録' : '復路 · 樽見から織部付近までの記録';
@@ -703,6 +724,7 @@ function switchDirection(direction) {
 }
 
 function simulationMode() {
+  updateVideoViewer();
   document.body.classList.toggle('timetable-mode', Boolean(simulation));
   document.querySelector('.playback-title > span').textContent = simulation ? 'TIMETABLE SIMULATION' : 'GPS PLAYBACK';
   document.querySelector('.cue-heading span').textContent = simulation ? `${simulation.train.id}列車 · ${simulation.selection.day === 'holiday' ? '土曜・休日' : '平日'}` : 'GPS 記録再生';
