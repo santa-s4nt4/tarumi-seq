@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
+});
+
 test('video mode embeds each direction, survives reload and removes the player when returning to the map', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -8,8 +12,10 @@ test('video mode embeds each direction, survives reload and removes the player w
   await expect(page.locator('#play')).toBeEnabled();
   await page.locator('#que-zoom-button').click();
   await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
-  await page.locator('#que-mode-video').click();
+  await expect(page.locator('#que-zoom-dialog [id^="que-mode-"]')).toHaveCount(0);
   await page.locator('#done-que-zoom').click();
+  await page.locator('#que-mode-video').click();
+  await expect(page.locator('#que-zoom-dialog')).toBeHidden();
   await expect(page.locator('#que-video')).toBeVisible();
   await expect(page.locator('#que-video')).toHaveAttribute('src', /embed\/m-jjJKsWI24\?/);
   await expect(page.locator('#map')).not.toBeVisible();
@@ -22,10 +28,8 @@ test('video mode embeds each direction, survives reload and removes the player w
   await expect(page.locator('#que-video')).toHaveAttribute('src', /embed\/m-jjJKsWI24\?/);
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
-  await page.locator('#que-zoom-button').click();
   await expect(page.locator('#que-mode-video')).toHaveAttribute('aria-pressed','true');
   await page.locator('#que-mode-normal').click();
-  await page.locator('#done-que-zoom').click();
   await expect(page.locator('#que-video')).toHaveCount(0);
   await expect(page.locator('#map')).toBeVisible();
   expect(errors).toEqual([]);
@@ -37,13 +41,16 @@ test('updates old saved zooms to 19 and switches the embedded direction for time
   await page.goto('/que'); await expect(page.locator('#play')).toBeEnabled();
   await page.locator('#que-zoom-button').click();
   await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
-  await page.locator('#que-mode-video').click(); await page.locator('#done-que-zoom').click();
+  await page.locator('#done-que-zoom').click();
+  await page.locator('#que-mode-video').click();
   await page.locator('#simulation-button').click();
   await page.locator('#simulation-direction').selectOption('back');
   await page.locator('#simulation-start').click();
   await expect(page.locator('#que-video')).toHaveAttribute('src', /embed\/7O6dZcTG2mQ\?/);
   await page.locator('#que-zoom-button').click(); await page.locator('#reset-que-zoom').click();
-  await expect(page.locator('#que-video')).toHaveCount(0);
   await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
   await expect(page.locator('#que-bird-zoom')).toHaveText('19.0');
+  await page.locator('#done-que-zoom').click();
+  await page.locator('#que-mode-auto').click();
+  await expect(page.locator('#que-video')).toHaveCount(0);
 });

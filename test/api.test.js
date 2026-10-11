@@ -1,8 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PositionApi, validateEndpoint, API_INTERVAL_MS, requestEndpoint } from '../src/api.js';
+import { PositionApi, validateEndpoint, API_INTERVAL_MS, requestEndpoint, DEFAULT_ENDPOINT, PUBLIC_ENDPOINT, LOCAL_ENDPOINT } from '../src/api.js';
 
 const result = direction => ({ direction, position: {}, next: {}, river: {}, upcoming: [] });
+test('uses the public position API by default and keeps local proxy opt-in', () => {
+  assert.equal(DEFAULT_ENDPOINT, PUBLIC_ENDPOINT);
+  assert.equal(new PositionApi(() => {}, () => {}).endpoint, PUBLIC_ENDPOINT);
+  assert.equal(requestEndpoint(DEFAULT_ENDPOINT, true), PUBLIC_ENDPOINT);
+  assert.equal(requestEndpoint(LOCAL_ENDPOINT, true), '/local-api/api/position');
+});
 test('proxies only the local position API in development, preserving production and public endpoints', () => {
   for (const host of ['localhost', '127.0.0.1', '[::1]']) {
     assert.equal(requestEndpoint(`http://${host}:8787/api/position?debug=1`, true), '/local-api/api/position?debug=1');
@@ -84,7 +90,7 @@ test('replays one dropped local prediction request without clearing the successf
     requests.push(JSON.parse(options.body));
     return requests.length === 1 ? new Response('Error inside ProxyWorker: Network connection lost.', { status: 500 }) : Response.json(result('front'));
   });
-  const client = new PositionApi(r => results.push(r), s => statuses.push(s));
+  const client = new PositionApi(r => results.push(r), s => statuses.push(s), LOCAL_ENDPOINT);
   t.after(() => client.reset()); client.pending = { body: { direction: 'front', time: 419 }, t: 419 };
   const running = client.run(); await flushPromises();
   assert.equal(requests.length, 1); t.mock.timers.tick(300); await running;
@@ -112,7 +118,7 @@ test('direction reset cancels a retry waiting after a dropped local connection',
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let count = 0; const results = [], statuses = [];
   t.mock.method(globalThis, 'fetch', async () => { count++; return new Response('Network connection lost.', { status: 500 }); });
-  const client = new PositionApi(r => results.push(r), s => statuses.push(s));
+  const client = new PositionApi(r => results.push(r), s => statuses.push(s), LOCAL_ENDPOINT);
   t.after(() => client.reset()); client.pending = { body: { direction: 'front' }, t: 419 };
   const running = client.run(); await flushPromises(); client.reset(); t.mock.timers.tick(300); await running;
   assert.equal(count, 1); assert.equal(results.length, 0); assert.equal(statuses.some(s => s.status === 'error'), false);

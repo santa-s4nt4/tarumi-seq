@@ -53,11 +53,14 @@ export function turnTowards(current, target, fraction = 0.12) {
 
 // Test the normal perspective even in bird view; testing the active view would
 // make revealing the position immediately switch the camera back into the hill.
-export function terrainClearance({ center, bearing, radius, sampleElevation, pitch = 72, horizontal = radius * Math.sin(pitch * Math.PI / 180), vertical = radius * Math.cos(pitch * Math.PI / 180) }) {
-  const elevation = sampleElevation(center.lon, center.lat);
-  if (!Number.isFinite(elevation)) return null;
+export function terrainClearance({ center, bearing, radius, sampleElevation, targetElevation, pitch = 72, horizontal = radius * Math.sin(pitch * Math.PI / 180), vertical = radius * Math.cos(pitch * Math.PI / 180) }) {
+  const surface = sampleElevation(center.lon, center.lat);
+  if (!Number.isFinite(surface)) return null;
+  const elevation = Number.isFinite(targetElevation) ? targetElevation : surface;
   const origin = xy(center.lat, center.lon), radians = bearing * Math.PI / 180;
-  let incomplete = false, clearance = -Infinity;
+  // A rail line buried below a mountain stays occluded even when the ray from
+  // its projected screen position misses the nearest terrain samples.
+  let incomplete = false, clearance = Number.isFinite(targetElevation) && surface - elevation > 6 ? surface - elevation : -Infinity;
   // Mapbox fades markers when a surface at least 10% closer to the camera
   // covers them. Ignore the ground immediately beside the marker itself.
   for (let i = 5; i <= 48; i++) {

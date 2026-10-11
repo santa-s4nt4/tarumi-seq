@@ -1,4 +1,8 @@
 import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
+});
 const seconds = time => { const [h,m,s=0] = time.split(':').map(Number); return h*3600+m*60+s; };
 async function seek(page,time) { await page.locator('#seek').evaluate((element,value)=>{element.value=value;element.dispatchEvent(new Event('input',{bubbles:true}));},seconds(time)); }
 async function pause(page) { if (await page.locator('#play').getAttribute('aria-pressed') === 'true') await page.locator('#play').click(); }

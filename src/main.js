@@ -3,13 +3,14 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { createIcons, TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X } from 'lucide';
 import './style.css';
 import { clamp, sampleAt, recordedAt, timeLabel, advanceTime, stationEvent } from './timeline.js';
-import { PositionApi, DEFAULT_ENDPOINT, PUBLIC_ENDPOINT, validateEndpoint } from './api.js';
+import { PositionApi, DEFAULT_ENDPOINT, LOCAL_ENDPOINT, PUBLIC_ENDPOINT, validateEndpoint } from './api.js';
 import { buildRoute, interpolatePrediction } from './interpolate.js';
 import { xy, distance as coordinateDistance } from './geometry.js';
 import { routeBearing, routeLookahead, turnTowards, terrainClearance, OcclusionCamera, cameraChanges } from './camera.js';
 import { CueQueue } from './cues.js';
 import { buildSimulation, simulationPrediction, serviceTime } from './simulation.js';
 import { simulationControls } from './simulation-controls.js';
+import { createRailProfile, elevatedLineFeature, railLineZOffset } from './rail-elevation.js';
 
 
 const baseURL = import.meta.env.BASE_URL;
@@ -42,7 +43,7 @@ if (isQue) {
   document.querySelector('.version-label').textContent = 'QUE VIEW';
   document.querySelector('.map-tools').hidden = true;
   for (const id of ['fit-map', 'follow-map', 'zoom-in', 'zoom-out']) $(id).disabled = true;
-  document.querySelector('.map-legend').innerHTML = '<span><b class="legend-line"></b>通過前</span><span><b class="legend-line passed-line"></b>通過済み</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span><span><b class="legend-line tunnel-line"></b>トンネル</span>';
+  document.querySelector('.map-legend').innerHTML = '<span><b class="legend-line"></b>通過前</span><span><b class="legend-line passed-line"></b>通過済み</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span><span><b class="legend-line tunnel-line"></b>トンネル</span><span><b class="legend-line bridge-line"></b>鉄橋</span>';
   const overlay = document.createElement('aside');
   overlay.className = 'cue-overlay';
   overlay.setAttribute('aria-label', '次のキュー');
@@ -59,19 +60,25 @@ if (isQue) {
   tunnelBanner.setAttribute('role', 'status');
   document.querySelector('.map-panel').append(tunnelBanner);
   $('cue-retry').addEventListener('click', () => requestPosition(true));
+  const modeBar = document.createElement('div');
+  modeBar.className = 'que-view-modes';
+  modeBar.setAttribute('role', 'group');
+  modeBar.setAttribute('aria-label', '表示モード');
+  modeBar.innerHTML = [['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定'], ['video', '動画']]
+    .map(([mode, label]) => `<button id="que-mode-${mode}" type="button" aria-pressed="false">${label}</button>`).join('');
+  document.querySelector('.header-actions').before(modeBar);
   const zoomButton = document.createElement('button');
   zoomButton.id = 'que-zoom-button';
   zoomButton.className = 'secondary-button';
-  zoomButton.textContent = 'ビュー';
-  zoomButton.setAttribute('aria-label', 'ビューの設定');
+  zoomButton.textContent = '倍率';
+  zoomButton.setAttribute('aria-label', '地図の倍率設定');
   zoomButton.setAttribute('aria-haspopup', 'dialog');
   zoomButton.setAttribute('aria-controls', 'que-zoom-dialog');
   $('settings-button').before(zoomButton);
   const zoomDialog = document.createElement('dialog');
   zoomDialog.id = 'que-zoom-dialog';
   zoomDialog.setAttribute('aria-labelledby', 'que-zoom-title');
-  zoomDialog.innerHTML = `<div class="dialog-header"><h2 id="que-zoom-title">ビューの設定</h2><button id="close-que-zoom" class="icon-button" aria-label="閉じる">×</button></div>
-    <div class="que-view-modes" role="group" aria-label="表示モード">${[['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定'], ['video', '動画']].map(([mode, label]) => `<button id="que-mode-${mode}" aria-pressed="false">${label}</button>`).join('')}</div>
+  zoomDialog.innerHTML = `<div class="dialog-header"><h2 id="que-zoom-title">地図の倍率設定</h2><button id="close-que-zoom" class="icon-button" aria-label="閉じる">×</button></div>
     <p class="field-note">＋で近く、−で広く表示します。</p>
     ${[['normal', '通常ビュー'], ['bird', '鳥瞰図']].map(([mode, label]) => `<div class="que-zoom-row"><span>${label}</span><div class="que-zoom-stepper"><button id="que-${mode}-out" aria-label="${label}を引く">−</button><output id="que-${mode}-zoom" aria-live="polite"></output><button id="que-${mode}-in" aria-label="${label}に寄る">＋</button></div></div>`).join('')}
     <div class="dialog-actions"><button id="reset-que-zoom" class="secondary-button">初期値に戻す</button><button id="done-que-zoom" class="primary-button">完了</button></div>`;
@@ -84,7 +91,7 @@ if (isQue) {
       mode === 'bird' ? clamp(queBirdZoom + step * queZoomBounds.step, queFollowZoom, queZoomBounds.max) : queBirdZoom));
   }
   for (const mode of ['auto', 'normal', 'bird', 'video']) $(`que-mode-${mode}`).addEventListener('click', () => setQueViewMode(mode));
-  $('reset-que-zoom').addEventListener('click', () => { setQueZooms(19, 19); setQueViewMode('auto'); });
+  $('reset-que-zoom').addEventListener('click', () => setQueZooms(19, 19));
   renderQueZooms();
 }
 const state = { direction: 'front', time: 0, playing: false, rate: 1, follow: false, response: null, responseT: null, ready: false };
@@ -96,16 +103,47 @@ if (isQue) {
 const cueQueue = new CueQueue(), cueCards = new Map();
 const cameraTerrainHeights = new Map();
 let cameraBearing = null, lastCameraFrame = null, lastRequestedCamera = null, nextOcclusionCheck = 0, currentObscured = null, lastHiddenLocation = null, normalSightline = null, clearThreshold = -6, visibilitySettlesAt = 0;
-let recordings, mapData, routes, rivers, stations, stationCatalog, timetable, railway, simulation = null, timetableControls, map, mapReady = false, marker, stationMarkers = [], tunnelMarkers = [], seekTimer, lastApiSecond = -1, lastFrame = performance.now(), lastDraw = -Infinity;
+let recordings, mapData, routes, rivers, stations, stationCatalog, timetable, railway, railProfile, railStartS, railEndS, simulation = null, timetableControls, map, mapReady = false, marker, stationMarkers = [], tunnelMarkers = [], seekTimer, lastApiSecond = -1, lastFrame = performance.now(), lastDraw = -Infinity;
 const number = value => Number.isFinite(value) ? Math.round(value).toLocaleString('ja-JP') : '—';
 const rec = () => simulation?.recording ?? recordings[state.direction];
 const data = () => simulation?.data ?? mapData[state.direction];
 const range = () => [rec().records[0].t, rec().records.at(-1).t];
 const point = () => sampleAt(rec().records, state.time);
+function prepareRailRecording(recording) {
+  const records = recording.records;
+  const first = railProfile.project(records[0].lon, records[0].lat).s;
+  const last = railProfile.project(records.at(-1).lon, records.at(-1).lat).s;
+  const increasing = last >= first;
+  let previous = first;
+  for (const record of records) {
+    const projected = railProfile.project(record.lon, record.lat, previous).s;
+    record.railS = increasing ? Math.max(previous, projected) : Math.min(previous, projected);
+    previous = record.railS;
+  }
+}
+function railDistanceAt(time) {
+  const records = rec().records;
+  if (time <= records[0].t) return records[0].railS;
+  if (time >= records.at(-1).t) return records.at(-1).railS;
+  let lo = 0, hi = records.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (records[mid].t <= time) lo = mid; else hi = mid;
+  }
+  const a = records[lo], b = records[hi], gap = b.t - a.t;
+  return gap > 5 ? a.railS : a.railS + (b.railS - a.railS) * (time - a.t) / gap;
+}
+function railPositionAt(time) {
+  const s = railDistanceAt(time), [lon, lat] = railProfile.coordinateAt(s);
+  return { s, lon, lat, elevationMeters: railProfile.elevationAt(s) };
+}
 const prediction = () => simulation ? simulationPrediction(simulation, state.time, rivers[state.direction]) : state.ready && !point().gap ? interpolatePrediction(state.response, state.responseT, state.time, routes[state.direction], rivers[state.direction], state.response?.datasetVersion === data().version) : null;
 const playbackLabel = seconds => simulation ? serviceTime(seconds, true) : timeLabel(seconds);
 const clock = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
-function storedEndpoint() { return DEFAULT_ENDPOINT; }
+function storedEndpoint() {
+  try { return validateEndpoint(localStorage.getItem('tarumi-api-endpoint')) || DEFAULT_ENDPOINT; }
+  catch { return DEFAULT_ENDPOINT; }
+}
 const api = new PositionApi((result, t) => {
   if (simulation) return;
   state.response = result; state.responseT = t;
@@ -260,6 +298,8 @@ function updateMapTheme() {
     map.setPaintProperty('tunnels', 'line-width', 13);
     map.setPaintProperty('tunnels', 'line-dasharray', [0.7, 0.7]);
     map.setPaintProperty('tunnel-halo', 'line-color', dark ? '#20152f' : '#e1d5f0');
+    map.setPaintProperty('bridge-halo', 'line-color', dark ? '#51402a' : '#fff8e4');
+    map.setPaintProperty('bridges', 'line-color', dark ? '#f4c879' : '#b67517');
     map.setPaintProperty('river-distance', 'line-opacity', 0);
     return;
   }
@@ -290,7 +330,9 @@ function initMap() {
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     if (!accessToken) throw new Error('missing-mapbox-token');
     map = new mapboxgl.Map({ container: 'map', accessToken, center: isQue ? [point().lon, point().lat] : [136.64, 35.56], interactive: !isQue, zoom: isQue ? queFollowZoom : 11, pitch: isQue ? quePitch : 0, bearing: isQue ? routeBearing(rec().records, state.time, 80) : 0, minZoom: 9, maxZoom: isQue ? queZoomBounds.max : 17, maxBounds: [[136.3, 35.3], [136.95, 35.85]],
-      attributionControl: { compact: true, customAttribution: '駅・川・トンネル © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
+      attributionControl: { compact: true, customAttribution: isQue
+        ? '駅・川・トンネル・鉄橋 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · 駅周辺標高: <a href="https://maps.gsi.go.jp/development/elevation_s.html" target="_blank" rel="noopener">国土地理院の標高データを加工</a>'
+        : '駅・川・トンネル © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
       style: 'mapbox://styles/mapbox/standard',
       config: { basemap: { lightPreset: 'day', theme: 'monochrome', showRoadLabels: false, colorLand: '#ffffff', colorGreenspace: '#ffffff', colorWater: '#ffffff', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false } }
     });
@@ -304,19 +346,27 @@ function initMap() {
         map.addLayer({ id: 'terrain-shading', type: 'hillshade', slot: 'middle', source: 'mapbox-dem', paint: { 'hillshade-exaggeration': 0.4, 'hillshade-emissive-strength': 1, 'hillshade-shadow-color': '#45524a', 'hillshade-highlight-color': '#e2e8df', 'hillshade-accent-color': '#62766a' } });
         map.addLayer({ id: 'contours', type: 'line', slot: 'middle', source: 'topography', 'source-layer': 'contour', minzoom: 10, paint: { 'line-color': '#56655b', 'line-emissive-strength': 1, 'line-opacity': 0.6, 'line-width': ['case', ['>=', ['get', 'index'], 5], 1.2, 0.5] } });
       }
-      for (const name of ['river', 'route', 'travelled', 'river-distance', 'tunnels']) map.addSource(name, { type: 'geojson', data: empty });
+      for (const name of ['river', 'route', 'travelled', 'river-distance', 'tunnels', ...(isQue ? ['bridges'] : [])]) {
+        map.addSource(name, { type: 'geojson', data: empty,
+          ...(isQue && ['route', 'travelled', 'tunnels', 'bridges'].includes(name) ? { lineMetrics: true } : {}) });
+      }
       map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 12], 'line-opacity': 0.25 } });
       map.addLayer({ id: 'route-halo', type: 'line', slot: 'top', source: 'route', paint: { 'line-emissive-strength': 1, 'line-color': '#fff', 'line-width': 7 } });
       map.addLayer({ id: 'route', type: 'line', slot: 'top', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 3.5 } });
       map.addLayer({ id: 'travelled', type: 'line', slot: 'top', source: 'travelled', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#331e19', 'line-width': 3.5 } });
       if (isQue) map.addLayer({ id: 'tunnel-halo', type: 'line', slot: 'top', source: 'tunnels', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#e1d5f0', 'line-width': 18 } });
       map.addLayer({ id: 'tunnels', type: 'line', slot: 'top', source: 'tunnels', paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 5, 'line-dasharray': [0.6, 0.7] } });
+      if (isQue) {
+        map.addLayer({ id: 'bridge-halo', type: 'line', slot: 'top', source: 'bridges', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#fff8e4', 'line-width': 15 } });
+        map.addLayer({ id: 'bridges', type: 'line', slot: 'top', source: 'bridges', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#b67517', 'line-width': 7 } });
+      }
       map.addLayer({ id: 'river-distance', type: 'line', slot: 'top', source: 'river-distance', paint: { 'line-emissive-strength': 1, 'line-color': '#000000', 'line-width': 1.6, 'line-dasharray': [3, 2] } });
-      if (isQue) for (const layer of ['route', 'travelled', 'tunnel-halo', 'tunnels']) {
-        // Keep a faint hint behind terrain, distinct from the visible track.
-        map.setLayoutProperty(layer, 'line-elevation-reference', 'ground');
-        map.setLayoutProperty(layer, 'line-z-offset', 2);
-        map.setPaintProperty(layer, 'line-occlusion-opacity', layer === 'tunnel-halo' ? 0.1 : 0.2);
+      if (isQue) for (const layer of ['route', 'travelled', 'tunnel-halo', 'tunnels', 'bridge-halo', 'bridges']) {
+        // Track height follows a shallow rail profile, independent of the mountains above it.
+        map.setLayoutProperty(layer, 'line-elevation-reference', 'sea');
+        map.setLayoutProperty(layer, 'line-z-offset', railLineZOffset);
+        map.setLayoutProperty(layer, 'line-elevation-ground-scale', 1);
+        map.setPaintProperty(layer, 'line-occlusion-opacity', ['tunnel-halo', 'bridge-halo'].includes(layer) ? 0.1 : 0.2);
       }
       const el = document.createElement('div'); el.className = 'current-marker'; el.setAttribute('aria-label', 'GPS現在地');
       el.innerHTML = '<span></span>';
@@ -347,28 +397,55 @@ function initMap() {
 function updateRouteMap() {
   if (!mapReady) { if (!map) drawFallbackMap(); return; }
   const coords = rec().records.map(r => [r.lon, r.lat]);
-  map.getSource('route').setData(lineFeature(coords));
+  const trackFeature = points => isQue ? elevatedLineFeature(railProfile, points) : lineFeature(points);
+  if (isQue) {
+    railStartS = rec().records[0].railS;
+    railEndS = rec().records.at(-1).railS;
+  }
+  map.getSource('route').setData(trackFeature(isQue ? railProfile.section(railStartS, railEndS) : coords) ?? empty);
   map.getSource('river').setData(lineFeature(data().river));
   const tunnelFeatures = [];
-  for (const entry of data().events.filter(e => e.type === 'tunnel' && e.target === 'entrance')) {
-    const exit = data().events.find(e => e.featureId === entry.featureId && e.target === 'exit');
-    const points = rec().records.filter(r => r.t >= entry.t && r.t <= exit.t).map(r => [r.lon, r.lat]);
-    if (exit) {
-      const a = sampleAt(rec().records, entry.t), b = sampleAt(rec().records, exit.t);
-      points.unshift([a.lon, a.lat]); points.push([b.lon, b.lat]);
+  if (isQue) {
+    const low = Math.min(railStartS, railEndS), high = Math.max(railStartS, railEndS);
+    for (const tunnel of railway.tunnels) {
+      const start = Math.max(low, tunnel.start), end = Math.min(high, tunnel.end);
+      if (start < end) {
+        const feature = trackFeature(railProfile.section(start, end));
+        if (feature) tunnelFeatures.push(feature);
+      }
     }
+  } else for (const entry of data().events.filter(e => e.type === 'tunnel' && e.target === 'entrance')) {
+    const exit = data().events.find(e => e.featureId === entry.featureId && e.target === 'exit');
+    if (!exit) continue;
+    const points = rec().records.filter(r => r.t >= entry.t && r.t <= exit.t).map(r => [r.lon, r.lat]);
+    const a = sampleAt(rec().records, entry.t), b = sampleAt(rec().records, exit.t);
+    points.unshift([a.lon, a.lat]); points.push([b.lon, b.lat]);
     if (points.length > 1) tunnelFeatures.push(lineFeature(points));
   }
   map.getSource('tunnels').setData({ type: 'FeatureCollection', features: tunnelFeatures });
+  if (isQue) {
+    const low = Math.min(railStartS, railEndS), high = Math.max(railStartS, railEndS);
+    const features = railway.bridges.flatMap(bridge => {
+      const from = Math.max(low, bridge.start), to = Math.min(high, bridge.end);
+      const feature = from < to ? elevatedLineFeature(railProfile, railProfile.section(from, to), 12) : null;
+      return feature ? [{ ...feature, properties: { ...feature.properties, name: bridge.name, id: bridge.id } }] : [];
+    });
+    map.getSource('bridges').setData({ type: 'FeatureCollection', features });
+  }
   tunnelMarkers.forEach(m => m.remove()); tunnelMarkers = [];
   if (isQue) for (const event of data().events.filter(e => e.type === 'tunnel')) {
+    const tunnel = railway.tunnels.find(t => t.id === event.featureId);
+    const location = tunnel ? railProfile.coordinateAt(event.target === 'entrance' ? tunnel.start : tunnel.end)
+      : [event.location.longitude, event.location.latitude];
     const el = document.createElement('div'); el.className = `tunnel-marker ${event.target}`;
     const portal = document.createElement('span'); portal.className = 'tunnel-portal'; portal.textContent = '∩';
     const label = document.createElement('span'); label.className = 'tunnel-marker-label';
     label.textContent = event.name;
     el.append(portal);
     if (event.target === 'entrance') el.append(label);
-    tunnelMarkers.push(new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'bottom-left', offset: [-14, 0] }).setLngLat([event.location.longitude, event.location.latitude]).addTo(map));
+    const tunnelMarker = new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'bottom-left', offset: [-14, 0] }).setLngLat(location).addTo(map);
+    tunnelMarker.railElevationMeters = railProfile.project(...location).elevationMeters;
+    tunnelMarkers.push(tunnelMarker);
   }
   stationMarkers.forEach(m => m.remove()); stationMarkers = [];
   for (const station of stations) {
@@ -383,7 +460,11 @@ function updateRouteMap() {
     const en = document.createElement('small'); en.textContent = station.romaji;
     name.append(en); el.append(tick, name); el.disabled = !event;
     if (event) el.addEventListener('click', () => seekTo(event.t));
-    stationMarkers.push(new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'left', offset: isQue ? [-14, 0] : [-7, 0] }).setLngLat([station.lon, station.lat]).addTo(map));
+    const railStation = isQue ? railway.stations.find(item => item.order === station.order) : null;
+    const location = railStation ? [railStation.lon, railStation.lat] : [station.lon, station.lat];
+    const stationMarker = new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'left', offset: isQue ? [-14, 0] : [-7, 0] }).setLngLat(location).addTo(map);
+    if (isQue) stationMarker.railElevationMeters = railProfile.project(...location).elevationMeters;
+    stationMarkers.push(stationMarker);
   }
   updateMapPosition(); updateMapResponse();
 }
@@ -469,7 +550,7 @@ function queCamera(reset = false, now = performance.now()) {
   const delta = lastCameraFrame === null ? 16 : Math.max(0, Math.min(100, now - lastCameraFrame));
   lastCameraFrame = now;
   cameraBearing = reset || cameraBearing === null ? target : turnTowards(cameraBearing, target, 1 - Math.exp(-delta / 350));
-  const p = point();
+  const p = railPositionAt(state.time);
   if (occlusionCamera.mode !== 'auto') return { center: [p.lon, p.lat], ...occlusionCamera.update(null, now), bearing: cameraBearing };
   if (reset || now >= nextOcclusionCheck) {
     nextOcclusionCheck = now + 100;
@@ -483,10 +564,10 @@ function queCamera(reset = false, now = performance.now()) {
       if (eye && Number.isFinite(ground)) {
         const location = eye.toLngLat();
         normalSightline = { horizontal: coordinateDistance(xy(p.lat, p.lon), xy(location.lat, location.lng)),
-          vertical: eye.toAltitude() - ground, zoom: queFollowZoom, latitude: p.lat, height: map.getCanvas().clientHeight };
+          vertical: eye.toAltitude() - p.elevationMeters * 1.5, zoom: queFollowZoom, latitude: p.lat, height: map.getCanvas().clientHeight };
       }
       const opacity = marker?.getElement().style.opacity;
-      currentObscured = opacity ? Number(opacity) <= 0.21 : null;
+      currentObscured = (ground - p.elevationMeters * 1.5 > 6) || (opacity ? Number(opacity) <= 0.21 : null);
       if (currentObscured) lastHiddenLocation = { xy: xy(p.lat, p.lon), bearing: cameraBearing };
     } else currentObscured = null;
 
@@ -494,7 +575,8 @@ function queCamera(reset = false, now = performance.now()) {
       const scale = 2 ** (normalSightline.zoom - queFollowZoom) * map.getCanvas().clientHeight / normalSightline.height *
         Math.cos(p.lat * Math.PI / 180) / Math.cos(normalSightline.latitude * Math.PI / 180);
       const clearance = terrainClearance({ center: p, bearing: cameraBearing,
-        horizontal: normalSightline.horizontal * scale, vertical: normalSightline.vertical * scale, sampleElevation: cameraTerrainElevation });
+        horizontal: normalSightline.horizontal * scale, vertical: normalSightline.vertical * scale,
+        targetElevation: p.elevationMeters * 1.5, sampleElevation: cameraTerrainElevation });
       // Calibrate against the confirmed 20% marker, then require six metres of
       // additional clearance. Marginal DEM changes cannot immediately reverse it.
       if (perspective && currentObscured === true) clearThreshold = Math.min(-6, Number.isFinite(clearance) ? clearance - 6 : -6);
@@ -504,8 +586,10 @@ function queCamera(reset = false, now = performance.now()) {
           // A brief opening between hills should not cause a full mode roundtrip.
           // Return promptly when the next 180 m of normal sightlines are clear.
           for (const ahead of routeLookahead(rec().records, state.time)) {
-            const aheadClearance = terrainClearance({ center: ahead, bearing: routeBearing(rec().records, ahead.t, 80),
-              horizontal: normalSightline.horizontal * scale, vertical: normalSightline.vertical * scale, sampleElevation: cameraTerrainElevation });
+            const next = railPositionAt(ahead.t);
+            const aheadClearance = terrainClearance({ center: next, bearing: routeBearing(rec().records, ahead.t, 80),
+              horizontal: normalSightline.horizontal * scale, vertical: normalSightline.vertical * scale,
+              targetElevation: next.elevationMeters * 1.5, sampleElevation: cameraTerrainElevation });
             if (aheadClearance === null) currentObscured = null;
             else if (aheadClearance >= clearThreshold) { currentObscured = true; break; }
           }
@@ -539,6 +623,20 @@ function syncQueMarkers() {
   for (const [markers, anchor, offset] of [[[marker], 'translate(-50%,-50%)', 0], [stationMarkers, 'translate(0,-50%)', -14], [tunnelMarkers, 'translate(0,-100%)', -14]]) {
     for (const m of markers) {
       if (!m || m.getElement().hidden) continue;
+      const location = m.getLngLat();
+      if (m === marker && (m.railLongitude !== location.lng || m.railLatitude !== location.lat)) {
+        const projected = railProfile.project(location.lng, location.lat, m.railS);
+        m.railLongitude = location.lng; m.railLatitude = location.lat;
+        m.railElevationMeters = projected.elevationMeters; m.railS = projected.s;
+      }
+      // Marker altitude is terrain-relative. Subtract the current DEM height so
+      // its absolute height matches the rail line even inside a mountain.
+      const ground = map.queryTerrainElevation(location, { exaggerated: true });
+      if (Number.isFinite(ground) && Number.isFinite(m.railElevationMeters)) {
+        const altitude = m.railElevationMeters * 1.5 - ground;
+        if (Math.abs(m.getAltitude() - altitude) > 0.15) m.setAltitude(altitude);
+        m.getElement().classList.toggle('terrain-buried', altitude < -6);
+      }
       const p = map.project(m.getLngLat(), m.getAltitude());
       m.getElement().style.transform = `translate(${p.x}px,${p.y}px) ${anchor} translate(${offset}px,0)`;
     }
@@ -584,8 +682,13 @@ function updateMapPosition() {
       m.getElement().hidden = coordinateDistance(currentXY, xy(location.lat, location.lng)) > radius;
     }
   }
-  const passed = rec().records.filter(r => r.t <= state.time).map(r => [r.lon, r.lat]); passed.push([p.lon, p.lat]);
-  map.getSource('travelled').setData(passed.length > 1 ? lineFeature(passed) : empty);
+  if (isQue) {
+    const currentS = railDistanceAt(state.time);
+    map.getSource('travelled').setData(elevatedLineFeature(railProfile, railProfile.section(railStartS, currentS)) ?? empty);
+  } else {
+    const passed = rec().records.filter(r => r.t <= state.time).map(r => [r.lon, r.lat]); passed.push([p.lon, p.lat]);
+    map.getSource('travelled').setData(passed.length > 1 ? lineFeature(passed) : empty);
+  }
   if (state.follow) {
     if (!isQue) map.jumpTo({ center: [p.lon, p.lat] });
   }
@@ -750,6 +853,7 @@ function simulationMode() {
 
 function startSimulation(selection) {
   const next = buildSimulation(timetable, railway, stationCatalog, selection, rivers[timetable.trains.find(t => t.id === selection.trainId)?.direction ?? state.direction]);
+  prepareRailRecording(next.recording);
   setPlaying(false); clearTimeout(seekTimer); seekTimer = null; api.reset();
   simulation = next; state.direction = next.train.direction; state.time = next.start;
   state.response = null; state.responseT = null; stations = stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation);
@@ -801,8 +905,8 @@ function openSettings() { $('endpoint').value = api.endpoint; $('settings-error'
 $('settings-button').addEventListener('click', openSettings); $('api-button').addEventListener('click', openSettings);
 $('close-settings').addEventListener('click', () => $('settings-dialog').close());
 $('settings-dialog').addEventListener('click', e => { if (e.target === $('settings-dialog')) { const b = e.target.getBoundingClientRect(); if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) e.target.close(); } });
-$('public-endpoint').addEventListener('click', () => { api.endpoint = PUBLIC_ENDPOINT; $('settings-dialog').close(); seekTo(state.time); });
-$('reset-endpoint').addEventListener('click', () => { $('endpoint').value = DEFAULT_ENDPOINT; });
+$('public-endpoint').addEventListener('click', () => { api.endpoint = PUBLIC_ENDPOINT; try { localStorage.setItem('tarumi-api-endpoint', PUBLIC_ENDPOINT); } catch { /* Preferences are optional. */ } $('settings-dialog').close(); seekTo(state.time); });
+$('reset-endpoint').addEventListener('click', () => { $('endpoint').value = LOCAL_ENDPOINT; });
 $('settings-form').addEventListener('submit', e => {
   e.preventDefault();
   try { api.endpoint = validateEndpoint($('endpoint').value); try { localStorage.setItem('tarumi-api-endpoint', api.endpoint); } catch { /* preferences are optional */ } $('settings-dialog').close(); seekTo(state.time); }
@@ -824,6 +928,8 @@ try {
   rivers = Object.fromEntries(Object.entries(mapData).map(([dir, d]) => [dir, d.river.map(([lon, lat]) => xy(lat, lon))]));
   if (isQue) {
     [timetable, railway] = await Promise.all(['/data/timetable.json', '/data/railway-route.json'].map(loadJSON));
+    railProfile = createRailProfile(railway);
+    for (const recording of Object.values(recordings)) prepareRailRecording(recording);
     timetableControls = simulationControls({ timetable, stations: stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation), getDirection: () => state.direction, onStart: startSimulation, onRestore: restoreRecording });
   }
   state.ready = true; state.time = range()[0];

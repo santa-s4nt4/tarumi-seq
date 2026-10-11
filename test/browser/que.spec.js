@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
+});
+
 async function captureMapMarkers(page) {
   await page.evaluate(async () => {
     const source = await (await fetch('/src/main.js')).text();
@@ -23,6 +27,40 @@ async function captureMapMarkers(page) {
     new MutationObserver(() => { if (element.style.opacity) window.markerOpacities.push(Number(element.style.opacity)); }).observe(element, { attributes: true, attributeFilter: ['style'] });
   });
 }
+
+test('railway, tunnel and bridge height layers load without Mapbox style errors', async ({ page }) => {
+  const styleErrors = [];
+  page.on('pageerror', error => styleErrors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error' && /line-z-offset|expression|bridge|tunnel|style/i.test(message.text())) styleErrors.push(message.text());
+  });
+  await page.goto('/que');
+  await expect(page.locator('.current-marker')).toBeVisible();
+  await captureMapMarkers(page);
+  await page.locator('#seek').evaluate(el => { el.value = 1200; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await expect.poll(() => page.evaluate(() => Boolean(window.testMap))).toBe(true);
+  await page.evaluate(() => {
+    window.mapStyleErrors = [];
+    window.testMap.on('error', event => window.mapStyleErrors.push(event.error?.message || String(event.error)));
+  });
+  await expect.poll(() => page.evaluate(() => window.testMap.getSource('bridges')?._data?.features?.length ?? 0)).toBeGreaterThan(0);
+  const layers = await page.evaluate(() => {
+    const style = window.testMap.getStyle();
+    return ['route', 'travelled', 'tunnels', 'bridges'].map(id => ({
+      id,
+      lineMetrics: style.sources[id]?.lineMetrics,
+      zOffset: window.testMap.getLayoutProperty(id, 'line-z-offset'),
+    }));
+  });
+  for (const layer of layers) {
+    expect(layer.lineMetrics, `${layer.id} source`).toBe(true);
+    expect(layer.zOffset, `${layer.id} line height`).toEqual(expect.arrayContaining(['at-interpolated']));
+  }
+  await page.locator('#back-button').click();
+  await expect(page.locator('.current-marker')).toBeVisible();
+  expect(await page.evaluate(() => window.mapStyleErrors)).toEqual([]);
+  expect(styleErrors).toEqual([]);
+});
 
 test('an occluded position switches to the closest bird view and stays stable until the view clears', async ({ page }) => {
   const errors = [];
@@ -102,7 +140,7 @@ test('moving current position, station names and tunnel markers match the render
   }
 });
 
-test('front playback around 22:30 stays in bird view through short gaps and returns once the hills clear', async ({ page }) => {
+test('front playback stays in bird view while the rail is buried and returns on a clear section', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
   await page.goto('/que');
@@ -130,18 +168,20 @@ test('front playback around 22:30 stays in bird view through short gaps and retu
   await page.locator('#play').click();
   await expect.poll(() => page.locator('#seek').evaluate(el => Number(el.value)), { timeout: 25000 }).toBeGreaterThan(1400);
   await page.locator('#play').click();
-  await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(72, 2);
+  await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeLessThan(0.01);
   const transitions = await page.evaluate(() => window.modeTransitions);
-  expect(transitions.map(item => item.mode)).toEqual(['normal']);
-  expect(transitions[0].time).toBeGreaterThan(1370);
+  expect(transitions.map(item => item.mode)).not.toContain('normal');
+  await page.locator('#seek').evaluate(el => { el.value = 1800; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(72, 2);
+  await expect.poll(() => page.locator('.current-marker').evaluate(el => Number(getComputedStyle(el).opacity))).toBeCloseTo(1, 2);
 });
 
 test('zoom buttons adjust both views, persist settings and fit on mobile', async ({ page }) => {
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
-  await page.locator('#que-zoom-button').click();
   await page.locator('#que-mode-normal').click();
+  await page.locator('#que-zoom-button').click();
   await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
   await page.locator('#que-normal-out').click();
   await expect(page.locator('#que-normal-zoom')).toHaveText('18.5');
@@ -150,8 +190,8 @@ test('zoom buttons adjust both views, persist settings and fit on mobile', async
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeLessThanOrEqual(18.50001);
   await page.locator('#que-bird-in').click();
   await expect(page.locator('#que-bird-zoom')).toHaveText('19.5');
-  await page.locator('#que-mode-bird').click();
   await page.locator('#done-que-zoom').click();
+  await page.locator('#que-mode-bird').click();
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch()), { timeout: 15000 }).toBeLessThan(0.01);
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(19.5, 2);
@@ -248,25 +288,20 @@ test('fixed perspectives fade terrain-hidden labels and bird view persists acros
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
-  await page.locator('#que-zoom-button').click();
   await page.locator('#que-mode-normal').click();
-  await page.locator('#done-que-zoom').click();
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap?.getPitch())).toBeCloseTo(72, 2);
   await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('.tunnel-marker')].some(element => !element.hidden && element.querySelector('.tunnel-marker-label') && Number(element.style.opacity) <= 0.21 && element.style.opacity !== ''))).toBe(true);
   await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('.station-marker')].some(element => !element.hidden && Number(element.style.opacity) <= 0.21 && element.style.opacity !== ''))).toBe(true);
   await page.waitForTimeout(700);
   expect(await page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(72, 2);
-  await page.locator('#que-zoom-button').click();
   await page.locator('#que-mode-bird').click();
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeLessThan(0.01);
-  await page.locator('#done-que-zoom').click();
   await page.locator('#seek').evaluate(el => { el.value = el.min; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.waitForTimeout(700);
   expect(await page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(0, 2);
   await page.reload();
   await expect(page.locator('.current-marker')).toBeVisible();
-  await page.locator('#que-zoom-button').click();
   await expect(page.locator('#que-mode-bird')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#que-mode-auto').click();
   await expect(page.locator('#que-mode-auto')).toHaveAttribute('aria-pressed', 'true');
@@ -309,9 +344,7 @@ test('queue camera stays locked against mouse input and tracks seeks and directi
   await page.locator('#back-button').click();
   await page.locator('#front-button').click();
   await expect.poll(() => page.evaluate(() => Boolean(window.testMap && window.testMarker))).toBe(true);
-  await page.locator('#que-zoom-button').click();
   await page.locator('#que-mode-normal').click();
-  await page.locator('#done-que-zoom').click();
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(72, 2);
   // Terrain can shift the projected center by a few pixels. Follow must keep
   // the camera's geographic center at the GPS coordinate, not fight that shift.

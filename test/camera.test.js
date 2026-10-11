@@ -43,6 +43,13 @@ test('clearance uses the saved normal camera and requires all of its terrain sam
   assert.equal(terrainClearance({ ...options, sampleElevation: (lon, lat) => lat < 34.999 ? null : 100 }), null);
 });
 
+test('rail elevation below the local terrain keeps the automatic camera in bird view', () => {
+  const options = { center: { lat: 35, lon: 136 }, bearing: 0, horizontal: 600, vertical: 200,
+    sampleElevation: () => 160 };
+  assert.ok(terrainClearance({ ...options, targetElevation: 120 }) > 0);
+  assert.ok(terrainClearance({ ...options, targetElevation: 162 }) < -6);
+});
+
 test('bird mode eases both zoom and pitch in half a second, then returns without rapid toggles', () => {
   const camera = new OcclusionCamera({ clearDelay: 200 });
   assert.deepEqual(camera.update(true, 0), { pitch: 72, zoom: 17 });

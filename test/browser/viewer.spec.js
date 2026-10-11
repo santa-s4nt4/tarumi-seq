@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
+});
+
 async function ready(page) {
   await page.goto('/');
   await expect(page.locator('#loading')).toBeHidden();
@@ -190,7 +194,7 @@ test('local requests use the same origin and tunnel color changes emit no Mapbox
   }
   expect(mapWarnings).toEqual([]);
   expect(requests.length).toBeGreaterThanOrEqual(5);
-  expect(requests.every(request => request.url.startsWith('http://127.0.0.1:5173/local-api/api/position') && request.method === 'POST')).toBe(true);
+  expect(requests.every(request => request.url.startsWith(`${new URL(page.url()).origin}/local-api/api/position`) && request.method === 'POST')).toBe(true);
 });
 
 test('recovers from one Wrangler connection drop without removing the station or tunnel theme', async ({ page }) => {
