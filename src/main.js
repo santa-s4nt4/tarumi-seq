@@ -2,12 +2,15 @@ import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createIcons, TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X } from 'lucide';
 import './style.css';
+import './que.css';
 import { clamp, sampleAt, recordedAt, timeLabel, advanceTime, stationEvent } from './timeline.js';
 import { PositionApi, DEFAULT_ENDPOINT, LOCAL_ENDPOINT, PUBLIC_ENDPOINT, validateEndpoint } from './api.js';
 import { buildRoute, interpolatePrediction } from './interpolate.js';
 import { xy, distance as coordinateDistance } from './geometry.js';
 import { routeBearing, routeLookahead, turnTowards, terrainClearance, OcclusionCamera, cameraChanges } from './camera.js';
 import { CueQueue } from './cues.js';
+import { createCueCountdown } from './countdown.js';
+import { fadeMapTheme } from './theme.js';
 import { buildSimulation, simulationPrediction, serviceTime } from './simulation.js';
 import { simulationControls } from './simulation-controls.js';
 import { createRailProfile, elevatedLineFeature, railLineZOffset } from './rail-elevation.js';
@@ -26,9 +29,10 @@ try {
   }
 } catch { /* Preferences are optional. */ }
 const quePitch = 72;
-const queRouteColors = { ahead: '#176b37', passed: '#a8d5ae' };
+// Palette from tarumi-oto-fes-main/app/globals.css and its original logo assets.
+const queRouteColors = { ahead: '#00ff36', passed: '#bfffcc', river: '#0a84ff', forest: '#1d3a22', plain: '#c4c1b0' };
 document.body.classList.toggle('que-view', isQue);
-document.title = isQue ? '樽見鉄道 · QUE' : '樽見鉄道 · Console';
+document.title = isQue ? 'QUE | 樽見OTO鉄道' : 'Console | 樽見OTO鉄道';
 const $ = id => document.getElementById(id);
 const icons = { TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X };
 const refreshIcons = () => createIcons({ icons, attrs: { 'stroke-width': 1.7 } });
@@ -39,20 +43,24 @@ navigation.setAttribute('aria-label', '画面の切り替え');
 navigation.innerHTML = `<a href="${baseURL}console/" ${!isQue ? 'aria-current="page"' : ''}>CONSOLE</a><a href="${baseURL}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a>`;
 document.querySelector('.header-actions').prepend(navigation);
 document.querySelector('.brand').href = baseURL;
+const countdown = isQue ? createCueCountdown(document.querySelector('.map-panel')) : null;
 if (isQue) {
-  document.querySelector('.version-label').textContent = 'QUE VIEW';
+  document.querySelector('.header-center').innerHTML = '<span class="que-title">QUE</span><span class="que-subtitle">景観シーケンサー</span>';
+  document.querySelector('.map-heading .eyebrow').textContent = 'TARUMI SOUND RAILWAY';
+  document.querySelector('.map-heading h1').id = 'que-route-name';
+  document.querySelector('.map-heading').insertAdjacentHTML('beforeend', '<span class="que-route-caption" lang="en">MOTOSU — TARUMI</span>');
   document.querySelector('.map-tools').hidden = true;
   for (const id of ['fit-map', 'follow-map', 'zoom-in', 'zoom-out']) $(id).disabled = true;
   document.querySelector('.map-legend').innerHTML = '<span><b class="legend-line"></b>通過前</span><span><b class="legend-line passed-line"></b>通過済み</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span><span><b class="legend-line tunnel-line"></b>トンネル</span><span><b class="legend-line bridge-line"></b>鉄橋</span>';
   const overlay = document.createElement('aside');
   overlay.className = 'cue-overlay';
   overlay.setAttribute('aria-label', '次のキュー');
-  overlay.innerHTML = '<div class="cue-heading">UP NEXT <span>GPS 記録再生</span></div><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button>';
+  overlay.innerHTML = '<div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">GPS 記録再生</span></div><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button>';
   document.querySelector('.map-panel').append(overlay);
   const speedCard = document.createElement('article');
   speedCard.className = 'cue-card cue-primary map-speed-card';
   speedCard.setAttribute('aria-label', '走行速度');
-  speedCard.innerHTML = '<h2>走行速度 <span>GPS 記録</span></h2><p><strong id="map-train-speed">—</strong> <span class="speed-unit">km/h</span></p>';
+  speedCard.innerHTML = '<h2>走行速度 <span>GPS 記録</span></h2><p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p><span class="speed-caption" lang="en">TRAIN SPEED</span>';
   document.querySelector('.map-panel').append(speedCard);
   const tunnelBanner = document.createElement('div');
   tunnelBanner.id = 'map-tunnel-banner';
@@ -64,9 +72,12 @@ if (isQue) {
   modeBar.className = 'que-view-modes';
   modeBar.setAttribute('role', 'group');
   modeBar.setAttribute('aria-label', '表示モード');
-  modeBar.innerHTML = [['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定'], ['video', '動画']]
+  modeBar.innerHTML = '<span class="que-mode-label">視点<span lang="en">VIEW</span></span>' + [['auto', '自動'], ['normal', '通常固定'], ['bird', '鳥瞰図固定'], ['video', '動画']]
     .map(([mode, label]) => `<button id="que-mode-${mode}" type="button" aria-pressed="false">${label}</button>`).join('');
-  document.querySelector('.header-actions').before(modeBar);
+  document.querySelector('.map-panel').append(modeBar);
+  const overlayObserver = new ResizeObserver(updateQueCameraPadding);
+  overlayObserver.observe(overlay);
+  overlayObserver.observe(document.querySelector('.map-panel'));
   const zoomButton = document.createElement('button');
   zoomButton.id = 'que-zoom-button';
   zoomButton.className = 'secondary-button';
@@ -189,7 +200,8 @@ let lastCueSignature;
 function renderCues(r) {
   if (!isQue) return;
   const events = cueQueue.cards(r);
-  const signature = JSON.stringify([events.map(e => [e.key, e.name, e.type, e.target, number(e.etaSeconds)]), cueQueue.stopId, Boolean(r?.position.inTunnel), $('api-button').dataset.status]);
+  countdown.update(events[0]);
+  const signature = JSON.stringify([events.map(e => [e.key, e.name, e.type, e.target, number(Math.ceil(e.etaSeconds))]), cueQueue.stopId, Boolean(r?.position.inTunnel), $('api-button').dataset.status]);
   if (signature === lastCueSignature) return;
   lastCueSignature = signature;
   const oldPositions = new Map([...cueCards].map(([key, card]) => [key, card.isConnected ? card.getBoundingClientRect() : null]));
@@ -198,15 +210,17 @@ function renderCues(r) {
     let card = cueCards.get(event.key);
     if (!card) {
       card = document.createElement('article');
-      card.innerHTML = '<h2></h2><p class="cue-countdown"><span class="cue-seconds"><strong></strong><span class="cue-unit">秒</span></span><span class="cue-kind-icon" aria-hidden="true"></span></p>';
+      card.innerHTML = '<div class="cue-card-label" aria-hidden="true"><span class="cue-index"></span><span class="cue-category" lang="en"></span></div><h2></h2><p class="cue-countdown"><span class="cue-seconds"><strong></strong><span class="cue-unit">秒</span></span><span class="cue-kind-icon" aria-hidden="true"></span></p>';
       cueCards.set(event.key, card);
     }
     card.className = `cue-card${index === 0 ? ' cue-primary' : ''}`;
     card.dataset.key = event.key;
     card.dataset.type = event.type;
     card.dataset.target = event.target;
+    card.querySelector('.cue-index').textContent = String(index + 1).padStart(2, '0');
+    card.querySelector('.cue-category').textContent = event.type === 'station' ? 'STATION' : 'TUNNEL';
     card.querySelector('h2').textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`;
-    card.querySelector('strong').textContent = number(event.etaSeconds);
+    card.querySelector('strong').textContent = number(Math.ceil(event.etaSeconds));
     if (card.querySelector('.cue-kind-icon').dataset.type !== event.type) {
       const icon = card.querySelector('.cue-kind-icon');
       icon.dataset.type = event.type;
@@ -269,8 +283,8 @@ function applyTunnelTheme(inTunnel) {
   const theme = inTunnel ? 'dark' : 'light';
   if (document.documentElement.dataset.theme === theme) return;
   document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]').content = inTunnel ? '#0b0e12' : '#ffffff';
-  updateMapTheme();
+  document.querySelector('meta[name="theme-color"]').content = inTunnel ? (isQue ? '#000000' : '#0b0e12') : '#ffffff';
+  if (mapReady) fadeMapTheme(map, updateMapTheme);
 }
 
 function updateMapTheme() {
@@ -278,28 +292,28 @@ function updateMapTheme() {
   const dark = document.documentElement.dataset.theme === 'dark';
   if (isQue) {
     map.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
-    for (const key of ['colorLand', 'colorGreenspace', 'colorCommercial', 'colorEducation', 'colorMedical', 'colorIndustrial']) map.setConfigProperty('basemap', key, dark ? '#3b4850' : '#b5b7b6');
-    map.setConfigProperty('basemap', 'colorWater', dark ? '#0e4262' : '#079ee0');
-    for (const key of ['colorRoads', 'colorMotorways', 'colorTrunks']) map.setConfigProperty('basemap', key, dark ? '#67757b' : '#d1d5d3');
-    map.setPaintProperty('contours', 'line-color', dark ? '#b2c3b8' : '#56655b');
-    map.setPaintProperty('terrain-shading', 'hillshade-shadow-color', dark ? '#192730' : '#45524a');
-    map.setPaintProperty('terrain-shading', 'hillshade-highlight-color', dark ? '#8b9fa6' : '#e2e8df');
-    map.setPaintProperty('terrain-shading', 'hillshade-accent-color', dark ? '#566d78' : '#62766a');
-    map.setPaintProperty('river', 'line-color', '#079ee0');
+    for (const key of ['colorLand', 'colorGreenspace', 'colorCommercial', 'colorEducation', 'colorMedical', 'colorIndustrial']) map.setConfigProperty('basemap', key, dark ? '#18231b' : queRouteColors.plain);
+    map.setConfigProperty('basemap', 'colorWater', queRouteColors.river);
+    for (const key of ['colorRoads', 'colorMotorways', 'colorTrunks']) map.setConfigProperty('basemap', key, dark ? '#3c5141' : '#e2e0d7');
+    map.setPaintProperty('contours', 'line-color', dark ? '#bfffcc' : queRouteColors.forest);
+    map.setPaintProperty('terrain-shading', 'hillshade-shadow-color', queRouteColors.forest);
+    map.setPaintProperty('terrain-shading', 'hillshade-highlight-color', dark ? '#3c5141' : '#ffffff');
+    map.setPaintProperty('terrain-shading', 'hillshade-accent-color', queRouteColors.forest);
+    map.setPaintProperty('river', 'line-color', queRouteColors.river);
     map.setPaintProperty('river', 'line-opacity', 1);
     map.setPaintProperty('river', 'line-width', ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 24]);
     map.setPaintProperty('route-halo', 'line-opacity', 0);
-    map.setPaintProperty('route', 'line-color', dark ? '#43985a' : queRouteColors.ahead);
+    map.setPaintProperty('route', 'line-color', queRouteColors.ahead);
     map.setPaintProperty('travelled', 'line-color', queRouteColors.passed);
     map.setPaintProperty('route', 'line-width', 10);
     map.setPaintProperty('travelled', 'line-width', 10);
     map.setPaintProperty('tunnels', 'line-opacity', 1);
-    map.setPaintProperty('tunnels', 'line-color', dark ? '#c3abf5' : '#7457a4');
+    map.setPaintProperty('tunnels', 'line-color', queRouteColors.ahead);
     map.setPaintProperty('tunnels', 'line-width', 13);
     map.setPaintProperty('tunnels', 'line-dasharray', [0.7, 0.7]);
-    map.setPaintProperty('tunnel-halo', 'line-color', dark ? '#20152f' : '#e1d5f0');
-    map.setPaintProperty('bridge-halo', 'line-color', dark ? '#51402a' : '#fff8e4');
-    map.setPaintProperty('bridges', 'line-color', dark ? '#f4c879' : '#b67517');
+    map.setPaintProperty('tunnel-halo', 'line-color', '#331e19');
+    map.setPaintProperty('bridge-halo', 'line-color', dark ? '#000000' : '#ffffff');
+    map.setPaintProperty('bridges', 'line-color', dark ? '#ffffff' : '#331e19');
     map.setPaintProperty('river-distance', 'line-opacity', 0);
     return;
   }
@@ -321,6 +335,10 @@ function renderLocationText() {
   const list = [...stations].sort((a, b) => (a.lat - p.lat) ** 2 + ((a.lon - p.lon) * 0.81) ** 2 - ((b.lat - p.lat) ** 2 + ((b.lon - p.lon) * 0.81) ** 2));
   $('position-location').textContent = `${list[0].name}付近 · ${state.direction === 'front' ? '樽見方面' : '本巣方面'}`;
   $('gps-tag').textContent = simulation ? 'TIMETABLE SIMULATION' : p.gap ? 'GPS 欠損' : 'RECORDED GPS';
+  if (isQue) {
+    $('que-route-name').textContent = state.direction === 'front' ? '本巣 — 樽見' : '樽見 — 本巣';
+    document.querySelector('.que-route-caption').textContent = state.direction === 'front' ? 'MOTOSU — TARUMI' : 'TARUMI — MOTOSU';
+  }
 }
 
 function lineFeature(coordinates) { return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }; }
@@ -372,6 +390,7 @@ function initMap() {
       el.innerHTML = '<span></span>';
       marker = new mapboxgl.Marker({ element: el, occludedOpacity: 0.2 }).setLngLat([point().lon, point().lat]).addTo(map);
       updateRouteMap(); updateMapTheme(); if (isQue) {
+        updateQueCameraPadding();
         setFollow(true);
         map.once('idle', () => applyQueCamera());
       } else fitMap(false);
@@ -584,8 +603,9 @@ function queCamera(reset = false, now = performance.now()) {
         currentObscured = clearance === null ? null : clearance >= clearThreshold;
         if (currentObscured === false) {
           // A brief opening between hills should not cause a full mode roundtrip.
-          // Return promptly when the next 180 m of normal sightlines are clear.
-          for (const ahead of routeLookahead(rec().records, state.time)) {
+          // Check far enough through a curve to avoid a brief return into a hill,
+          // including the shorter map viewport beneath the new controls.
+          for (const ahead of routeLookahead(rec().records, state.time, 300)) {
             const next = railPositionAt(ahead.t);
             const aheadClearance = terrainClearance({ center: next, bearing: routeBearing(rec().records, ahead.t, 80),
               horizontal: normalSightline.horizontal * scale, vertical: normalSightline.vertical * scale,
@@ -600,6 +620,23 @@ function queCamera(reset = false, now = performance.now()) {
     }
   }
   return { center: [p.lon, p.lat], ...occlusionCamera.update(currentObscured, now), bearing: cameraBearing };
+}
+
+function updateQueCameraPadding() {
+  if (!mapReady || !isQue) return;
+  const container = map.getContainer(), canvas = map.getCanvas();
+  if (canvas.clientWidth !== container.clientWidth || canvas.clientHeight !== container.clientHeight) map.resize();
+  // Keep the train in the visible map area above the mobile cue panel.
+  const height = document.querySelector('.map-panel').clientHeight;
+  const mobile = matchMedia('(max-width: 600px)').matches && (!document.body.classList.contains('countdown-mode') || videoMode);
+  const top = mobile ? Math.min(174, height * 0.36) : 0;
+  const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 36, height - top - 60)) : 0;
+  const padding = map.getPadding();
+  if (Math.abs(padding.top - top) > 0.5 || Math.abs(padding.bottom - bottom) > 0.5) {
+    map.setPadding({ top, bottom, left: 0, right: 0 });
+    lastRequestedCamera = null;
+    if (marker) applyQueCamera();
+  }
 }
 
 function applyQueCamera(reset = false, now = performance.now()) {
@@ -704,7 +741,7 @@ function fallbackXY(lon, lat) { return [80 + (lon - 136.61) * 4400, 90 + (35.635
 function drawFallbackMap() {
   if (!state.ready) return;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 500 780'); svg.classList.add('fallback-map');
-  for (const [coords, color, width] of [[data().river, isQue ? '#079ee0' : '#18ff14', isQue ? 9 : 5], [rec().records.map(r => [r.lon, r.lat]), isQue ? queRouteColors.ahead : '#18ff14', isQue ? 8 : 3]]) {
+  for (const [coords, color, width] of [[data().river, isQue ? queRouteColors.river : '#18ff14', isQue ? 9 : 5], [rec().records.map(r => [r.lon, r.lat]), isQue ? queRouteColors.ahead : '#18ff14', isQue ? 8 : 3]]) {
     const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', coords.map(p => fallbackXY(...p).join(',')).join(' ')); line.setAttribute('fill', 'none'); line.setAttribute('stroke', color); line.setAttribute('stroke-width', width); svg.append(line);
   }
   if (isQue) {
@@ -830,7 +867,7 @@ function simulationMode() {
   updateVideoViewer();
   document.body.classList.toggle('timetable-mode', Boolean(simulation));
   document.querySelector('.playback-title > span').textContent = simulation ? 'TIMETABLE SIMULATION' : 'GPS PLAYBACK';
-  document.querySelector('.cue-heading span').textContent = simulation ? `${simulation.train.id}列車 · ${simulation.selection.day === 'holiday' ? '土曜・休日' : '平日'}` : 'GPS 記録再生';
+  document.querySelector('.cue-source').textContent = simulation ? `${simulation.train.id}列車 · ${simulation.selection.day === 'holiday' ? '土曜・休日' : '平日'}` : 'GPS 記録再生';
   document.querySelector('.map-speed-card h2 span').textContent = simulation ? '推定速度' : 'GPS 記録';
   $('seek').setAttribute('aria-label', simulation ? 'シミュレーション時刻' : 'GPSの再生位置');
   $('back-button').querySelector('span').textContent = '本巣方面';
@@ -895,7 +932,12 @@ $('zoom-in').addEventListener('click', () => map?.zoomIn());
 $('zoom-out').addEventListener('click', () => map?.zoomOut());
 $('retry-api').addEventListener('click', () => requestPosition(true));
 window.addEventListener('keydown', e => {
-  if (!state.ready || document.querySelector('dialog[open]') || e.target.closest('input, select, textarea, button, a')) return;
+  if (!state.ready || document.querySelector('dialog[open]')) return;
+  // Space remains available when countdown focus hides the playback buttons.
+  if (e.code === 'Space' && isQue && document.body.classList.contains('countdown-mode') && !videoMode) {
+    e.preventDefault(); setPlaying(!state.playing); return;
+  }
+  if (e.target.closest('input, select, textarea, button, a')) return;
   if (e.code === 'Space') { e.preventDefault(); setPlaying(!state.playing); }
   if (e.code === 'ArrowLeft') { e.preventDefault(); seekTo(state.time - 10); }
   if (e.code === 'ArrowRight') { e.preventDefault(); seekTo(state.time + 10); }

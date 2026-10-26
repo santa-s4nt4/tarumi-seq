@@ -1,0 +1,45 @@
+/* The last ten seconds take over the map; the seek bar stays available. */
+.que-view.countdown-mode:not(.video-view) { grid-template-rows: minmax(0, 1fr) auto; }
+.que-view.countdown-mode:not(.video-view) .header { display: none; }
+.que-view.countdown-mode:not(.video-view) .playback-heading,
+.que-view.countdown-mode:not(.video-view) .transport-row,
+.que-view.countdown-mode:not(.video-view) .timeline-events,
+.que-view.countdown-mode:not(.video-view) .timeline-ticks { display: none; }
+.que-view.countdown-mode:not(.video-view) .playback-panel { padding: 14px var(--que-gutter) max(14px, env(safe-area-inset-bottom)); }
+.que-view.countdown-mode:not(.video-view) .timeline { margin: 0; padding: 0; }
+.que-view.countdown-mode:not(.video-view) :is(.cue-overlay, .map-heading, .map-tools, .map-legend, .position-card, .map-speed-card, .que-view-modes, #map-tunnel-banner, .map-error) { visibility: hidden; pointer-events: none; }
+
+.countdown-focus {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: clamp(12px, 2vw, 28px);
+  color: var(--text);
+  background: rgb(255 255 255 / 62%);
+  pointer-events: none;
+  container-type: size;
+}
+.countdown-heading { display: none; }
+.countdown-focus h2 { margin: 0; text-align: center; font: 400 clamp(28px, 5cqw, 64px)/1.25 var(--font); overflow-wrap: anywhere; align-self: center; }
+.countdown-clock { position: relative; width: min(96cqw, calc(100cqh - 100px)); aspect-ratio: 1; justify-self: center; align-self: center; container-type: inline-size; }
+.countdown-ring { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.countdown-ticks-track { opacity: .16; }
+.countdown-progress { transition: stroke-dasharray 50ms linear; }
+.countdown-hand { stroke: var(--green); stroke-width: 5; transform-origin: 180px 180px; transition: transform 50ms linear; }
+.countdown-value { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; gap: 2cqi; margin: 0; font-size: 8cqi; }
+.countdown-value strong { font: 400 48cqi/1 var(--font); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.countdown-value > span { translate: 0 12cqi; }
+:root[data-theme="dark"] .countdown-focus { background: rgb(0 0 0 / 62%); }
+.video-view .countdown-focus { display: none; }
+
+@media (max-height: 500px) and (min-width: 601px) {
+  .countdown-focus { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) auto; gap: 16px; }
+  .countdown-focus h2 { font-size: clamp(28px, 5cqw, 52px); }
+  .countdown-clock { width: min(65cqw, 100cqh); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .countdown-progress, .countdown-hand { transition: none; }
+}

@@ -170,7 +170,7 @@ test('front playback stays in bird view while the rail is buried and returns on 
   await page.locator('#play').click();
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeLessThan(0.01);
   const transitions = await page.evaluate(() => window.modeTransitions);
-  expect(transitions.map(item => item.mode)).not.toContain('normal');
+  expect(transitions.map(item => item.mode), JSON.stringify(transitions)).not.toContain('normal');
   await page.locator('#seek').evaluate(el => { el.value = 1800; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(72, 2);
   await expect.poll(() => page.locator('.current-marker').evaluate(el => Number(getComputedStyle(el).opacity))).toBeCloseTo(1, 2);
@@ -244,15 +244,16 @@ test('queue view shows API events and updates countdown with playback', async ({
 test('tunnel checkpoints lead the queue, reuse one card through passage and promote the following checkpoint', async ({ page }) => {
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
+  await page.locator('#speed').selectOption('4');
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
   await page.locator('#seek').evaluate((el, time) => { el.value = time; el.dispatchEvent(new Event('input', { bubbles: true })); }, entry.t - 2);
   await expect(page.locator('#cue-list .cue-primary h2')).toHaveText(`${entry.name}まで`);
   await page.evaluate(() => { window.firstTunnelCard = document.querySelector('#cue-list .cue-primary'); });
   const card = page.locator(`#cue-list [data-key="tunnel:${entry.featureId}"]`);
-  await expect(card.locator('.cue-kind-icon svg')).toBeVisible();
+  await expect(card.locator('.cue-kind-icon svg')).toHaveCount(1);
+  await expect(page.locator('#cue-countdown-focus')).toBeVisible();
   await expect(card).toHaveCount(1);
-  await page.locator('#speed').selectOption('4');
-  await page.locator('#play').click();
+  await page.keyboard.press('Space');
   await expect(card.locator('h2')).toHaveText(`${entry.name}通過まで`);
   expect(await page.evaluate(() => window.firstTunnelCard === document.querySelector('#cue-list .cue-primary'))).toBe(true);
   await expect(card).toHaveCount(0, { timeout: 12000 });
@@ -314,6 +315,11 @@ test('queue remains usable on mobile and console retains the existing viewer', a
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
   await expect(page.locator('#seek')).toBeInViewport({ ratio: 1 });
+  await expect.poll(async () => {
+    const train = await page.locator('.current-marker').boundingBox();
+    const cues = await page.locator('.cue-overlay').boundingBox();
+    return train && cues ? train.y + train.height < cues.y : false;
+  }).toBe(true);
   await page.locator('#back-button').click();
   await expect(page.locator('#time-current')).toHaveText('00:03');
   await expect(page.locator('.current-marker')).toBeVisible();
@@ -396,7 +402,7 @@ test('tunnel viewer turns black, shows portals and speed, then returns to daylig
   await expect(page.locator('.tunnel-marker.entrance').filter({ hasText: entry.name })).toBeVisible();
   await expect(page.locator('#cue-list')).not.toContainText(/入口|出口/);
   expect((await page.locator('.tunnel-marker-label').allTextContents()).join('')).not.toMatch(/入口|出口/);
-  expect(await page.locator('.header').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(11, 14, 18)');
+  await expect.poll(() => page.locator('.header').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 0, 0)');
   await expect(page.locator('#map-train-speed')).toHaveText(await page.locator('#train-speed').textContent());
   await page.waitForTimeout(1800);
   await page.screenshot({ path: 'test-results/que-tunnel-dark.png' });
