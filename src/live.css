@@ -1,0 +1,57 @@
+.live-view .live-badge { font-size: 14px; white-space: nowrap; }
+.live-badge[data-active="true"]::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--green); margin-right: 7px; }
+.live-view .live-notice { position: absolute; z-index: 2; top: 45%; left: var(--que-gutter); width: min(440px, calc(100% - var(--que-card-width) - 3 * var(--que-gutter))); padding: 24px; border-left: 4px solid var(--green); background: var(--surface); color: var(--text); }
+.live-notice h2 { margin: 10px 0; font-size: 28px; line-height: 1.4; }
+.live-notice p { font-size: 15px; line-height: 1.9; margin: 0 0 18px; }
+.live-notice .primary-button { width: 100%; }
+.live-view .map-legend { grid-template-columns: repeat(2, auto); }
+.live-map-error { position: absolute; z-index: 2; left: var(--que-gutter); bottom: 16px; max-width: calc(100% - 2 * var(--que-gutter)); padding: 8px 12px; background: var(--surface); color: var(--text); font-size: 14px; }
+.live-location-stale { opacity: .25 !important; }
+.live-view .live-cue-distance { margin-top: 12px; font-size: 14px; line-height: 1.4; }
+.live-view .live-footer { padding-block: 14px; }
+.live-status-row { display: flex; align-items: baseline; gap: 18px; margin-bottom: 10px; font-size: 14px; }
+.live-status-row strong { margin-right: auto; font-size: 18px; }
+.live-status-row > span { white-space: nowrap; }
+.live-controls { display: flex; align-items: stretch; gap: 12px; }
+.live-controls .primary-button { min-height: 44px; min-width: 160px; }
+.live-controls .secondary-button { min-width: 72px; }
+.live-controls .direction-tabs { margin-left: auto; }
+.live-controls .direction-tabs button { min-height: 44px; }
+.live-footnote { margin: 10px 0 0; font-size: 13px; line-height: 1.7; }
+.live-view.countdown-mode .live-notice, .live-view.countdown-mode .live-map-error { visibility: hidden; }
+
+@media (max-width: 900px) {
+  .live-view .live-notice { width: min(360px, calc(100% - var(--que-card-width) - 3 * var(--que-gutter))); padding: 18px; }
+  .live-notice h2 { font-size: 24px; }
+}
+@media (max-width: 600px) {
+  .live-view .header-actions { justify-content: space-between; }
+  .live-view .live-notice { top: 182px; left: 14px; right: 14px; width: auto; max-height: calc(100% - 210px); overflow-y: auto; padding: 16px; }
+  .live-view .live-notice h2 { font-size: 23px; }
+  .live-view .live-notice p { font-size: 14px; margin-bottom: 12px; }
+  .live-view .map-heading { display: none; }
+  .live-view .map-speed-card h2 { flex-direction: column; align-items: flex-start; gap: 2px; white-space: nowrap; font-size: 17px; }
+  .live-view .map-speed-card h2 span { font-size: 12px; }
+  .live-view .map-legend { grid-template-columns: repeat(2, auto); }
+  .live-view .cue-heading h2 span, .live-view .cue-card-label { display: none; }
+  .live-view .cue-primary { padding: 10px 14px; }
+  .live-view .cue-primary h2 { font-size: 24px; }
+  .live-view .cue-primary strong { font-size: 60px; }
+  .live-view .live-cue-distance { margin-top: 6px; font-size: 13px; }
+  .live-view .live-footer { padding: 10px 14px max(10px, env(safe-area-inset-bottom)); }
+  .live-status-row { flex-wrap: wrap; gap: 3px 12px; font-size: 13px; margin-bottom: 8px; }
+  .live-status-row strong { flex-basis: 100%; font-size: 16px; }
+  .live-controls { gap: 7px; }
+  .live-controls .primary-button { min-width: 0; flex: 1; padding: 8px; font-size: 14px; }
+  .live-controls .secondary-button { min-width: 48px; padding: 8px; font-size: 14px; }
+  .live-controls .direction-tabs { margin: 0; flex-shrink: 0; }
+  .live-controls .direction-tabs button { padding: 7px 9px; font-size: 14px; }
+  .live-controls .direction-tabs button span { display: block; margin: 2px 0 0; font-size: 13px; }
+  .live-footnote { margin-top: 8px; font-size: 13px; line-height: 1.5; }
+}
+@media (max-width: 380px) {
+  .live-controls .direction-tabs button { padding-inline: 7px; }
+  .live-controls .direction-tabs button span { display: none; }
+  .live-view .cue-primary strong { font-size: 50px; }
+  .live-view .live-notice h2 { font-size: 21px; }
+}

@@ -10,6 +10,7 @@ import { xy, distance as coordinateDistance } from './geometry.js';
 import { routeBearing, routeLookahead, turnTowards, terrainClearance, OcclusionCamera, cameraChanges } from './camera.js';
 import { CueQueue } from './cues.js';
 import { createCueCountdown } from './countdown.js';
+import { setupMobileCues } from './mobile-cues.js';
 import { fadeMapTheme } from './theme.js';
 import { buildSimulation, simulationPrediction, serviceTime } from './simulation.js';
 import { simulationControls } from './simulation-controls.js';
@@ -41,6 +42,7 @@ const navigation = document.createElement('nav');
 navigation.className = 'view-navigation';
 navigation.setAttribute('aria-label', '画面の切り替え');
 navigation.innerHTML = `<a href="${baseURL}console/" ${!isQue ? 'aria-current="page"' : ''}>CONSOLE</a><a href="${baseURL}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a>`;
+if (isQue) navigation.insertAdjacentHTML('beforeend', `<a href="${baseURL}live/">LIVE</a>`);
 document.querySelector('.header-actions').prepend(navigation);
 document.querySelector('.brand').href = baseURL;
 const countdown = isQue ? createCueCountdown(document.querySelector('.map-panel')) : null;
@@ -57,20 +59,7 @@ if (isQue) {
   overlay.setAttribute('aria-label', '次のキュー');
   overlay.innerHTML = '<div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">GPS 記録再生</span><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button></div>';
   document.querySelector('.map-panel').append(overlay);
-  let mobileCuesVisible = true;
-  try { mobileCuesVisible = localStorage.getItem('tarumi-que-mobile-cues') !== 'hidden'; } catch { /* Preferences are optional. */ }
-  const renderMobileCues = () => {
-    document.body.classList.toggle('mobile-cues-hidden', !mobileCuesVisible);
-    $('mobile-cue-toggle').setAttribute('aria-expanded', String(mobileCuesVisible));
-    $('mobile-cue-toggle').setAttribute('aria-label', `次の合図を${mobileCuesVisible ? '非表示' : '表示'}`);
-    $('mobile-cue-toggle').textContent = mobileCuesVisible ? '非表示' : '表示';
-  };
-  renderMobileCues();
-  $('mobile-cue-toggle').addEventListener('click', () => {
-    mobileCuesVisible = !mobileCuesVisible;
-    renderMobileCues();
-    try { localStorage.setItem('tarumi-que-mobile-cues', mobileCuesVisible ? 'visible' : 'hidden'); } catch { /* Preferences are optional. */ }
-  });
+  setupMobileCues($('mobile-cue-toggle'));
   const speedCard = document.createElement('article');
   speedCard.className = 'cue-card cue-primary map-speed-card';
   speedCard.setAttribute('aria-label', '走行速度');

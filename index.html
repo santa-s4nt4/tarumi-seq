@@ -61,6 +61,6 @@
   </footer>
   <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><div class="dialog-header"><div><span class="eyebrow">CONNECTION</span><h2 id="settings-title">API接続設定</h2></div><button type="button" id="close-settings" class="icon-button" aria-label="閉じる"><i data-lucide="x"></i></button></div><label for="endpoint">位置予測APIのURL</label><input id="endpoint" type="url" required spellcheck="false" /><p class="field-note">GPSを POST で送信します。初期接続先は公開APIです。ローカルAPIを使う場合はURLを切り替えてください。</p><p id="settings-error" role="alert"></p><div class="dialog-actions"><button type="button" id="reset-endpoint" class="secondary-button">ローカルURLを入力</button><button type="button" id="public-endpoint" class="secondary-button">公開APIに接続</button><button type="submit" class="primary-button">接続する</button></div></form><details class="diagnostics"><summary>リクエスト・レスポンス</summary><div class="diagnostic-meta"><span id="request-count">0 REQUESTS</span><span id="request-latency">— ms</span></div><h3>POST /api/position</h3><pre id="request-json">—</pre><h3>RESPONSE</h3><pre id="response-json">—</pre></details></dialog>
   <div id="loading" class="loading-overlay" role="status"><img class="loading-logo" src="/favicon.svg" width="80" height="80" alt="" /><h2>走行記録を読み込んでいます</h2><p id="loading-message">樽見OTO鉄道 · Sequencer</p><button id="reload-data" class="primary-button" hidden>再読み込み</button></div>
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/entry.js"></script>
 </body>
 </html>
