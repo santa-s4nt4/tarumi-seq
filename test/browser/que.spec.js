@@ -176,46 +176,42 @@ test('front playback stays in bird view while the rail is buried and returns on 
   await expect.poll(() => page.locator('.current-marker').evaluate(el => Number(getComputedStyle(el).opacity))).toBeCloseTo(1, 2);
 });
 
-test('zoom buttons adjust both views, persist settings and fit on mobile', async ({ page }) => {
+const setZoomSlider = (page, value) => page.locator('#que-zoom-slider').evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+
+test('zoom slider adjusts the active view, persists settings and fits on mobile', async ({ page }) => {
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
-  await page.locator('#que-zoom-button').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
-  await page.locator('#que-normal-out').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('18.5');
+  await expect(page.locator('#que-zoom-mode')).toHaveText('通常');
+  await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
+  await setZoomSlider(page, 18.5);
+  await expect(page.locator('#que-zoom-value')).toHaveText('18.5');
   // Terrain collision avoidance can reduce the requested zoom at this position.
   await expect.poll(() => page.evaluate(() => window.testMap?.getZoom())).toBeGreaterThan(17);
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeLessThanOrEqual(18.50001);
-  await page.locator('#que-bird-in').click();
-  await expect(page.locator('#que-bird-zoom')).toHaveText('19.5');
-  await page.locator('#done-que-zoom').click();
   await page.locator('#que-mode-bird').click();
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch()), { timeout: 15000 }).toBeLessThan(0.01);
-  await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(19.5, 2);
-  await page.locator('#que-zoom-button').click();
-  await page.locator('#que-bird-in').click();
-  await expect(page.locator('#que-bird-in')).toBeDisabled();
+  await expect(page.locator('#que-zoom-mode')).toHaveText('鳥瞰');
+  await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
+  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('min', '18.5');
+  await setZoomSlider(page, 20);
+  await expect(page.locator('#que-zoom-value')).toHaveText('20.0');
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(20, 2);
   expect(await page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(0, 2);
-  await page.locator('#que-normal-out').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('18.0');
   await page.reload();
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('#que-zoom-button').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('18.0');
-  await expect(page.locator('#que-bird-zoom')).toHaveText('20.0');
+  await page.locator('#que-mode-normal').click();
+  await expect(page.locator('#que-zoom-mode')).toHaveText('通常');
+  await expect(page.locator('#que-zoom-value')).toHaveText('18.5');
+  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('max', '20');
+  await expect(page.locator('#que-zoom-slider')).toBeInViewport({ ratio: 1 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.screenshot({ path: 'test-results/que-zoom-mobile.png' });
-  await page.locator('#reset-que-zoom').click();
-  await expect(page.locator('#que-normal-zoom')).toHaveText('19.0');
-  await expect(page.locator('#que-bird-zoom')).toHaveText('19.0');
-  await page.locator('#done-que-zoom').click();
   await page.goto('/console');
-  await expect(page.locator('#que-zoom-button')).toHaveCount(0);
+  await expect(page.locator('#que-zoom-slider')).toHaveCount(0);
 });
 
 test('queue view shows API events and updates countdown with playback', async ({ page }) => {
@@ -398,7 +394,6 @@ test('tunnel viewer turns black, shows portals and speed, then returns to daylig
   const seek = async t => page.locator('#seek').evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, t);
   await seek(entry.t + 5);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('#map-tunnel-banner')).toHaveText(`${entry.name}内を走行中`);
   await expect(page.locator('.tunnel-marker.entrance').filter({ hasText: entry.name })).toBeVisible();
   await expect(page.locator('#cue-list')).not.toContainText(/入口|出口/);
   expect((await page.locator('.tunnel-marker-label').allTextContents()).join('')).not.toMatch(/入口|出口/);
@@ -408,6 +403,5 @@ test('tunnel viewer turns black, shows portals and speed, then returns to daylig
   await page.screenshot({ path: 'test-results/que-tunnel-dark.png' });
   await seek(exit.t + 1);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('#map-tunnel-banner')).toBeHidden();
   expect(errors).toEqual([]);
 });

@@ -36,41 +36,38 @@
 .que-view summary:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 
 /* A quiet masthead; the original wordmark supplies the identity. */
-.que-view .header { height: 88px; padding: 0 var(--que-gutter); gap: 28px; border-bottom: 1px solid var(--green); }
-.que-view .brand { color: var(--text); }
-.que-view .brand-logo { width: clamp(156px, 15vw, 216px); height: 42px; }
-.que-view .header-center { display: flex; gap: 14px; margin: 0 auto 0 0; padding-left: 28px; border-left: 1px solid var(--green); font-family: var(--font); }
+/* CONSOLE shares the header design with QUE/LIVE: same palette, font and navigation. */
+.console-view .header { --que-gutter: clamp(16px, 2vw, 32px); --green: #00ff36; --ink: #000000; --hover: #00ff3614; --fallback: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif; --font: "Tarumi OTO Stroke", var(--fallback); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; }
+.console-view .header button, .console-view .header a { font-weight: 400; font-family: inherit; }
+:is(.que-view, .console-view) .header { height: 88px; padding: 0 var(--que-gutter); gap: 28px; border-bottom: 1px solid var(--green); }
+:is(.que-view, .console-view) .brand { color: var(--text); }
+:is(.que-view, .console-view) .brand-logo { width: clamp(156px, 15vw, 216px); height: 42px; }
+:is(.que-view, .console-view) .header-center { display: flex; gap: 14px; margin: 0 auto 0 0; padding-left: 28px; border-left: 1px solid var(--green); font-family: var(--font); }
 .que-title { font-size: 38px; line-height: 1; letter-spacing: .02em; }
-.que-subtitle { font-size: 14px; white-space: nowrap; }
-.que-view .header-actions { gap: 12px; }
-.que-view .date-label { display: none; }
-.que-view .view-navigation { gap: 0; font: 15px var(--font); }
-.que-view .view-navigation a { border-radius: 0; padding: 9px 12px; }
-.que-view .view-navigation a[aria-current] { background: var(--green); color: var(--ink); }
-.que-view .view-navigation a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.que-view .api-badge { border: 0; border-radius: 0; background: transparent; font-size: 13px; padding: 8px 0; gap: 6px; }
-.que-view .status-dot { width: 7px; height: 7px; border-radius: 0; background: var(--green); }
-.que-view .api-badge[data-status="error"] { color: var(--text); background: transparent; }
-.que-view .api-badge[data-status="error"] .status-dot { background: var(--text); }
+:is(.que-view, .console-view) .header-actions { gap: 12px; }
+:is(.que-view, .console-view) .date-label { display: none; }
+:is(.que-view, .console-view) .view-navigation { gap: 0; font: 15px var(--font); }
+:is(.que-view, .console-view) .view-navigation a { border-radius: 0; padding: 9px 12px; }
+:is(.que-view, .console-view) .view-navigation a[aria-current] { background: var(--green); color: var(--ink); }
+:is(.que-view, .console-view) .view-navigation a:hover { text-decoration: underline; text-underline-offset: 4px; }
+:is(.que-view, .console-view) .api-badge { border: 0; border-radius: 0; background: transparent; font-size: 13px; padding: 8px 0; gap: 6px; }
+:is(.que-view, .console-view) .status-dot { width: 7px; height: 7px; border-radius: 0; background: var(--green); }
+:is(.que-view, .console-view) .api-badge[data-status="error"] { color: var(--text); background: transparent; }
+:is(.que-view, .console-view) .api-badge[data-status="error"] .status-dot { background: var(--text); }
 .que-view .secondary-button, .que-view .primary-button { border: 1px solid var(--green); border-radius: 0; font-size: 14px; padding: 10px 14px; }
 .que-view .secondary-button { background: var(--surface); color: var(--text); }
 .que-view .secondary-button:hover { background: var(--hover); }
 .que-view .primary-button { background: var(--green); color: var(--ink); }
-.que-view .icon-button { border-radius: 0; }
-#que-zoom-button { white-space: nowrap; }
+.que-view .icon-button, .console-view .header .icon-button { border-radius: 0; }
 
 /* Full-width terrain, with the title and instruments placed on its edges. */
 .que-view .workspace { display: block; height: auto; min-height: 0; overflow: hidden; }
 .que-view .map-panel { height: 100%; min-height: 0; border: 0; background: var(--map-ground); }
 .que-view .readout, .que-view .position-card, .que-view .map-tools { display: none; }
-.que-view .map-heading { display: block; left: var(--que-gutter); top: var(--que-gutter); padding: 20px 24px; max-width: calc(100% - var(--que-card-width) - 3 * var(--que-gutter)); background: var(--surface); border-left: 4px solid var(--green); }
+.que-view .map-heading { display: none; }
 .que-view .eyebrow { font: 13px var(--font); letter-spacing: .04em; color: var(--text); }
-.que-view .map-heading h1 { margin: 12px 0 8px; font-size: clamp(30px, 3.2vw, 48px); line-height: 1.15; letter-spacing: 0; }
-.que-view .map-heading p { font-size: 13px; line-height: 1.7; }
-.que-route-caption { display: block; margin-top: 14px; font-size: 13px; letter-spacing: .08em; }
 
 .que-view-modes { position: absolute; top: var(--que-gutter); left: var(--que-gutter); display: flex; align-items: center; gap: 0; padding: 5px; background: var(--surface); z-index: 4; }
-.que-view .map-heading { top: calc(var(--que-gutter) + 62px); }
 .que-mode-label { display: flex; flex-direction: column; padding: 0 16px 0 10px; font-size: 14px; line-height: 1.25; }
 .que-mode-label span { font-size: 13px; }
 .que-view-modes button { padding: 10px 14px; min-height: 40px; border: 0; border-radius: 0; background: transparent; color: var(--text); font-size: 14px; white-space: nowrap; }
@@ -79,11 +76,7 @@
 
 /* Large stroke numerals, green planes, square frames. */
 .cue-overlay { position: absolute; right: var(--que-gutter); top: var(--que-gutter); width: var(--que-card-width); max-height: calc(100% - 2 * var(--que-gutter) - 10px); overflow-y: auto; scrollbar-width: thin; z-index: 2; }
-.cue-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); color: var(--text); border-bottom: 1px solid var(--green); }
-.cue-heading h2 { margin: 0; font-size: 21px; line-height: 1.3; white-space: nowrap; }
-.cue-heading h2 span { display: block; font-size: 13px; letter-spacing: .06em; margin-top: 3px; }
-.cue-source { font-size: 13px; line-height: 1.5; text-align: right; }
-.cue-toggle { display: none; }
+.cue-heading { display: none; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); color: var(--text); border-bottom: 1px solid var(--green); }
 #cue-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--green); }
 .cue-card { min-width: 0; padding: 16px; background: var(--surface); color: var(--text); border: 0; border-radius: 0; box-shadow: none; }
 .cue-card-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 1; margin-bottom: 18px; }
@@ -104,20 +97,16 @@
 #cue-status { margin: 0; padding: 10px 16px; font-size: 14px; line-height: 1.5; text-align: left; background: var(--surface); color: var(--text); }
 #cue-status:empty { display: none; }
 #cue-retry { width: 100%; margin: 0; padding: 12px; border: 1px solid var(--green); border-radius: 0; background: var(--green); color: var(--ink); font-size: 15px; }
-.map-speed-card { position: absolute; z-index: 2; left: var(--que-gutter); bottom: calc(var(--que-gutter) + 12px); width: var(--que-card-width); padding: 16px 22px; background: var(--surface); color: var(--text); border-top: 4px solid var(--green); }
-.map-speed-card h2 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px; font-size: 21px; }
-.map-speed-card h2 span { font-size: 13px; }
-.map-speed-card p { display: flex; align-items: baseline; gap: 12px; }
+.map-speed-card { position: absolute; z-index: 2; left: var(--que-gutter); bottom: calc(var(--que-gutter) + 12px); width: auto; padding: 0; background: transparent; color: var(--text); border: 0; text-shadow: 0 1px 4px var(--surface), 1px 0 4px var(--surface), -1px 0 4px var(--surface), 0 -1px 4px var(--surface); }
+.map-speed-card p { display: flex; align-items: baseline; gap: 12px; margin: 0; }
 .map-speed-card strong { font-size: clamp(68px, 6.5vw, 96px); }
 .map-speed-card .speed-unit { font-size: 24px; }
-.speed-caption { position: absolute; right: 22px; bottom: 18px; font-size: 13px; letter-spacing: .04em; }
-.que-view .map-legend { left: var(--que-gutter); bottom: calc(var(--que-gutter) + clamp(170px, 16vw, 206px)); display: grid; grid-template-columns: repeat(3, auto); gap: 10px 18px; padding: 12px 16px; border-radius: 0; background: var(--surface); color: var(--text); font-size: 13px; }
+/* Legend: inline at the map's lower right, no plane, above the attribution control. */
+.que-view .map-legend { left: auto; right: var(--que-gutter); bottom: calc(var(--que-gutter) + 12px); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; padding: 0; border-radius: 0; background: transparent; color: var(--text); font-size: 13px; text-shadow: 0 1px 3px var(--surface), 1px 0 3px var(--surface), -1px 0 3px var(--surface), 0 -1px 3px var(--surface); }
 .que-view .legend-line { width: 18px; height: 3px; border-radius: 0; background: var(--green); }
-.que-view .passed-line { background: var(--passed); outline: 1px solid #00000020; }
 .que-view .river-line { background: var(--river); opacity: 1; }
 .que-view .bridge-line { background: var(--empty); }
 .que-view .tunnel-line { background: repeating-linear-gradient(90deg, var(--green) 0 3px, var(--empty) 3px 6px); }
-.que-view .legend-position { width: 9px; height: 9px; border: 1px solid var(--ink); background: var(--green); }
 .que-view .map-error { left: var(--que-gutter); right: auto; top: 50%; bottom: auto; max-width: min(400px, calc(100% - 2 * var(--que-gutter))); font-size: 14px; border-radius: 0; }
 .que-view .fallback-map { background: var(--map-ground); }
 .que-view #fallback-current { fill: var(--green); stroke: var(--ink); }
@@ -135,7 +124,6 @@
 .tunnel-portal { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 12px 12px 0 0; border: 2px solid var(--green); background: var(--empty); color: var(--green); font: 26px/1 sans-serif; box-shadow: none; }
 .tunnel-marker-label { padding: 6px 9px; background: var(--panel); border: 1px solid var(--green); color: var(--text); border-radius: 0; font: 14px var(--font); }
 .tunnel-marker.exit .tunnel-portal { width: 20px; height: 20px; font-size: 20px; }
-#map-tunnel-banner { position: absolute; left: var(--que-gutter); top: calc(var(--que-gutter) + 260px); z-index: 2; max-width: calc(100% - 2 * var(--que-gutter)); padding: 12px 18px; border: 1px solid var(--green); background: var(--surface); color: var(--green); font-size: 16px; }
 
 /* Timeline as a score: station names, a green playhead, deliberate spacing. */
 .que-view .playback-panel { padding: 14px var(--que-gutter) max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--green); box-shadow: none; }
@@ -143,39 +131,12 @@
 .que-view .playback-title { font: 16px var(--font); letter-spacing: .02em; }
 .que-view .playback-title svg { color: var(--text); }
 .que-view .playback-date, .que-view .sample-count, .que-view .keyboard-hint { display: none; }
-.que-view .direction-tabs { padding: 0; gap: 0; background: transparent; border: 1px solid var(--green); border-radius: 0; }
-.que-view .direction-tabs button { padding: 8px 16px; border-radius: 0; font-size: 15px; }
-.que-view .direction-tabs button span { font-size: 13px; }
-.que-view .direction-tabs button.selected { color: var(--ink); background: var(--green); box-shadow: none; }
-.que-view .timeline-events { height: 24px; }
-.que-view .timeline-station { height: 8px; background: var(--green); }
-.que-view .timeline-station span { font-size: 13px; bottom: 12px; }
-.que-view .timeline-ticks { display: none; }
-.que-view .timeline-tunnel { background: var(--empty); border-radius: 0; }
-.que-view .seek-wrap { height: 22px; }
-.que-view .seek-wrap::before, .que-view .seek-progress { height: 3px; border-radius: 0; }
-.que-view #seek { height: 22px; }
-.que-view #seek::-webkit-slider-thumb { width: 14px; height: 22px; border: 0; border-radius: 0; box-shadow: none; }
-.que-view #seek::-moz-range-thumb { width: 12px; height: 20px; border: 0; border-radius: 0; box-shadow: none; }
-.que-view .transport-row { margin-top: 6px; }
-.que-view .transport { gap: 14px; }
-.que-view .transport .icon-button { width: 32px; height: 40px; }
-.que-view .transport .icon-button svg { width: 20px; height: 20px; }
-.que-view .skip-button { width: 32px; height: 40px; }
-.que-view .skip-button svg { top: 8px; }
-.que-view .skip-button span { inset: 15px 0 auto; font: 9px var(--fallback); }
-.que-view .play-button { width: 48px; height: 44px; border-radius: 0; color: var(--ink); }
-.que-view .play-button svg { width: 22px; height: 22px; }
-.que-view .time-display { margin-left: 14px; font: 24px var(--font); }
-.que-view .playback-metadata { gap: 20px; }
-.que-view #recorded-time { font: 14px var(--font); }
-.que-view .speed-control { border: 1px solid var(--green); border-radius: 0; padding: 8px 10px; background: transparent; }
-.que-view .speed-control select { font: 16px var(--font); }
+/* The timeline and seek bar reuse the CONSOLE styles from style.css unchanged. */
 
 /* Connection, timetable and camera settings use the same typography. */
 .que-view dialog { border: 1px solid var(--green); border-radius: 0; padding: 28px; box-shadow: none; background: var(--surface); }
 .que-view dialog::backdrop { background: #00000080; backdrop-filter: blur(4px); }
-.que-view .dialog-header h2, .que-view #que-zoom-title { font-size: 28px; }
+.que-view .dialog-header h2 { font-size: 28px; }
 .que-view .field-note { font: 14px/1.8 var(--font); }
 .que-view #endpoint { font: 14px var(--fallback); border-radius: 0; }
 .que-view .diagnostics summary, .que-view .diagnostic-meta, .que-view .diagnostics h3 { font-size: 14px; }
@@ -187,12 +148,15 @@
 .que-view .simulation-stops-scroll { border-radius: 0; }
 .que-view .simulation-preview table { font-size: 16px; }
 .que-view #simulation-note { color: var(--text); background: var(--hover); font-size: 14px; border-radius: 0; }
-#que-zoom-dialog { width: min(440px, calc(100% - 32px)); }
-.que-zoom-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--green); font-size: 18px; }
-.que-zoom-stepper { display: flex; align-items: center; gap: 12px; }
-.que-zoom-stepper button { width: 42px; height: 42px; border: 1px solid var(--green); background: var(--surface); font-size: 24px; }
-.que-zoom-stepper button:hover { background: var(--hover); }
-.que-zoom-stepper output { min-width: 42px; text-align: center; font: 24px var(--font); }
+/* Zoom slider: centred at the foot of the map, for whichever view is active. */
+.que-zoom-control { position: absolute; z-index: 3; left: 50%; bottom: calc(var(--que-gutter) + 12px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: min(280px, 36%); color: var(--text); font-size: 13px; text-shadow: 0 1px 3px var(--surface), 1px 0 3px var(--surface), -1px 0 3px var(--surface), 0 -1px 3px var(--surface); }
+.que-zoom-control label { display: flex; gap: 10px; }
+#que-zoom-slider { appearance: none; -webkit-appearance: none; width: 100%; height: 24px; margin: 0; background: transparent; cursor: pointer; }
+#que-zoom-slider::-webkit-slider-runnable-track { height: 2px; background: var(--green); }
+#que-zoom-slider::-webkit-slider-thumb { appearance: none; width: 14px; height: 22px; margin-top: -10px; border: 0; border-radius: 0; background: var(--green); box-shadow: none; }
+#que-zoom-slider::-moz-range-track { height: 2px; background: var(--green); }
+#que-zoom-slider::-moz-range-thumb { width: 14px; height: 22px; border: 0; border-radius: 0; background: var(--green); box-shadow: none; }
+.video-view .que-zoom-control { display: none; }
 .que-view .loading-logo { width: 100px; height: 100px; padding: 0; border-radius: 0; background: transparent; }
 .que-view .loading-overlay h2 { font-size: 26px; }
 .que-view .loading-overlay p { font-size: 16px; }
@@ -203,89 +167,59 @@
 :root[data-theme="dark"] .que-view .mapboxgl-ctrl-attrib { color-scheme: dark; }
 
 @media (max-width: 1200px) {
-  .que-view .header { gap: 20px; }
-  .que-view .header-center { padding-left: 20px; }
-  .que-subtitle { display: none; }
-  .que-view .header-actions { gap: 8px; }
-  .que-view .api-badge { display: none; }
+  :is(.que-view, .console-view) .header { gap: 20px; }
+  :is(.que-view, .console-view) .header-center { padding-left: 20px; }
+  :is(.que-view, .console-view) .header-actions { gap: 8px; }
+  :is(.que-view, .console-view) .api-badge { display: none; }
   .que-view-modes button { padding-inline: 12px; }
 }
 
 @media (max-width: 900px) {
   .que-view { --que-card-width: 300px; }
-  .que-view .header { height: 74px; gap: 16px; }
-  .que-view .header-center { padding-left: 16px; }
+  :is(.que-view, .console-view) .header { height: 74px; gap: 16px; }
+  :is(.que-view, .console-view) .header-center { padding-left: 16px; }
   .que-title { font-size: 32px; }
-  .que-view .brand-logo { width: 156px; height: 32px; }
-  .que-view .header-actions { gap: 6px; }
-  .que-view .view-navigation { font-size: 14px; }
-  .que-view .view-navigation a { padding: 9px; }
-  .que-view #simulation-button, .que-view #que-zoom-button { padding: 9px 12px; font-size: 14px; }
-  .que-view .map-heading { padding: 16px; }
-  .que-view .map-heading h1 { font-size: 32px; }
+  :is(.que-view, .console-view) .brand-logo { width: 156px; height: 32px; }
+  :is(.que-view, .console-view) .header-actions { gap: 6px; }
+  :is(.que-view, .console-view) .view-navigation { font-size: 14px; }
+  :is(.que-view, .console-view) .view-navigation a { padding: 9px; }
+  .que-view #simulation-button { padding: 9px 12px; font-size: 14px; }
   .que-view-modes button { padding-inline: 10px; font-size: 13px; }
   .que-mode-label { padding-inline: 6px 10px; }
   .cue-primary { padding: 20px; }
   .cue-primary strong { font-size: 90px; }
-  .que-view .map-speed-card { width: 240px; }
   .map-speed-card strong { font-size: 72px; }
-  .speed-caption { display: none; }
-  .que-view .map-legend { column-gap: 12px; bottom: 190px; }
-  .que-view .map-heading p { max-width: 22em; }
   .que-view #recorded-time { display: none; }
   .que-view .station-marker-name { font-size: 16px; }
   .que-view .playback-title { font-size: 14px; }
-  .que-view .direction-tabs button { padding: 7px 12px; }
 }
 
 @media (max-width: 760px) {
-  .que-view .header { height: auto; display: flex; flex-wrap: wrap; gap: 0; padding-top: 12px; }
-  .que-view .header-center { display: flex; border: 0; margin: 0 0 0 auto; padding: 0; }
-  .que-view .header-actions { width: 100%; padding: 8px 0; margin-top: 10px; border-top: 1px solid var(--green); gap: 8px; }
-  .que-view .view-navigation { margin-right: auto; }
-  .que-view .header-actions .icon-button { width: 32px; height: 36px; }
+  :is(.que-view, .console-view) .header { height: auto; display: flex; flex-wrap: wrap; gap: 0; padding-top: 12px; }
+  :is(.que-view, .console-view) .header-center { display: flex; border: 0; margin: 0 0 0 auto; padding: 0; }
+  :is(.que-view, .console-view) .header-actions { width: 100%; padding: 8px 0; margin-top: 10px; border-top: 1px solid var(--green); gap: 8px; }
+  :is(.que-view, .console-view) .view-navigation { margin-right: auto; }
+  :is(.que-view, .console-view) .header-actions .icon-button { width: 32px; height: 36px; }
   .que-view .workspace { overflow: hidden; }
-  .que-view .map-heading { top: calc(var(--que-gutter) + 60px); max-width: calc(100% - var(--que-card-width) - 3 * var(--que-gutter)); }
-  .que-view .map-heading h1 { font-size: 26px; }
-  .que-route-caption, .que-view .map-heading .eyebrow { display: none; }
   .que-view .playback-panel { padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .que-view .timeline-events { display: none; }
   .que-view .playback-heading { flex-wrap: nowrap; margin-bottom: 8px; gap: 8px; }
-  .que-view .direction-tabs button { padding: 6px 10px; font-size: 14px; }
-  .que-view .direction-tabs button span { display: inline; margin-left: 5px; font-size: 13px; }
   .que-view .playback-title { font-size: 13px; gap: 6px; }
-  .que-view .transport-row { flex-wrap: nowrap; gap: 8px; margin-top: 6px; }
-  .que-view .transport { gap: 8px; }
-  .que-view .transport .icon-button { width: 24px; }
-  .que-view .skip-button { width: 26px; }
-  .que-view .play-button { width: 42px; height: 40px; }
-  .que-view .time-display { font-size: 20px; gap: 5px; margin-left: 4px; }
-  .que-view .playback-metadata { margin-left: auto; }
-  .que-view .speed-control { padding: 6px; }
-  .que-view .speed-control select { font-size: 15px; }
-  .que-view .speed-control svg { display: none; }
-  .que-view.timetable-mode .transport { display: grid; grid-template-columns: 24px 26px 42px 26px 24px; gap: 6px 12px; }
-  .que-view.timetable-mode .time-display { grid-column: 1 / -1; justify-content: center; margin: 0; font-size: 20px; }
-  .que-view.timetable-mode .playback-metadata { align-self: flex-start; }
 }
 
 @media (max-width: 600px) {
   .que-view { --que-gutter: 14px; --que-card-width: calc(100% - 28px); }
-  .que-view .brand-logo { width: 164px; }
-  .que-view .map-heading { display: none; }
+  :is(.que-view, .console-view) .brand-logo { width: 164px; }
   .que-view-modes { left: var(--que-gutter); right: var(--que-gutter); top: 14px; padding: 4px; }
   .que-view-modes button { flex: 1; min-width: 0; min-height: 36px; padding: 8px 6px; }
   .que-mode-label { font-size: 13px; }
   .que-mode-label span { display: none; }
   .cue-overlay { top: auto; bottom: 18px; width: var(--que-card-width); max-height: calc(100% - 180px); }
-  .cue-heading { padding: 8px 12px; gap: 8px; }
-  .cue-source { margin-left: auto; }
+  .que-zoom-control { bottom: calc(var(--que-cue-height, 0px) + 30px); width: min(220px, 56%); }
+  .cue-heading { display: flex; padding: 8px 12px; gap: 8px; }
   .cue-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 54px; min-height: 36px; padding: 7px 8px; border: 1px solid var(--green); background: var(--green); color: var(--ink); font-size: 14px; line-height: 1.3; }
   .cue-toggle[aria-expanded="false"] { background: var(--surface); color: var(--text); }
   .que-view.mobile-cues-hidden #cue-content { display: none; }
-  .cue-heading h2 { display: flex; align-items: baseline; gap: 10px; font-size: 18px; }
-  .cue-heading h2 span { margin: 0; font-size: 13px; }
-  .cue-source { font-size: 13px; }
   .cue-primary { padding: 12px 16px; }
   .cue-card-label { margin-bottom: 8px; font-size: 13px; }
   .cue-primary h2 { font-size: 26px; margin-bottom: 4px; }
@@ -298,16 +232,13 @@
   .cue-card:not(.cue-primary) .cue-category { font-size: 13px; }
   .cue-card:not(.cue-primary) .cue-kind-icon svg { width: 22px; height: 22px; }
   #cue-status { padding: 7px 12px; font-size: 13px; }
-  .que-view .map-speed-card { top: 74px; bottom: auto; left: 14px; width: 154px; padding: 10px 12px; border-top-width: 3px; }
-  .map-speed-card h2 { margin-bottom: 4px; font-size: 17px; gap: 6px; }
-  .map-speed-card h2 span { font-size: 13px; }
+  .que-view .map-speed-card { top: 74px; bottom: auto; left: 14px; }
   .map-speed-card p { gap: 8px; }
   .map-speed-card strong { font-size: 44px; }
   .map-speed-card .speed-unit { font-size: 17px; }
-  .que-view .map-legend { top: 74px; bottom: auto; left: auto; right: 14px; grid-template-columns: repeat(2, auto); gap: 7px 10px; max-width: calc(100% - 196px); font-size: 13px; padding: 10px; }
+  .que-view .map-legend { top: 74px; bottom: auto; right: 14px; gap: 6px 10px; max-width: calc(100% - 196px); }
   .que-view .map-legend span { gap: 4px; }
   .que-view .legend-line { width: 12px; }
-  #map-tunnel-banner { top: 180px; left: 14px; padding: 8px 12px; font-size: 14px; }
   .que-view .map-error { top: 180px; }
   .que-view .station-marker-name { font-size: 15px; padding: 5px 7px; }
   .tunnel-marker-label { font-size: 13px; padding: 5px 7px; }
@@ -319,24 +250,15 @@
 }
 
 @media (max-width: 380px) {
-  .cue-heading h2 span { display: none; }
-  .que-view .header-actions { gap: 5px; }
-  .que-view .direction-tabs button span { display: none; }
-  .que-view .view-navigation a { padding-inline: 7px; font-size: 13px; }
-  .que-view #simulation-button, .que-view #que-zoom-button { padding-inline: 8px; }
-  .que-view .transport { gap: 4px; }
-  .que-view .transport .icon-button { width: 20px; }
-  .que-view .skip-button { width: 24px; }
-  .que-view .time-display { font-size: 17px; gap: 3px; }
-  .que-view .map-speed-card { width: 140px; }
-  .que-view .map-speed-card h2 { font-size: 16px; white-space: nowrap; }
+  :is(.que-view, .console-view) .header-actions { gap: 5px; }
+  :is(.que-view, .console-view) .view-navigation a { padding-inline: 7px; font-size: 13px; }
+  .que-view #simulation-button { padding-inline: 8px; }
   .que-view .map-speed-card strong { font-size: 40px; }
-  .que-view .map-legend { max-width: calc(100% - 178px); gap: 7px; padding: 10px 7px; }
+  .que-view .map-legend { max-width: calc(100% - 178px); gap: 6px 7px; }
 }
 
 @media (max-width: 600px) and (max-height: 760px) {
   .cue-heading { padding: 6px 10px; }
-  .cue-heading h2 { font-size: 17px; }
   .cue-card-label { display: none; }
   .cue-primary { padding: 10px 14px; }
   .cue-primary h2 { font-size: 23px; }
@@ -346,10 +268,7 @@
 }
 
 @media (max-height: 760px) and (min-width: 601px) {
-  .que-view .header { height: 64px; }
-  .que-view .map-heading { padding: 14px 18px; }
-  .que-view .map-heading h1 { font-size: 32px; margin: 8px 0; }
-  .que-route-caption { display: none; }
+  :is(.que-view, .console-view) .header { height: 64px; }
   .cue-heading { padding: 8px 14px; }
   .cue-primary { padding: 14px 20px; }
   .cue-card-label { margin-bottom: 10px; }
@@ -358,9 +277,7 @@
   .cue-card:not(.cue-primary) { padding: 12px 14px; }
   .cue-card:not(.cue-primary) strong { font-size: 40px; }
   .cue-card:not(.cue-primary) h2 { font-size: 18px; margin-bottom: 8px; }
-  .que-view .map-speed-card { padding: 12px 18px; }
   .map-speed-card strong { font-size: 64px; }
-  .que-view .map-legend { bottom: 170px; }
   .que-view .playback-panel { padding-top: 10px; padding-bottom: 10px; }
   .que-view .timeline-events { display: none; }
   .que-view .playback-heading { margin-bottom: 6px; }

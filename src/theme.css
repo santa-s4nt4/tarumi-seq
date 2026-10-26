@@ -5,7 +5,7 @@ body, .header, .readout, .playback-panel, .map-panel,
 .map-heading, .map-legend, .map-speed-card, .countdown-focus,
 .countdown-value, .countdown-ring, .que-view-modes,
 .station-tick, .station-marker-name, .tunnel-portal, .tunnel-marker-label,
-#map-tunnel-banner, .metric-value, .unit, .eyebrow,
+.metric-value, .unit, .eyebrow,
 .api-badge, .icon-button, .secondary-button, .speed-control,
 .time-display, .time-display strong, .playback-title, dialog {
   transition: background-color var(--theme-fade-duration) ease-in-out,

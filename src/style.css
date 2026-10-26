@@ -359,15 +359,7 @@ dialog::backdrop { background: #00000099; }
 /* The video covers the map, queue and speed cards. */
 #que-video { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; z-index:3; }
 .video-view #map { visibility:hidden; }
-.video-view .map-legend, .video-view .map-error, .video-view #map-tunnel-banner { display:none; }
+.video-view .map-legend, .video-view .map-error { display:none; }
 .video-view .cue-overlay, .video-view .map-speed-card { pointer-events:none; }
 .video-view #cue-retry { pointer-events:auto; }
 
-/* Keep the shared wordmark and connection controls within the debug header. */
-@media (max-width: 760px) {
-  body:not(.que-view) .brand-logo { width: 136px; height: 28px; }
-}
-@media (max-width: 380px) {
-  body:not(.que-view) .header { height: auto; display: grid; grid-template-columns: 1fr; padding-block: 10px; gap: 8px; }
-  body:not(.que-view) .header-actions { justify-content: space-between; }
-}

@@ -22,7 +22,7 @@ const baseURL = import.meta.env.BASE_URL;
 const pagePath = location.pathname.startsWith(baseURL) ? location.pathname.slice(baseURL.length) : location.pathname;
 const isQue = /^que(?:\/(?:index\.html)?)?$/.test(pagePath);
 const queZoomBounds = { min: 14, max: 20, step: 0.5 };
-let queFollowZoom = 19, queBirdZoom = 19, videoMode = false;
+let queFollowZoom = 19, queBirdZoom = 19, videoMode = false, renderedZoomView = null;
 try {
   const saved = JSON.parse(localStorage.getItem('tarumi-que-zoom'));
   if (saved?.version === 2 && Number.isFinite(saved.normal) && Number.isFinite(saved.bird)) {
@@ -34,6 +34,7 @@ const quePitch = 72;
 // Palette from tarumi-oto-fes-main/app/globals.css and its original logo assets.
 const queRouteColors = { ahead: '#00ff36', passed: '#bfffcc', river: '#0a84ff', forest: '#1d3a22', plain: '#c4c1b0' };
 document.body.classList.toggle('que-view', isQue);
+document.body.classList.toggle('console-view', !isQue);
 document.title = isQue ? 'QUE | 樽見OTO鉄道' : 'Console | 樽見OTO鉄道';
 const $ = id => document.getElementById(id);
 const icons = { TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X };
@@ -42,35 +43,26 @@ refreshIcons();
 const navigation = document.createElement('nav');
 navigation.className = 'view-navigation';
 navigation.setAttribute('aria-label', '画面の切り替え');
-navigation.innerHTML = `<a href="${baseURL}console/" ${!isQue ? 'aria-current="page"' : ''}>CONSOLE</a><a href="${baseURL}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a>`;
-if (isQue) navigation.insertAdjacentHTML('beforeend', `<a href="${baseURL}live/">LIVE</a>`);
+navigation.innerHTML = `<a href="${baseURL}console/" ${!isQue ? 'aria-current="page"' : ''}>CONSOLE</a><a href="${baseURL}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a><a href="${baseURL}live/">LIVE</a>`;
 document.querySelector('.header-actions').prepend(navigation);
 document.querySelector('.brand').href = baseURL;
 const countdown = isQue ? createCueCountdown(document.querySelector('.map-panel')) : null;
+document.querySelector('.header-center').innerHTML = `<span class="que-title">${isQue ? 'QUE' : 'CONSOLE'}</span>`;
 if (isQue) {
-  document.querySelector('.header-center').innerHTML = '<span class="que-title">QUE</span><span class="que-subtitle">景観シーケンサー</span>';
-  document.querySelector('.map-heading .eyebrow').textContent = 'TARUMI SOUND RAILWAY';
-  document.querySelector('.map-heading h1').id = 'que-route-name';
-  document.querySelector('.map-heading').insertAdjacentHTML('beforeend', '<span class="que-route-caption" lang="en">MOTOSU — TARUMI</span>');
   document.querySelector('.map-tools').hidden = true;
   for (const id of ['fit-map', 'follow-map', 'zoom-in', 'zoom-out']) $(id).disabled = true;
-  document.querySelector('.map-legend').innerHTML = '<span><b class="legend-line"></b>通過前</span><span><b class="legend-line passed-line"></b>通過済み</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span><span><b class="legend-line tunnel-line"></b>トンネル</span><span><b class="legend-line bridge-line"></b>鉄橋</span>';
+  document.querySelector('.map-legend').innerHTML = '<span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-line bridge-line"></b>鉄橋</span><span><b class="legend-line tunnel-line"></b>トンネル</span>';
   const overlay = document.createElement('aside');
   overlay.className = 'cue-overlay';
   overlay.setAttribute('aria-label', '次のキュー');
-  overlay.innerHTML = '<div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">GPS 記録再生</span><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button></div>';
+  overlay.innerHTML = '<div class="cue-heading"><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button></div>';
   document.querySelector('.map-panel').append(overlay);
   setupMobileCues($('mobile-cue-toggle'));
   const speedCard = document.createElement('article');
   speedCard.className = 'cue-card cue-primary map-speed-card';
   speedCard.setAttribute('aria-label', '走行速度');
-  speedCard.innerHTML = '<h2>走行速度 <span>GPS 記録</span></h2><p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p><span class="speed-caption" lang="en">TRAIN SPEED</span>';
+  speedCard.innerHTML = '<p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p>';
   document.querySelector('.map-panel').append(speedCard);
-  const tunnelBanner = document.createElement('div');
-  tunnelBanner.id = 'map-tunnel-banner';
-  tunnelBanner.hidden = true;
-  tunnelBanner.setAttribute('role', 'status');
-  document.querySelector('.map-panel').append(tunnelBanner);
   $('cue-retry').addEventListener('click', () => requestPosition(true));
   const modeBar = document.createElement('div');
   modeBar.className = 'que-view-modes';
@@ -82,38 +74,23 @@ if (isQue) {
   const overlayObserver = new ResizeObserver(updateQueCameraPadding);
   overlayObserver.observe(overlay);
   overlayObserver.observe(document.querySelector('.map-panel'));
-  const zoomButton = document.createElement('button');
-  zoomButton.id = 'que-zoom-button';
-  zoomButton.className = 'secondary-button';
-  zoomButton.textContent = '倍率';
-  zoomButton.setAttribute('aria-label', '地図の倍率設定');
-  zoomButton.setAttribute('aria-haspopup', 'dialog');
-  zoomButton.setAttribute('aria-controls', 'que-zoom-dialog');
-  $('settings-button').before(zoomButton);
-  const zoomDialog = document.createElement('dialog');
-  zoomDialog.id = 'que-zoom-dialog';
-  zoomDialog.setAttribute('aria-labelledby', 'que-zoom-title');
-  zoomDialog.innerHTML = `<div class="dialog-header"><h2 id="que-zoom-title">地図の倍率設定</h2><button id="close-que-zoom" class="icon-button" aria-label="閉じる">×</button></div>
-    <p class="field-note">＋で近く、−で広く表示します。</p>
-    ${[['normal', '通常ビュー'], ['bird', '鳥瞰図']].map(([mode, label]) => `<div class="que-zoom-row"><span>${label}</span><div class="que-zoom-stepper"><button id="que-${mode}-out" aria-label="${label}を引く">−</button><output id="que-${mode}-zoom" aria-live="polite"></output><button id="que-${mode}-in" aria-label="${label}に寄る">＋</button></div></div>`).join('')}
-    <div class="dialog-actions"><button id="reset-que-zoom" class="secondary-button">初期値に戻す</button><button id="done-que-zoom" class="primary-button">完了</button></div>`;
-  document.body.append(zoomDialog);
-  zoomButton.addEventListener('click', () => zoomDialog.showModal());
-  for (const id of ['close-que-zoom', 'done-que-zoom']) $(id).addEventListener('click', () => zoomDialog.close());
-  for (const mode of ['normal', 'bird']) for (const [suffix, step] of [['out', -1], ['in', 1]]) {
-    $(`que-${mode}-${suffix}`).addEventListener('click', () => setQueZooms(
-      mode === 'normal' ? clamp(queFollowZoom + step * queZoomBounds.step, queZoomBounds.min, queBirdZoom) : queFollowZoom,
-      mode === 'bird' ? clamp(queBirdZoom + step * queZoomBounds.step, queFollowZoom, queZoomBounds.max) : queBirdZoom));
-  }
+  // One slider at the foot of the map adjusts whichever view the camera is in.
+  const zoomControl = document.createElement('div');
+  zoomControl.className = 'que-zoom-control';
+  zoomControl.innerHTML = `<label for="que-zoom-slider"><span id="que-zoom-mode">通常</span><output id="que-zoom-value" aria-live="polite"></output></label><input type="range" id="que-zoom-slider" step="${queZoomBounds.step}" aria-label="地図の倍率">`;
+  document.querySelector('.map-panel').append(zoomControl);
+  $('que-zoom-slider').addEventListener('input', () => {
+    const value = Number($('que-zoom-slider').value);
+    if (queZoomView() === 'bird') setQueZooms(queFollowZoom, clamp(value, queFollowZoom, queZoomBounds.max));
+    else setQueZooms(clamp(value, queZoomBounds.min, queBirdZoom), queBirdZoom);
+  });
   for (const mode of ['auto', 'normal', 'bird', 'video']) $(`que-mode-${mode}`).addEventListener('click', () => setQueViewMode(mode));
-  $('reset-que-zoom').addEventListener('click', () => setQueZooms(19, 19));
-  renderQueZooms();
 }
 const state = { direction: 'front', time: 0, playing: false, rate: 1, follow: false, response: null, responseT: null, ready: false };
 const occlusionCamera = new OcclusionCamera({ pitch: quePitch, zoom: queFollowZoom, birdZoom: queBirdZoom });
 if (isQue) {
   try { const mode = localStorage.getItem('tarumi-que-view') ?? 'auto'; videoMode = mode === 'video'; occlusionCamera.setMode(videoMode ? 'auto' : mode, performance.now()); } catch { /* Preferences are optional. */ }
-  updateVideoViewer(); renderQueViewMode();
+  updateVideoViewer(); renderQueViewMode(); renderQueZooms();
 }
 const cueQueue = new CueQueue(), cueCards = new Map();
 const cameraTerrainHeights = new Map();
@@ -256,8 +233,6 @@ function renderReadout() {
   applyTunnelTheme(Boolean(r?.position.inTunnel));
   if (isQue) {
     $('map-train-speed').textContent = Number.isFinite(r?.position.speedKmh) ? r.position.speedKmh.toFixed(1) : '—';
-    $('map-tunnel-banner').hidden = !r?.position.inTunnel;
-    $('map-tunnel-banner').textContent = r?.position.inTunnel ? `${tunnel?.name || 'トンネル'}内を走行中` : '';
     for (const m of stationMarkers) m.getElement().classList.toggle('next-station', m.getElement().dataset.station === station?.name);
   }
   renderCues(r);
@@ -343,10 +318,6 @@ function renderLocationText() {
   const list = [...stations].sort((a, b) => (a.lat - p.lat) ** 2 + ((a.lon - p.lon) * 0.81) ** 2 - ((b.lat - p.lat) ** 2 + ((b.lon - p.lon) * 0.81) ** 2));
   $('position-location').textContent = `${list[0].name}付近 · ${state.direction === 'front' ? '樽見方面' : '本巣方面'}`;
   $('gps-tag').textContent = simulation ? 'TIMETABLE SIMULATION' : p.gap ? 'GPS 欠損' : 'RECORDED GPS';
-  if (isQue) {
-    $('que-route-name').textContent = state.direction === 'front' ? '本巣 — 樽見' : '樽見 — 本巣';
-    document.querySelector('.que-route-caption').textContent = state.direction === 'front' ? 'MOTOSU — TARUMI' : 'TARUMI — MOTOSU';
-  }
 }
 
 function lineFeature(coordinates) { return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }; }
@@ -515,14 +486,19 @@ function cameraTerrainElevation(lon, lat) {
   return cameraTerrainHeights.get(key) ?? null;
 }
 
+function queZoomView() { return occlusionCamera.target === occlusionCamera.birdView ? 'bird' : 'normal'; }
+
 function renderQueZooms() {
   if (!isQue) return;
-  $('que-normal-zoom').textContent = queFollowZoom.toFixed(1);
-  $('que-bird-zoom').textContent = queBirdZoom.toFixed(1);
-  $('que-normal-out').disabled = queFollowZoom <= queZoomBounds.min;
-  $('que-normal-in').disabled = queFollowZoom >= queBirdZoom;
-  $('que-bird-out').disabled = queBirdZoom <= queFollowZoom;
-  $('que-bird-in').disabled = queBirdZoom >= queZoomBounds.max;
+  const bird = queZoomView() === 'bird';
+  renderedZoomView = bird ? 'bird' : 'normal';
+  const slider = $('que-zoom-slider');
+  slider.min = bird ? queFollowZoom : queZoomBounds.min;
+  slider.max = bird ? queZoomBounds.max : queBirdZoom;
+  slider.value = bird ? queBirdZoom : queFollowZoom;
+  slider.setAttribute('aria-label', `${bird ? '鳥瞰図' : '通常ビュー'}の倍率`);
+  $('que-zoom-mode').textContent = bird ? '鳥瞰' : '通常';
+  $('que-zoom-value').textContent = (bird ? queBirdZoom : queFollowZoom).toFixed(1);
 }
 
 function setQueZooms(normal, bird) {
@@ -564,6 +540,7 @@ function setQueViewMode(mode) {
   videoMode = mode === 'video';
   occlusionCamera.setMode(videoMode ? 'auto' : mode, now);
   updateVideoViewer();
+  renderQueZooms();
   normalSightline = lastHiddenLocation = null;
   nextOcclusionCheck = 0;
   currentObscured = null;
@@ -573,6 +550,7 @@ function setQueViewMode(mode) {
 }
 
 function queCamera(reset = false, now = performance.now()) {
+  if (queZoomView() !== renderedZoomView) renderQueZooms();
   const target = routeBearing(rec().records, state.time, 80);
   const delta = lastCameraFrame === null ? 16 : Math.max(0, Math.min(100, now - lastCameraFrame));
   lastCameraFrame = now;
@@ -631,14 +609,18 @@ function queCamera(reset = false, now = performance.now()) {
 }
 
 function updateQueCameraPadding() {
-  if (!mapReady || !isQue) return;
+  if (!isQue) return;
+  // The mobile zoom slider sits just above the cue panel, whatever its height.
+  document.querySelector('.map-panel').style.setProperty('--que-cue-height', `${document.querySelector('.cue-overlay').offsetHeight}px`);
+  if (!mapReady) return;
   const container = map.getContainer(), canvas = map.getCanvas();
   if (canvas.clientWidth !== container.clientWidth || canvas.clientHeight !== container.clientHeight) map.resize();
   // Keep the train in the visible map area above the mobile cue panel.
   const height = document.querySelector('.map-panel').clientHeight;
   const mobile = matchMedia('(max-width: 600px)').matches && (!document.body.classList.contains('countdown-mode') || videoMode);
   const top = mobile ? Math.min(document.body.classList.contains('has-timetable-reference') ? 100 : 174, height * 0.36) : 0;
-  const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 36, height - top - 60)) : 0;
+  // Keep the train clear of the cue panel and the zoom slider above it.
+  const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 80, height - top - 60)) : 0;
   const padding = map.getPadding();
   if (Math.abs(padding.top - top) > 0.5 || Math.abs(padding.bottom - bottom) > 0.5) {
     map.setPadding({ top, bottom, left: 0, right: 0 });
@@ -875,8 +857,6 @@ function simulationMode() {
   updateVideoViewer();
   document.body.classList.toggle('timetable-mode', Boolean(simulation));
   document.querySelector('.playback-title > span').textContent = simulation ? 'TIMETABLE SIMULATION' : 'GPS PLAYBACK';
-  document.querySelector('.cue-source').textContent = simulation ? `${simulation.train.id}列車 · ${simulation.selection.day === 'holiday' ? '土曜・休日' : '平日'}` : 'GPS 記録再生';
-  document.querySelector('.map-speed-card h2 span').textContent = simulation ? '推定速度' : 'GPS 記録';
   $('seek').setAttribute('aria-label', simulation ? 'シミュレーション時刻' : 'GPSの再生位置');
   $('back-button').querySelector('span').textContent = '本巣方面';
   for (const direction of ['front', 'back']) {

@@ -111,7 +111,6 @@ test('device speed may be unknown, position differences estimate it, and reversi
   await emit(page, await locationAt(page, -479, null));
   await expect.poll(async () => Number(await page.locator('#map-train-speed').textContent()), { intervals: [50] }).toBeGreaterThan(35);
   expect(Number(await page.locator('#map-train-speed').textContent())).toBeLessThan(37);
-  await expect(page.locator('#live-speed-source')).toHaveText('位置差分の推定');
   await page.locator('#live-back').click();
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
   await emit(page, await locationAt(page, 75));
