@@ -8,11 +8,13 @@ export class CueQueue {
   cards(prediction, limit = 3) {
     if (!prediction) return [];
     const station = prediction.next?.station;
-    const stopId = station && Number.isFinite(station.etaSeconds) && Math.round(station.etaSeconds) === 0 ? eventKey(station) : null;
+    const stopId = station && (station.arrived === true || (Number.isFinite(station.etaSeconds) && station.etaSeconds <= 0)) ? eventKey(station) : null;
     if (stopId !== this.stopId) { this.reset(); this.stopId = stopId; }
     const events = (prediction.upcoming ?? []).filter(event => event.type === 'station' || event.type === 'tunnel').map(event => {
       if (!stopId) return event;
       const key = eventKey(event);
+      // The arrived station stays at zero. Only later checkpoints freeze.
+      if (event.type === 'station' && key === stopId) return { ...event, arrived: true, etaSeconds: 0 };
       if (!this.frozenEtas.has(key)) this.frozenEtas.set(key, event.etaSeconds);
       return { ...event, etaSeconds: this.frozenEtas.get(key) };
     });

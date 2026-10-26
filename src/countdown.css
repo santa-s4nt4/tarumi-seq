@@ -1,12 +1,6 @@
-/* The last ten seconds take over the map; the seek bar stays available. */
+/* The last ten seconds take over the map; all playback controls stay available. */
 .que-view.countdown-mode:not(.video-view) { grid-template-rows: minmax(0, 1fr) auto; }
 .que-view.countdown-mode:not(.video-view) .header { display: none; }
-.que-view.countdown-mode:not(.video-view) .playback-heading,
-.que-view.countdown-mode:not(.video-view) .transport-row,
-.que-view.countdown-mode:not(.video-view) .timeline-events,
-.que-view.countdown-mode:not(.video-view) .timeline-ticks { display: none; }
-.que-view.countdown-mode:not(.video-view) .playback-panel { padding: 14px var(--que-gutter) max(14px, env(safe-area-inset-bottom)); }
-.que-view.countdown-mode:not(.video-view) .timeline { margin: 0; padding: 0; }
 .que-view.countdown-mode:not(.video-view) :is(.cue-overlay, .map-heading, .map-tools, .map-legend, .position-card, .map-speed-card, .que-view-modes, #map-tunnel-banner, .map-error) { visibility: hidden; pointer-events: none; }
 
 .countdown-focus {

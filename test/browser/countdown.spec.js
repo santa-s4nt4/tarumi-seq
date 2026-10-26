@@ -39,13 +39,19 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
   await expect(page.locator('.cue-overlay')).toBeHidden();
   await expect(page.locator('.map-speed-card')).toBeHidden();
   await expect(page.locator('.que-view-modes')).toBeHidden();
-  await expect(page.locator('#play')).toBeHidden();
+  await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#speed')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#front-button')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#back-button')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#timeline-events')).toBeVisible();
+  await expect(page.locator('#time-current')).toBeVisible();
   await expect(page.locator('#seek')).toBeInViewport({ ratio: 1 });
   const map = await page.locator('.map-panel').boundingBox();
   const clock = await page.locator('.countdown-clock').boundingBox();
   expect(map.y).toBe(0);
   expect(clock.height).toBeGreaterThan(map.height * 0.75);
   await expect.poll(async () => (await page.locator('.mapboxgl-canvas').boundingBox()).height).toBe(map.height);
+  await page.locator('#map').click({ position: { x: 10, y: 10 } });
   const initial = await progress.getAttribute('style');
   await page.keyboard.press('Space');
   await expect.poll(() => progress.getAttribute('style')).not.toBe(initial);
@@ -57,13 +63,16 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
   await expect(page.locator('#countdown-seconds')).toHaveText('8');
   await page.waitForTimeout(200);
   await page.screenshot({ path: 'test-results/countdown-station-desktop.png' });
-  await page.keyboard.press('Space');
+  await page.locator('#play').click();
   await expect.poll(async () => Number(await page.locator('#countdown-seconds').textContent()), { intervals: [50], timeout: 1500 }).toBeLessThanOrEqual(4);
-  await page.keyboard.press('Space');
+  await page.locator('#play').click();
   await seekGPS(page, arrival - 0.2);
   await expect(page.locator('#countdown-seconds')).toHaveText('1');
-  await seekGPS(page, arrival);
-  await expect(focus).toBeHidden();
+  await page.locator('#play').click();
+  await expect(focus).toBeHidden({ timeout: 1500 });
+  await page.locator('#play').click();
+  await expect(page.locator('#countdown-seconds')).toHaveText('0');
+  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('0');
   await expect(page.locator('.header')).toBeVisible();
   await expect(page.locator('#play')).toBeVisible();
   await page.waitForTimeout(250);
@@ -105,7 +114,7 @@ test('tunnel entrance and passage use the correct label and stale countdown clea
   await expect(focus).toBeHidden();
 });
 
-test('mobile countdown fills the map, leaves only seek visible and restores controls after arrival', async ({ page }) => {
+test('mobile countdown fills the map and keeps the entire playback footer usable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await startTimetable(page);
   const arrival = 7 * 3600 + 51 * 60 + 30;
@@ -114,7 +123,10 @@ test('mobile countdown fills the map, leaves only seek visible and restores cont
   await expect(focus).toBeVisible();
   await expect(focus).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.cue-overlay')).toBeHidden();
-  await expect(page.locator('#play')).toBeHidden();
+  await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#speed')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#front-button')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('#back-button')).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.header')).toBeHidden();
   await expect(page.locator('.map-speed-card')).toBeHidden();
   await expect(page.locator('#seek')).toBeInViewport({ ratio: 1 });
@@ -127,4 +139,21 @@ test('mobile countdown fills the map, leaves only seek visible and restores cont
   await expect(page.locator('.cue-overlay')).toBeVisible();
   await expect(page.locator('#play')).toBeVisible();
   await expect(page.locator('.header')).toBeVisible();
+});
+
+test('GPS playback naturally finishes its fractional last second without waiting for another API poll', async ({ page }) => {
+  await page.goto('/que');
+  await expect(page.locator('.current-marker')).toBeVisible();
+  const arrival = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'station').t);
+  await seekGPS(page, arrival - 0.3);
+  const focus = page.locator('#cue-countdown-focus');
+  await expect(focus).toBeVisible();
+  await expect(page.locator('#countdown-seconds')).toHaveText('1');
+  await page.locator('#play').click();
+  await expect(focus).toBeHidden({ timeout: 1500 });
+  await page.locator('#play').click();
+  await expect(page.locator('#countdown-seconds')).toHaveText('0');
+  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('0');
+  await page.waitForTimeout(300);
+  await expect(focus).toBeHidden();
 });

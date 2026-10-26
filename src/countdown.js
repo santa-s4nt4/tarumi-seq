@@ -32,18 +32,46 @@ export function createCueCountdown(parent) {
   const seconds = element.querySelector('#countdown-seconds');
   const progress = element.querySelector('.countdown-progress');
   const hand = element.querySelector('.countdown-hand');
-  let previousKey = null;
+  let previousKey = null, finishTimer = null;
+  function renderZero() {
+    seconds.textContent = '0';
+    progress.style.strokeDasharray = '100 100';
+    hand.style.transform = 'rotate(360deg)';
+  }
+  function hide() {
+    if (element.hidden && previousKey === null && finishTimer === null) return;
+    clearTimeout(finishTimer);
+    finishTimer = null;
+    previousKey = null;
+    element.hidden = true;
+    parent.classList.remove('countdown-active');
+    document.body.classList.remove('countdown-mode');
+    renderZero();
+  }
   return {
     update(event) {
       const eta = event?.etaSeconds;
+      const key = event ? `${event.key}:${event.target}` : null;
       const visible = (event?.type === 'station' || event?.type === 'tunnel') && Number.isFinite(eta) && eta > 0 && eta <= 10;
-      if (element.hidden === visible) {
-        element.hidden = !visible;
-        parent.classList.toggle('countdown-active', visible);
-        document.body.classList.toggle('countdown-mode', visible);
+      if (!visible) {
+        if (!element.hidden && key === previousKey && Number.isFinite(eta) && eta <= 0) {
+          if (finishTimer === null) {
+            renderZero();
+            finishTimer = setTimeout(hide, 180);
+          }
+          return;
+        }
+        hide();
+        return;
       }
-      if (!visible) { previousKey = null; return; }
-      const key = `${event.key}:${event.target}`;
+      // A seek back into the last ten seconds cancels a pending completion.
+      clearTimeout(finishTimer);
+      finishTimer = null;
+      if (element.hidden) {
+        element.hidden = false;
+        parent.classList.add('countdown-active');
+        document.body.classList.add('countdown-mode');
+      }
       if (key !== previousKey) {
         target.textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`;
         kind.textContent = event.type === 'station' ? 'NEXT STATION' : event.target === 'exit' ? 'TUNNEL PASSAGE' : 'NEXT TUNNEL';

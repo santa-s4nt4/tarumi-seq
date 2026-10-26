@@ -39,3 +39,21 @@ test('holds every other countdown during station dwell, including fresh API resp
   queue.reset();
   assert.equal(queue.cards(prediction([station('A', 0), station('B', 10)]))[1].etaSeconds, 10);
 });
+
+test('does not freeze a fractional final second before a station has arrived', () => {
+  const queue = new CueQueue();
+  const approach = eta => prediction([station('A', eta), station('B', eta + 30)]);
+  assert.equal(queue.cards(approach(0.49))[0].etaSeconds, 0.49);
+  assert.equal(queue.stopId, null);
+  assert.equal(queue.cards(approach(0.1))[0].etaSeconds, 0.1);
+  assert.equal(queue.stopId, null);
+  assert.deepEqual(queue.cards(approach(0)).map(event => event.etaSeconds), [0, 30]);
+  assert.deepEqual(queue.cards(prediction([station('A', 0), station('B', 25)])).map(event => event.etaSeconds), [0, 30]);
+});
+
+test('an explicit arrival sets its own ETA to zero rather than freezing a positive value', () => {
+  const queue = new CueQueue();
+  const cards = queue.cards(prediction([{ ...station('A', 0.3), arrived: true }, station('B', 30)]));
+  assert.equal(cards[0].etaSeconds, 0);
+  assert.equal(cards[0].arrived, true);
+});

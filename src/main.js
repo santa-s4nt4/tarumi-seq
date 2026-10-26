@@ -933,10 +933,6 @@ $('zoom-out').addEventListener('click', () => map?.zoomOut());
 $('retry-api').addEventListener('click', () => requestPosition(true));
 window.addEventListener('keydown', e => {
   if (!state.ready || document.querySelector('dialog[open]')) return;
-  // Space remains available when countdown focus hides the playback buttons.
-  if (e.code === 'Space' && isQue && document.body.classList.contains('countdown-mode') && !videoMode) {
-    e.preventDefault(); setPlaying(!state.playing); return;
-  }
   if (e.target.closest('input, select, textarea, button, a')) return;
   if (e.code === 'Space') { e.preventDefault(); setPlaying(!state.playing); }
   if (e.code === 'ArrowLeft') { e.preventDefault(); seekTo(state.time - 10); }

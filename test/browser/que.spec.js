@@ -253,7 +253,7 @@ test('tunnel checkpoints lead the queue, reuse one card through passage and prom
   await expect(card.locator('.cue-kind-icon svg')).toHaveCount(1);
   await expect(page.locator('#cue-countdown-focus')).toBeVisible();
   await expect(card).toHaveCount(1);
-  await page.keyboard.press('Space');
+  await page.locator('#play').click();
   await expect(card.locator('h2')).toHaveText(`${entry.name}通過まで`);
   expect(await page.evaluate(() => window.firstTunnelCard === document.querySelector('#cue-list .cue-primary'))).toBe(true);
   await expect(card).toHaveCount(0, { timeout: 12000 });
