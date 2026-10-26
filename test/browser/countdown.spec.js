@@ -35,6 +35,7 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
   await expect(focus).toBeVisible();
   await expect(page.locator('#countdown-target')).toHaveText('木知原駅まで');
   await expect(page.locator('#countdown-seconds')).toHaveText('10');
+  await expect(page.locator('.countdown-schedule')).toContainText('ダイヤ着 07:51:30 *');
   await expect(page.locator('.header')).toBeHidden();
   await expect(page.locator('.cue-overlay')).toBeHidden();
   await expect(page.locator('.map-speed-card')).toBeHidden();
@@ -50,6 +51,7 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
   const clock = await page.locator('.countdown-clock').boundingBox();
   expect(map.y).toBe(0);
   expect(clock.height).toBeGreaterThan(map.height * 0.75);
+  expect(clock.y + clock.height).toBeLessThanOrEqual(map.height + 1);
   await expect.poll(async () => (await page.locator('.mapboxgl-canvas').boundingBox()).height).toBe(map.height);
   await page.locator('#map').click({ position: { x: 10, y: 10 } });
   const initial = await progress.getAttribute('style');

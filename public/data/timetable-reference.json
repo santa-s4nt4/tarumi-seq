@@ -1,0 +1,3324 @@
+{
+  "revision": "2024-04-08",
+  "sourceURL": "https://tarumi-railway.com/pdf/station_timetable/file/3",
+  "title": "樽見鉄道列車時刻表 · 大垣〜樽見",
+  "section": {
+    "firstStation": 1,
+    "lastStation": 19,
+    "label": "大垣 — 樽見"
+  },
+  "trains": [
+    {
+      "id": "1",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "06:30"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "06:32"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "06:37"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "06:40"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "06:44"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "06:47"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "06:49"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "06:52"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "06:56"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "06:59"
+        },
+        {
+          "station": 19,
+          "arrival": "07:03",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "06:21"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "06:25"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "06:29"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "06:31"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "06:34"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "06:39"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "06:42"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "06:44"
+        },
+        {
+          "station": 9,
+          "arrival": "06:48",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "07:06"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "07:13"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "07:16"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "07:18"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "07:21"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "07:26"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "07:29"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "07:31"
+        },
+        {
+          "station": 9,
+          "arrival": "07:35",
+          "departure": "07:45"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "07:47"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "07:52"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "07:55"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "07:59"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "08:02"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "08:04"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "08:08"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "08:11"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "08:14"
+        },
+        {
+          "station": 19,
+          "arrival": "08:19",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "07:32"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "07:39"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "07:43"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "07:45"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "07:48"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "07:55"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "07:58"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "08:00"
+        },
+        {
+          "station": 9,
+          "arrival": "08:04",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "07:58"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "08:05"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "08:09"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "08:11"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "08:14"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "08:19"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "08:22"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "08:24"
+        },
+        {
+          "station": 9,
+          "arrival": "08:28",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "08:22"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "08:26"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "08:30"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "08:32"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "08:35"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "08:44"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "08:47"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "08:49"
+        },
+        {
+          "station": 9,
+          "arrival": "08:53",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "09:11"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "09:15"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "09:18"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "09:20"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "09:23"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "09:29"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "09:32"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "09:34"
+        },
+        {
+          "station": 9,
+          "arrival": "09:37",
+          "departure": "09:40"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "09:43"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "09:48"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "09:50"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "09:55"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "09:57"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "10:00"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "10:03"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "10:07"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "10:10"
+        },
+        {
+          "station": 19,
+          "arrival": "10:14",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "10:08"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "10:12"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "10:15"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "10:17"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "10:20"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "10:26"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "10:29"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "10:31"
+        },
+        {
+          "station": 9,
+          "arrival": "10:35",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "10:41"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "10:45"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "10:48"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "10:50"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "10:53"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "10:59"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "11:02"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "11:04"
+        },
+        {
+          "station": 9,
+          "arrival": "11:07",
+          "departure": "11:16"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "11:18"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "11:23"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "11:26"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "11:30"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "11:33"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "11:35"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "11:38"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "11:42"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "11:45"
+        },
+        {
+          "station": 19,
+          "arrival": "11:49",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "1001",
+      "direction": "front",
+      "operatingDays": "holiday",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "11:24"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "11:31"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "11:34"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "11:36"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "11:39"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "11:44"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "11:47"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "11:49"
+        },
+        {
+          "station": 9,
+          "arrival": "11:54",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "12:11"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "12:15"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "12:18"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "12:20"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "12:23"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "12:29"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "12:32"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "12:34"
+        },
+        {
+          "station": 9,
+          "arrival": "12:37",
+          "departure": "12:46"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "12:49"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "12:54"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "12:56"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "13:01"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "13:03"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "13:06"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "13:09"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "13:13"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "13:16"
+        },
+        {
+          "station": 19,
+          "arrival": "13:20",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "21",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "13:41"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "13:45"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "13:48"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "13:50"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "13:53"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "13:59"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "14:02"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "14:04"
+        },
+        {
+          "station": 9,
+          "arrival": "14:07",
+          "departure": "14:20"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "14:22"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "14:27"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "14:30"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "14:34"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "14:37"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "14:39"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "14:43"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "14:46"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "14:49"
+        },
+        {
+          "station": 19,
+          "arrival": "14:54",
+          "departure": null
+        }
+      ],
+      "transferStation": 9,
+      "note": "本巣駅で乗り換え"
+    },
+    {
+      "id": "23",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "15:11"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "15:15"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "15:18"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "15:20"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "15:23"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "15:29"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "15:32"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "15:34"
+        },
+        {
+          "station": 9,
+          "arrival": "15:37",
+          "departure": "15:43"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "15:45"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "15:50"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "15:53"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "15:57"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "16:00"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "16:02"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "16:05"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "16:09"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "16:12"
+        },
+        {
+          "station": 19,
+          "arrival": "16:16",
+          "departure": null
+        }
+      ],
+      "transferStation": 9,
+      "note": "本巣駅で乗り換え"
+    },
+    {
+      "id": "25",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "16:38"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "16:42"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "16:45"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "16:47"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "16:50"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "16:56"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "16:59"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "17:01"
+        },
+        {
+          "station": 9,
+          "arrival": "17:04",
+          "departure": "17:08"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "17:10"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "17:15"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "17:18"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "17:22"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "17:25"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "17:27"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "17:31"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "17:34"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "17:37"
+        },
+        {
+          "station": 19,
+          "arrival": "17:42",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "27",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "17:21"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "17:28"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "17:31"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "17:33"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "17:36"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "17:41"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "17:44"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "17:46"
+        },
+        {
+          "station": 9,
+          "arrival": "17:51",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "29",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "17:48"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "17:53"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "17:56"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "17:58"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "18:01"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "18:08"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "18:11"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "18:13"
+        },
+        {
+          "station": 9,
+          "arrival": "18:17",
+          "departure": "18:27"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "18:29"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "18:34"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "18:37"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "18:41"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "18:44"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "18:46"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "18:50"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "18:53"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "18:56"
+        },
+        {
+          "station": 19,
+          "arrival": "19:01",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "31",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "18:49"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "18:56"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "18:59"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "19:01"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "19:04"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "19:09"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "19:12"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "19:14"
+        },
+        {
+          "station": 9,
+          "arrival": "19:19",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "33",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "19:17"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "19:22"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "19:25"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "19:27"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "19:30"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "19:37"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "19:40"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "19:42"
+        },
+        {
+          "station": 9,
+          "arrival": "19:46",
+          "departure": "19:49"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "19:51"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "19:56"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "19:59"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "20:03"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "20:06"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "20:08"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "20:12"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "20:15"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "20:18"
+        },
+        {
+          "station": 19,
+          "arrival": "20:23",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "35",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "20:14"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "20:19"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "20:22"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "20:24"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "20:27"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "20:32"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "20:35"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "20:37"
+        },
+        {
+          "station": 9,
+          "arrival": "20:41",
+          "departure": "20:53"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "20:55"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "21:00"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "21:03"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "21:07"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "21:10"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "21:12"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "21:15"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "21:19"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "21:22"
+        },
+        {
+          "station": 19,
+          "arrival": "21:26",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "37",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "21:01"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "21:06"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "21:09"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "21:11"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "21:14"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "21:19"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "21:22"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "21:24"
+        },
+        {
+          "station": 9,
+          "arrival": "21:29",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "39",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "22:19"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "22:23"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "22:26"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "22:28"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "22:31"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "22:37"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "22:40"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "22:42"
+        },
+        {
+          "station": 9,
+          "arrival": "22:46",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "41",
+      "direction": "front",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 1,
+          "arrival": null,
+          "departure": "23:01"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "23:06"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "23:09"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "23:11"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "23:14"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "23:19"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "23:22"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "23:24"
+        },
+        {
+          "station": 9,
+          "arrival": "23:29",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "05:37"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "05:41"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "05:43"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "05:46"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "05:51"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "05:54"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "05:56"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "06:00"
+        },
+        {
+          "station": 1,
+          "arrival": "06:05",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "05:55"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "05:58"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "06:01"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "06:05"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "06:08"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "06:10"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "06:13"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "06:17"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "06:19"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "06:24"
+        },
+        {
+          "station": 9,
+          "arrival": "06:26",
+          "departure": "06:27"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "06:31"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "06:33"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "06:38"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "06:43"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "06:46"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "06:48"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "06:52"
+        },
+        {
+          "station": 1,
+          "arrival": "06:57",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "06:49"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "06:53"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "06:55"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "06:59"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "07:04"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "07:07"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "07:09"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "07:13"
+        },
+        {
+          "station": 1,
+          "arrival": "07:18",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "07:14"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "07:18"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "07:20"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "07:26"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "07:30"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "07:34"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "07:36"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "07:40"
+        },
+        {
+          "station": 1,
+          "arrival": "07:45",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "07:09"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "07:12"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "07:15"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "07:19"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "07:22"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "07:24"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "07:27"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "07:31"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "07:33"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "07:38"
+        },
+        {
+          "station": 9,
+          "arrival": "07:40",
+          "departure": "07:41"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "07:45"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "07:47"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "07:52"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "07:57"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "08:00"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "08:02"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "08:06"
+        },
+        {
+          "station": 1,
+          "arrival": "08:11",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "08:33"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "08:37"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "08:39"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "08:42"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "08:47"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "08:50"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "08:52"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "08:56"
+        },
+        {
+          "station": 1,
+          "arrival": "09:01",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "08:43"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "08:47"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "08:50"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "08:53"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "08:56"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "08:59"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "09:02"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "09:05"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "09:08"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "09:13"
+        },
+        {
+          "station": 9,
+          "arrival": "09:15",
+          "departure": "09:17"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "09:21"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "09:22"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "09:28"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "09:33"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "09:36"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "09:38"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "09:41"
+        },
+        {
+          "station": 1,
+          "arrival": "09:47",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "09:47"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "09:51"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "09:53"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "09:57"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "10:01"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "10:04"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "10:06"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "10:12"
+        },
+        {
+          "station": 1,
+          "arrival": "10:18",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "1002",
+      "direction": "back",
+      "operatingDays": "holiday",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "10:47"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "10:51"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "10:52"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "10:58"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "11:03"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "11:06"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "11:08"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "11:11"
+        },
+        {
+          "station": 1,
+          "arrival": "11:17",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "10:33"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "10:36"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "10:39"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "10:43"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "10:46"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "10:48"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "10:51"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "10:55"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "10:57"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "11:02"
+        },
+        {
+          "station": 9,
+          "arrival": "11:04",
+          "departure": "11:08"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "11:12"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "11:14"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "11:18"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "11:22"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "11:25"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "11:27"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "11:31"
+        },
+        {
+          "station": 1,
+          "arrival": "11:36",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "12:03"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "12:07"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "12:10"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "12:13"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "12:16"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "12:19"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "12:22"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "12:25"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "12:28"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "12:33"
+        },
+        {
+          "station": 9,
+          "arrival": "12:35",
+          "departure": "12:38"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "12:42"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "12:44"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "12:48"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "12:52"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "12:55"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "12:57"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "13:01"
+        },
+        {
+          "station": 1,
+          "arrival": "13:06",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "22",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "13:32"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "13:36"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "13:39"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "13:42"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "13:45"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "13:48"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "13:51"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "13:54"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "13:57"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "14:02"
+        },
+        {
+          "station": 9,
+          "arrival": "14:04",
+          "departure": "14:08"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "14:12"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "14:14"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "14:18"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "14:22"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "14:25"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "14:27"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "14:31"
+        },
+        {
+          "station": 1,
+          "arrival": "14:36",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "24",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "15:03"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "15:07"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "15:10"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "15:13"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "15:16"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "15:19"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "15:22"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "15:25"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "15:28"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "15:33"
+        },
+        {
+          "station": 9,
+          "arrival": "15:35",
+          "departure": "15:38"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "15:42"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "15:44"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "15:48"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "15:52"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "15:55"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "15:57"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "16:01"
+        },
+        {
+          "station": 1,
+          "arrival": "16:06",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "26",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "16:44"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "16:48"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "16:49"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "16:55"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "17:00"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "17:03"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "17:05"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "17:08"
+        },
+        {
+          "station": 1,
+          "arrival": "17:14",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "28",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "16:28"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "16:32"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "16:35"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "16:38"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "16:41"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "16:44"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "16:47"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "16:50"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "16:53"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "16:58"
+        },
+        {
+          "station": 9,
+          "arrival": "17:00",
+          "departure": "17:05"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "17:09"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "17:11"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "17:15"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "17:19"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "17:22"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "17:24"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "17:28"
+        },
+        {
+          "station": 1,
+          "arrival": "17:33",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "30",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "17:59"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "18:03"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "18:05"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "18:09"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "18:13"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "18:16"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "18:18"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "18:22"
+        },
+        {
+          "station": 1,
+          "arrival": "18:27",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "32",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "17:53"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "17:56"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "17:59"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "18:03"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "18:06"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "18:08"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "18:12"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "18:15"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "18:17"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "18:22"
+        },
+        {
+          "station": 9,
+          "arrival": "18:24",
+          "departure": "18:33"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "18:37"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "18:39"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "18:43"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "18:47"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "18:50"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "18:52"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "18:56"
+        },
+        {
+          "station": 1,
+          "arrival": "19:01",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "34",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "19:28"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "19:32"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "19:34"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "19:38"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "19:42"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "19:45"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "19:47"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "19:51"
+        },
+        {
+          "station": 1,
+          "arrival": "19:56",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "1036",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "19:12"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "19:15"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "19:18"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "19:22"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "19:25"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "19:27"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "19:31"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "19:34"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "19:36"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "19:41"
+        },
+        {
+          "station": 9,
+          "arrival": "19:44",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "36",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "20:21"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "20:24"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "20:26"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "20:32"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "20:36"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "20:39"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "20:41"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "20:45"
+        },
+        {
+          "station": 1,
+          "arrival": "20:51",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "40",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 9,
+          "arrival": null,
+          "departure": "21:44"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "21:48"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "21:50"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "21:53"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "21:58"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "22:01"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "22:03"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "22:07"
+        },
+        {
+          "station": 1,
+          "arrival": "22:12",
+          "departure": null
+        }
+      ]
+    },
+    {
+      "id": "42",
+      "direction": "back",
+      "operatingDays": "daily",
+      "stops": [
+        {
+          "station": 19,
+          "arrival": null,
+          "departure": "21:47"
+        },
+        {
+          "station": 18,
+          "arrival": null,
+          "departure": "21:50"
+        },
+        {
+          "station": 17,
+          "arrival": null,
+          "departure": "21:53"
+        },
+        {
+          "station": 16,
+          "arrival": null,
+          "departure": "21:57"
+        },
+        {
+          "station": 15,
+          "arrival": null,
+          "departure": "22:00"
+        },
+        {
+          "station": 14,
+          "arrival": null,
+          "departure": "22:02"
+        },
+        {
+          "station": 13,
+          "arrival": null,
+          "departure": "22:05"
+        },
+        {
+          "station": 12,
+          "arrival": null,
+          "departure": "22:09"
+        },
+        {
+          "station": 11,
+          "arrival": null,
+          "departure": "22:11"
+        },
+        {
+          "station": 10,
+          "arrival": null,
+          "departure": "22:16"
+        },
+        {
+          "station": 9,
+          "arrival": "22:18",
+          "departure": "22:24"
+        },
+        {
+          "station": 8,
+          "arrival": null,
+          "departure": "22:28"
+        },
+        {
+          "station": 7,
+          "arrival": null,
+          "departure": "22:30"
+        },
+        {
+          "station": 6,
+          "arrival": null,
+          "departure": "22:36"
+        },
+        {
+          "station": 5,
+          "arrival": null,
+          "departure": "22:41"
+        },
+        {
+          "station": 4,
+          "arrival": null,
+          "departure": "22:44"
+        },
+        {
+          "station": 3,
+          "arrival": null,
+          "departure": "22:46"
+        },
+        {
+          "station": 2,
+          "arrival": null,
+          "departure": "22:49"
+        },
+        {
+          "station": 1,
+          "arrival": "22:55",
+          "departure": null
+        }
+      ]
+    }
+  ]
+}

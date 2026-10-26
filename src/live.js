@@ -7,6 +7,7 @@ import { LiveSession } from './live-session.js';
 import { createLiveMap } from './live-map.js';
 import { createCueCountdown } from './countdown.js';
 import { setupMobileCues } from './mobile-cues.js';
+import { timetableReferenceControls } from './timetable-reference-ui.js';
 
 const base = import.meta.env.BASE_URL;
 document.title = 'LIVE GPS | 樽見OTO鉄道';
@@ -40,7 +41,7 @@ const viewButtons = ['live-front', 'live-back', 'live-follow', 'live-bird', 'liv
 for (const id of viewButtons) $(id).disabled = true;
 const countdown = createCueCountdown(document.querySelector('.map-panel'));
 setupMobileCues($('mobile-cue-toggle'));
-let model, liveMap, loaded = false, status = 'idle', previousTheme = 'light', lastMapUpdate = -Infinity;
+let model, liveMap, timetableReference, loaded = false, status = 'idle', previousTheme = 'light', lastMapUpdate = -Infinity;
 const cards = new Map();
 const messages = {
   idle: ['GPS取得を開始できます', 'スマホのGPSで、合図を出す。', '方面を選び、GPS取得を開始してください。現在地と速度をこの端末内で線路に照合します。位置情報の許可が必要です。'],
@@ -78,6 +79,7 @@ function renderCards(events) {
     text(card.querySelector('h2'), event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`);
     text(card.querySelector('strong'), Number.isFinite(event.etaSeconds) ? String(Math.ceil(event.etaSeconds)) : '—');
     text(card.querySelector('.live-cue-distance'), event.arrived ? '駅付近 · 停車中' : `${distance(event.distanceMeters)} · 到着の目安`);
+    timetableReference?.renderCard(card, event);
     return card;
   });
   const current = [...$('cue-list').children];
@@ -97,6 +99,7 @@ const session = new LiveSession({
 
 function render() {
   if (!loaded) return;
+  timetableReference?.update();
   const snapshot = session.active ? model.snapshot() : { status, prediction: null, measurement: model.measurement };
   const prediction = snapshot.prediction;
   const state = prediction ? 'tracking' : snapshot.status;
@@ -104,6 +107,7 @@ function render() {
   const event = prediction?.upcoming[0];
   renderCards(prediction?.upcoming ?? []);
   countdown.update(event);
+  timetableReference?.renderFocus(event);
   text($('live-status'), prediction ? prediction.position.speedMetersPerSecond === null ? 'GPS受信中 · 速度を計測しています' : 'GPS受信中' : info[0]);
   text($('live-badge'), session.active ? 'GPS 取得中' : 'GPS 停止中');
   $('live-badge').dataset.active = String(session.active);
@@ -150,6 +154,11 @@ try {
   const load = async path => { const response = await fetch(`${base}data/${path}`, { signal: AbortSignal.timeout(15000) }); if (!response.ok) throw new Error('路線データの読み込みに失敗しました'); return response.json(); };
   const [railway, catalog, reference] = await Promise.all(['railway-route.json', 'stations.json', 'map-data.json'].map(load));
   model = new LivePrediction(railway, catalog.stations);
+  // The optional timetable must not prevent GPS operation if it cannot load.
+  load('timetable-reference.json').then(timetable => {
+    timetableReference = timetableReferenceControls({ timetable, railway, stations: catalog.stations, host: document.querySelector('.live-footer'), getClock: () => Date.now(), getDirection: () => model.direction, onChange: render });
+    render();
+  }).catch(() => { const note = document.createElement('p'); note.className = 'timetable-reference'; note.textContent = 'ダイヤ参照を読み込めません。再読み込みしてください。'; document.querySelector('.live-footer').prepend(note); });
   liveMap = createLiveMap({ profile: model.profile, river: reference.front.river, stations: model.stations,
     onError(message) { text($('live-map-error'), message); $('live-map-error').hidden = false; } });
   loaded = true;

@@ -14,6 +14,7 @@ import { setupMobileCues } from './mobile-cues.js';
 import { fadeMapTheme } from './theme.js';
 import { buildSimulation, simulationPrediction, serviceTime } from './simulation.js';
 import { simulationControls } from './simulation-controls.js';
+import { timetableReferenceControls } from './timetable-reference-ui.js';
 import { createRailProfile, elevatedLineFeature, railLineZOffset } from './rail-elevation.js';
 
 
@@ -117,7 +118,7 @@ if (isQue) {
 const cueQueue = new CueQueue(), cueCards = new Map();
 const cameraTerrainHeights = new Map();
 let cameraBearing = null, lastCameraFrame = null, lastRequestedCamera = null, nextOcclusionCheck = 0, currentObscured = null, lastHiddenLocation = null, normalSightline = null, clearThreshold = -6, visibilitySettlesAt = 0;
-let recordings, mapData, routes, rivers, stations, stationCatalog, timetable, railway, railProfile, railStartS, railEndS, simulation = null, timetableControls, map, mapReady = false, marker, stationMarkers = [], tunnelMarkers = [], seekTimer, lastApiSecond = -1, lastFrame = performance.now(), lastDraw = -Infinity;
+let recordings, mapData, routes, rivers, stations, stationCatalog, timetable, railway, railProfile, railStartS, railEndS, simulation = null, timetableControls, timetableReference, map, mapReady = false, marker, stationMarkers = [], tunnelMarkers = [], seekTimer, lastApiSecond = -1, lastFrame = performance.now(), lastDraw = -Infinity;
 const number = value => Number.isFinite(value) ? Math.round(value).toLocaleString('ja-JP') : '—';
 const rec = () => simulation?.recording ?? recordings[state.direction];
 const data = () => simulation?.data ?? mapData[state.direction];
@@ -203,7 +204,10 @@ let lastCueSignature;
 function renderCues(r) {
   if (!isQue) return;
   const events = cueQueue.cards(r);
+  timetableReference?.update();
+  for (const event of events) { const card = cueCards.get(event.key); if (card) timetableReference?.renderCard(card, event); }
   countdown.update(events[0]);
+  timetableReference?.renderFocus(events[0]);
   const signature = JSON.stringify([events.map(e => [e.key, e.name, e.type, e.target, number(Math.ceil(e.etaSeconds))]), cueQueue.stopId, Boolean(r?.position.inTunnel), $('api-button').dataset.status]);
   if (signature === lastCueSignature) return;
   lastCueSignature = signature;
@@ -224,6 +228,7 @@ function renderCues(r) {
     card.querySelector('.cue-category').textContent = event.type === 'station' ? 'STATION' : 'TUNNEL';
     card.querySelector('h2').textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`;
     card.querySelector('strong').textContent = number(Math.ceil(event.etaSeconds));
+    timetableReference?.renderCard(card, event);
     if (card.querySelector('.cue-kind-icon').dataset.type !== event.type) {
       const icon = card.querySelector('.cue-kind-icon');
       icon.dataset.type = event.type;
@@ -632,7 +637,7 @@ function updateQueCameraPadding() {
   // Keep the train in the visible map area above the mobile cue panel.
   const height = document.querySelector('.map-panel').clientHeight;
   const mobile = matchMedia('(max-width: 600px)').matches && (!document.body.classList.contains('countdown-mode') || videoMode);
-  const top = mobile ? Math.min(174, height * 0.36) : 0;
+  const top = mobile ? Math.min(document.body.classList.contains('has-timetable-reference') ? 100 : 174, height * 0.36) : 0;
   const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 36, height - top - 60)) : 0;
   const padding = map.getPadding();
   if (Math.abs(padding.top - top) > 0.5 || Math.abs(padding.bottom - bottom) > 0.5) {
@@ -896,6 +901,7 @@ function startSimulation(selection) {
   prepareRailRecording(next.recording);
   setPlaying(false); clearTimeout(seekTimer); seekTimer = null; api.reset();
   simulation = next; state.direction = next.train.direction; state.time = next.start;
+  timetableReference?.syncTrain(next.train.id, selection.day);
   state.response = null; state.responseT = null; stations = stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation);
   simulationMode(); setPlaying(true);
 }
@@ -904,6 +910,7 @@ function restoreRecording() {
   setPlaying(false); clearTimeout(seekTimer); seekTimer = null; api.reset();
   simulation = null; stations = stationCatalog.filter(station => station.order >= 9);
   state.time = range()[0]; state.response = null; state.responseT = null;
+  timetableReference?.syncDate();
   simulationMode(); requestPosition(true);
 }
 
@@ -972,6 +979,12 @@ try {
     railProfile = createRailProfile(railway);
     for (const recording of Object.values(recordings)) prepareRailRecording(recording);
     timetableControls = simulationControls({ timetable, stations: stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation), getDirection: () => state.direction, onStart: startSimulation, onRestore: restoreRecording });
+    loadJSON('/data/timetable-reference.json').then(referenceData => {
+      timetableReference = timetableReferenceControls({ timetable: referenceData, railway, stations: stationCatalog, host: document.querySelector('.playback-panel'),
+        getClock: () => Date.parse(recordedAt(rec(), state.time)), getDirection: () => state.direction, onChange: renderReadout });
+      if (simulation) timetableReference.syncTrain(simulation.train.id, simulation.selection.day);
+      renderReadout();
+    }).catch(() => { const note = document.createElement('p'); note.className = 'timetable-reference'; note.textContent = 'ダイヤ参照を読み込めません。再読み込みしてください。'; document.querySelector('.playback-panel').prepend(note); });
   }
   state.ready = true; state.time = range()[0];
   buildTimeline(); buildProfile(); renderReadout(); renderPosition(); initMap();

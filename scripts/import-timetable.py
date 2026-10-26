@@ -1,4 +1,4 @@
-"""Extract the Motosu–Tarumi section of the supplied 2024-04-08 timetable.
+"""Extract the Motosu–Tarumi simulation and full-line reference timetables.
 Usage: python3 scripts/import-timetable.py /path/to/source.pdf (requires pdfplumber).
 The row/column layout is deliberately tied to this published revision.
 """
@@ -23,6 +23,7 @@ def time_at(top, x):
     return matches[0].zfill(5) if matches else None
 
 trains = []
+reference_trains = []
 for direction, header_top, station_min, station_max, motosu_arrival, motosu_departure in [
     ('front', 87.3, 102, 410, 229.1, 244.9),
     ('back', 452.8, 467, 770, 626.1, 641.8),
@@ -43,7 +44,15 @@ for direction, header_top, station_min, station_max, motosu_arrival, motosu_depa
                 arrival, departure = departure, None
             if arrival or departure:
                 stops.append({'station': station, 'arrival': arrival, 'departure': departure})
-        stops = [stop for stop in stops if 9 <= stop['station'] <= 19]
+        full_train = {'id': train_id, 'direction': direction, 'operatingDays': 'holiday' if train_id in ['1001', '1002'] else 'daily', 'stops': stops}
+        if train_id in ['21', '23']:
+            full_train['transferStation'] = 9
+            full_train['note'] = '本巣駅で乗り換え'
+        assert len(stops) >= 2, train_id
+        full_times = [int(value[:2]) * 60 + int(value[3:]) for stop in stops for value in [stop['arrival'], stop['departure']] if value]
+        assert full_times == sorted(full_times), (train_id, full_times)
+        reference_trains.append(full_train)
+        stops = [dict(stop) for stop in stops if 9 <= stop['station'] <= 19]
         if len(stops) < 2:
             continue
         # Motosu is the end of the simulated section for up trains, even when
@@ -63,3 +72,7 @@ output = {'revision': '2024-04-08', 'sourceURL': 'https://tarumi-railway.com/pdf
           'section': {'firstStation': 9, 'lastStation': 19, 'label': '本巣 — 樽見'}, 'trains': trains}
 (root / 'public/data/timetable.json').write_text(json.dumps(output, ensure_ascii=False, indent=2) + '\n')
 print(f'Imported {len(trains)} trains / {sum(len(train["stops"]) for train in trains)} station calls')
+reference_output = {**output, 'title': '樽見鉄道列車時刻表 · 大垣〜樽見',
+                    'section': {'firstStation': 1, 'lastStation': 19, 'label': '大垣 — 樽見'}, 'trains': reference_trains}
+(root / 'public/data/timetable-reference.json').write_text(json.dumps(reference_output, ensure_ascii=False, indent=2) + '\n')
+print(f'Imported {len(reference_trains)} full-line reference trains / {sum(len(train["stops"]) for train in reference_trains)} station calls')
