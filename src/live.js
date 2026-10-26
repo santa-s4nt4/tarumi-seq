@@ -16,18 +16,16 @@ document.documentElement.dataset.theme = 'light';
 document.body.innerHTML = `
   <header class="header">
     <a class="brand" href="${base}" aria-label="樽見OTO鉄道"><span class="brand-logo" role="img" aria-label="樽見OTO鉄道"></span></a>
-    <div class="header-center"><span class="que-title">LIVE</span><span class="que-subtitle">現在地で合図を出す</span></div>
+    <div class="header-center"><span class="que-title">LIVE</span></div>
     <div class="header-actions"><nav class="view-navigation" aria-label="画面の切り替え"><a href="${base}console/">CONSOLE</a><a href="${base}que/">QUE</a><a href="${base}live/" aria-current="page">LIVE</a></nav><span class="live-badge" id="live-badge">GPS 停止中</span></div>
   </header>
   <main class="workspace"><section class="map-panel" aria-label="リアルタイムGPSマップ">
     <div id="map"></div>
-    <div class="map-heading"><span class="eyebrow">TARUMI SOUND RAILWAY</span><h1 id="live-route">大垣 — 樽見</h1><p>現在地と実測速度に合わせた合図</p><span class="que-route-caption">LIVE GPS / ON THE LINE</span></div>
     <div class="que-view-modes" role="group" aria-label="地図の視点"><span class="que-mode-label">視点</span><button id="live-follow" aria-pressed="true">追従</button><button id="live-bird" aria-pressed="false">鳥瞰</button><button id="live-overview" aria-pressed="false">全体</button></div>
-    <aside class="cue-overlay" aria-label="次のキュー"><div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">LIVE GPS</span><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">GPSの開始を待っています</p></div></aside>
-    <article class="cue-card cue-primary map-speed-card" aria-label="現在の走行速度"><h2>走行速度 <span id="live-speed-source">端末GPS</span></h2><p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p><span class="speed-caption">LIVE SPEED</span></article>
-    <div class="map-legend"><span><b class="legend-line"></b>線路</span><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-position"></b>現在地</span><span><b class="legend-line tunnel-line"></b>トンネル</span></div>
-    <div id="map-tunnel-banner" role="status" hidden></div>
-    <div class="live-notice" id="live-notice"><span class="eyebrow">REALTIME GPS</span><h2 id="live-notice-title">スマホのGPSで、合図を出す。</h2><p id="live-notice-message">方面を選び、GPS取得を開始してください。現在地と速度をこの端末内で線路に照合します。位置情報の許可が必要です。</p><button id="live-start-here" class="primary-button" disabled>GPS取得を開始</button></div>
+    <aside class="cue-overlay" aria-label="次のキュー"><div class="cue-heading"><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">GPSの開始を待っています</p></div></aside>
+    <article class="cue-card cue-primary map-speed-card" aria-label="現在の走行速度"><p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p></article>
+    <div class="map-legend"><span><b class="legend-line river-line"></b>根尾川</span><span><b class="legend-line bridge-line"></b>鉄橋</span><span><b class="legend-line tunnel-line"></b>トンネル</span></div>
+    <div class="live-notice-backdrop" id="live-notice-backdrop"><div class="live-notice" id="live-notice" role="dialog" aria-modal="true" aria-labelledby="live-notice-title"><span class="eyebrow">REALTIME GPS</span><h2 id="live-notice-title">スマホのGPSで、合図を出す。</h2><p id="live-notice-message">方面を選び、GPS取得を開始してください。現在地と速度をこの端末内で線路に照合します。位置情報の許可が必要です。</p><button id="live-start-here" class="primary-button" disabled>GPS取得を開始</button></div></div>
     <p class="live-map-error" id="live-map-error" role="status" hidden></p>
   </section></main>
   <footer class="playback-panel live-footer" aria-label="リアルタイムGPSの操作">
@@ -114,15 +112,12 @@ function render() {
   text($('live-quality'), Number.isFinite(snapshot.measurement?.accuracy) ? `精度 ±${Math.round(snapshot.measurement.accuracy)}m` : '精度 —');
   text($('live-age'), snapshot.measurement ? `更新 ${Math.max(0, Math.floor((Date.now() - snapshot.measurement.timestamp) / 1000))}秒前` : '更新 —');
   text($('map-train-speed'), Number.isFinite(prediction?.position.speedKmh) ? prediction.position.speedKmh.toFixed(1) : '—');
-  text($('live-speed-source'), prediction?.position.speedSource === 'position-difference' ? '位置差分の推定' : '端末GPS');
   text($('cue-status'), prediction ? prediction.position.speedMetersPerSecond === null ? '速度を取得すると秒数を表示します' : prediction.position.speedMetersPerSecond < 0.8 ? '停車・低速中は時間の予測を止めます' : '現在地と実測速度による目安です' : info[0]);
-  $('live-notice').hidden = Boolean(prediction);
+  $('live-notice-backdrop').hidden = Boolean(prediction);
   text($('live-notice-title'), info[1]); text($('live-notice-message'), info[2]);
   $('live-start-here').hidden = session.active;
   $('live-start').disabled = session.active; $('live-start-here').disabled = session.active;
   $('live-stop').disabled = !session.active;
-  $('map-tunnel-banner').hidden = !prediction?.position.inTunnel;
-  if (prediction?.position.inTunnel) text($('map-tunnel-banner'), `${prediction.next.tunnel?.name ?? 'トンネル'}内を走行中`);
   if (prediction) {
     const theme = prediction.position.inTunnel ? 'dark' : 'light';
     if (theme !== previousTheme) {
@@ -140,7 +135,6 @@ for (const direction of ['front', 'back']) $(`live-${direction}`).addEventListen
   if (!loaded) return;
   model.setDirection(direction); status = session.active ? 'waiting' : 'idle';
   for (const value of ['front', 'back']) { $(`live-${value}`).classList.toggle('selected', value === direction); $(`live-${value}`).setAttribute('aria-pressed', String(value === direction)); }
-  text($('live-route'), direction === 'front' ? '大垣 — 樽見' : '樽見 — 大垣');
   lastMapUpdate = -Infinity; render();
 });
 for (const mode of ['follow', 'bird', 'overview']) $(`live-${mode}`).addEventListener('click', () => {

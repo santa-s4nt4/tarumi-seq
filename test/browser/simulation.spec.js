@@ -91,7 +91,6 @@ test('starts from a middle station, keeps tunnel cues on the timetable and opens
   await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('谷汲口駅まで');
   await seek(page,'10:08');
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
-  await expect(page.locator('#map-tunnel-banner')).toHaveText('トンネル7内を走行中');
   await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('トンネル7通過まで');
   await page.screenshot({path:'test-results/simulation-tunnel.png'});
   await page.locator('#back-button').click();

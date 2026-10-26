@@ -26,9 +26,6 @@
   #reference-dialog .dialog-actions { flex-wrap: nowrap; margin-top: 10px; }
   #reference-dialog .dialog-actions button { flex: 1; font-size: 14px; padding: 9px 6px; min-height: 44px; }
   #reference-dialog .reference-stops { font-size: 14px; }
-  .que-view.has-timetable-reference .map-speed-card { padding: 8px 12px; }
-  .que-view.has-timetable-reference .map-speed-card h2 { font-size: 14px; margin-bottom: 0; }
-  .que-view.has-timetable-reference .map-speed-card h2 span { display: none; }
   .que-view.has-timetable-reference .map-speed-card strong { font-size: 36px; }
   .que-view.has-timetable-reference .map-speed-card .speed-unit { font-size: 14px; }
   .que-view.has-timetable-reference .cue-overlay { max-height: calc(100% - 220px); }

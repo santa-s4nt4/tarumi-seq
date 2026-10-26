@@ -1,7 +1,7 @@
 /* The last ten seconds take over the map; all playback controls stay available. */
 .que-view.countdown-mode:not(.video-view) { grid-template-rows: minmax(0, 1fr) auto; }
 .que-view.countdown-mode:not(.video-view) .header { display: none; }
-.que-view.countdown-mode:not(.video-view) :is(.cue-overlay, .map-heading, .map-tools, .map-legend, .position-card, .map-speed-card, .que-view-modes, #map-tunnel-banner, .map-error) { visibility: hidden; pointer-events: none; }
+.que-view.countdown-mode:not(.video-view) :is(.cue-overlay, .map-heading, .map-tools, .map-legend, .position-card, .map-speed-card, .que-view-modes, .que-zoom-control, .map-error) { visibility: hidden; pointer-events: none; }
 
 .countdown-focus {
   position: absolute;

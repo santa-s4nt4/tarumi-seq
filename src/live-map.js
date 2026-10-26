@@ -77,7 +77,7 @@ export function createLiveMap({ profile, river, stations, onError }) {
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.3 }).setLngLat([136.65, 35.56]).addTo(map);
       for (const station of stations) {
         const element = document.createElement('div'); element.className = 'station-marker';
-        element.innerHTML = '<span class="station-tick">駅</span><span class="station-marker-name"></span>';
+        element.innerHTML = '<span class="station-tick"></span><span class="station-marker-name"></span>';
         element.querySelector('.station-marker-name').textContent = station.name;
         stationMarkers.push({ ...station, marker: new mapboxgl.Marker({ element, anchor: 'left', offset: [-14, 0], occludedOpacity: 0.3 }).setLngLat(profile.coordinateAt(station.s)).addTo(map) });
       }

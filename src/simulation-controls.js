@@ -5,7 +5,7 @@ export function simulationControls({ timetable, stations, getDirection, onStart,
   button.id = 'simulation-button'; button.className = 'secondary-button';
   button.innerHTML = '<span class="simulation-button-long">ダイヤで再生</span><span class="simulation-button-short">ダイヤ</span>';
   button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-controls', 'simulation-dialog');
-  document.getElementById('que-zoom-button').before(button);
+  document.getElementById('settings-button').before(button);
   const dialog = document.createElement('dialog'); dialog.id = 'simulation-dialog'; dialog.setAttribute('aria-labelledby', 'simulation-title');
   dialog.innerHTML = `<form id="simulation-form"><div class="dialog-header"><div><span class="eyebrow">TIMETABLE SIMULATION</span><h2 id="simulation-title">ダイヤで再生</h2></div><button type="button" class="icon-button" id="simulation-close" aria-label="閉じる">×</button></div>
     <p class="field-note">本巣〜樽見の区間を再生します。</p>
