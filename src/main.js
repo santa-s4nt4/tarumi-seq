@@ -55,8 +55,22 @@ if (isQue) {
   const overlay = document.createElement('aside');
   overlay.className = 'cue-overlay';
   overlay.setAttribute('aria-label', '次のキュー');
-  overlay.innerHTML = '<div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">GPS 記録再生</span></div><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button>';
+  overlay.innerHTML = '<div class="cue-heading"><h2>次の合図<span lang="en">UP NEXT</span></h2><span class="cue-source">GPS 記録再生</span><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button></div>';
   document.querySelector('.map-panel').append(overlay);
+  let mobileCuesVisible = true;
+  try { mobileCuesVisible = localStorage.getItem('tarumi-que-mobile-cues') !== 'hidden'; } catch { /* Preferences are optional. */ }
+  const renderMobileCues = () => {
+    document.body.classList.toggle('mobile-cues-hidden', !mobileCuesVisible);
+    $('mobile-cue-toggle').setAttribute('aria-expanded', String(mobileCuesVisible));
+    $('mobile-cue-toggle').setAttribute('aria-label', `次の合図を${mobileCuesVisible ? '非表示' : '表示'}`);
+    $('mobile-cue-toggle').textContent = mobileCuesVisible ? '非表示' : '表示';
+  };
+  renderMobileCues();
+  $('mobile-cue-toggle').addEventListener('click', () => {
+    mobileCuesVisible = !mobileCuesVisible;
+    renderMobileCues();
+    try { localStorage.setItem('tarumi-que-mobile-cues', mobileCuesVisible ? 'visible' : 'hidden'); } catch { /* Preferences are optional. */ }
+  });
   const speedCard = document.createElement('article');
   speedCard.className = 'cue-card cue-primary map-speed-card';
   speedCard.setAttribute('aria-label', '走行速度');
