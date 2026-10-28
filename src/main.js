@@ -1,6 +1,6 @@
 import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { createIcons, TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X } from 'lucide';
+import { createIcons, TrainFront, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X } from 'lucide';
 import './style.css';
 import './que.css';
 import { clamp, sampleAt, recordedAt, timeLabel, advanceTime, stationEvent } from './timeline.js';
@@ -14,40 +14,43 @@ import { setupMobileCues } from './mobile-cues.js';
 import { fadeMapTheme } from './theme.js';
 import { buildSimulation, simulationPrediction, serviceTime } from './simulation.js';
 import { simulationControls } from './simulation-controls.js';
-import { timetableReferenceControls } from './timetable-reference-ui.js';
+import { timetableReferenceDisplay } from './timetable-reference-ui.js';
+import { japanDate } from './timetable-reference.js';
 import { createRailProfile, elevatedLineFeature, railLineZOffset } from './rail-elevation.js';
+import { setupAppMenu } from './app-menu.js';
 
 
 const baseURL = import.meta.env.BASE_URL;
 const pagePath = location.pathname.startsWith(baseURL) ? location.pathname.slice(baseURL.length) : location.pathname;
 const isQue = /^que(?:\/(?:index\.html)?)?$/.test(pagePath);
 const queZoomBounds = { min: 14, max: 20, step: 0.5 };
-let queFollowZoom = 19, queBirdZoom = 19, videoMode = false, renderedZoomView = null;
+let queFollowZoom = 19, queBirdZoom = 19, videoMode = false, renderedZoomView = null, queZoomInteractionView = null;
 try {
   const saved = JSON.parse(localStorage.getItem('tarumi-que-zoom'));
   if (saved?.version === 2 && Number.isFinite(saved.normal) && Number.isFinite(saved.bird)) {
     queFollowZoom = clamp(Math.round(saved.normal * 2) / 2, queZoomBounds.min, queZoomBounds.max);
-    queBirdZoom = clamp(Math.round(saved.bird * 2) / 2, queFollowZoom, queZoomBounds.max);
+    queBirdZoom = clamp(Math.round(saved.bird * 2) / 2, queZoomBounds.min, queZoomBounds.max);
   }
 } catch { /* Preferences are optional. */ }
 const quePitch = 72;
 // Palette from tarumi-oto-fes-main/app/globals.css and its original logo assets.
 const queRouteColors = { ahead: '#00ff36', passed: '#bfffcc', river: '#0a84ff', forest: '#1d3a22', plain: '#c4c1b0' };
+const consoleMapColors = { river: '#a6d8f5', tunnel: '#331e19', tunnelDark: '#d8b6a0' };
 document.body.classList.toggle('que-view', isQue);
 document.body.classList.toggle('console-view', !isQue);
 document.title = isQue ? 'QUE | 樽見OTO鉄道' : 'Console | 樽見OTO鉄道';
 const $ = id => document.getElementById(id);
-const icons = { TrainFront, Settings2, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X };
+const icons = { TrainFront, Scan, LocateFixed, Plus, Minus, Navigation, Waves, Mountain, Info, AudioLines, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause, Gauge, X };
 const refreshIcons = () => createIcons({ icons, attrs: { 'stroke-width': 1.7 } });
-refreshIcons();
 const navigation = document.createElement('nav');
 navigation.className = 'view-navigation';
 navigation.setAttribute('aria-label', '画面の切り替え');
 navigation.innerHTML = `<a href="${baseURL}console/" ${!isQue ? 'aria-current="page"' : ''}>CONSOLE</a><a href="${baseURL}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a><a href="${baseURL}live/">LIVE</a>`;
-document.querySelector('.header-actions').prepend(navigation);
-document.querySelector('.brand').href = baseURL;
+const apiButton = document.createElement('button');
+apiButton.id = 'api-button'; apiButton.className = 'api-badge';
+apiButton.setAttribute('aria-haspopup', 'dialog');
+apiButton.innerHTML = '<span class="status-dot"></span><span id="api-badge-text">API 接続中</span>';
 const countdown = isQue ? createCueCountdown(document.querySelector('.map-panel')) : null;
-document.querySelector('.header-center').innerHTML = `<span class="que-title">${isQue ? 'QUE' : 'CONSOLE'}</span>`;
 if (isQue) {
   document.querySelector('.map-tools').hidden = true;
   for (const id of ['fit-map', 'follow-map', 'zoom-in', 'zoom-out']) $(id).disabled = true;
@@ -55,7 +58,7 @@ if (isQue) {
   const overlay = document.createElement('aside');
   overlay.className = 'cue-overlay';
   overlay.setAttribute('aria-label', '次のキュー');
-  overlay.innerHTML = '<div class="cue-heading"><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p><button id="cue-retry" hidden>再接続</button></div>';
+  overlay.innerHTML = '<div class="cue-heading"><button id="mobile-cue-toggle" class="cue-toggle" type="button" aria-controls="cue-content" aria-expanded="true">非表示</button></div><div id="cue-content"><div id="cue-list"></div><p id="cue-status" role="status">API接続中</p></div>';
   document.querySelector('.map-panel').append(overlay);
   setupMobileCues($('mobile-cue-toggle'));
   const speedCard = document.createElement('article');
@@ -63,7 +66,6 @@ if (isQue) {
   speedCard.setAttribute('aria-label', '走行速度');
   speedCard.innerHTML = '<p><strong id="map-train-speed">—</strong><span class="speed-unit">km/h</span></p>';
   document.querySelector('.map-panel').append(speedCard);
-  $('cue-retry').addEventListener('click', () => requestPosition(true));
   const modeBar = document.createElement('div');
   modeBar.className = 'que-view-modes';
   modeBar.setAttribute('role', 'group');
@@ -81,11 +83,36 @@ if (isQue) {
   document.querySelector('.map-panel').append(zoomControl);
   $('que-zoom-slider').addEventListener('input', () => {
     const value = Number($('que-zoom-slider').value);
-    if (queZoomView() === 'bird') setQueZooms(queFollowZoom, clamp(value, queFollowZoom, queZoomBounds.max));
-    else setQueZooms(clamp(value, queZoomBounds.min, queBirdZoom), queBirdZoom);
+    if ((queZoomInteractionView ?? queZoomView()) === 'bird') setQueZooms(queFollowZoom, value);
+    else setQueZooms(value, queBirdZoom);
   });
+  const beginZoomAdjustment = () => { queZoomInteractionView ??= queZoomView(); };
+  const finishZoomAdjustment = () => {
+    if (!queZoomInteractionView) return;
+    queZoomInteractionView = null;
+    renderQueZooms();
+  };
+  $('que-zoom-slider').addEventListener('pointerdown', beginZoomAdjustment);
+  $('que-zoom-slider').addEventListener('keydown', event => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) beginZoomAdjustment();
+  });
+  for (const event of ['change', 'blur', 'keyup']) $('que-zoom-slider').addEventListener(event, finishZoomAdjustment);
+  for (const event of ['pointerup', 'pointercancel']) window.addEventListener(event, finishZoomAdjustment);
   for (const mode of ['auto', 'normal', 'bird', 'video']) $(`que-mode-${mode}`).addEventListener('click', () => setQueViewMode(mode));
 }
+const zoomMenuControl = isQue ? document.querySelector('.que-zoom-control') : (() => {
+  const controls = document.createElement('div');
+  controls.className = 'menu-zoom-buttons';
+  controls.append($('zoom-in'), $('zoom-out'));
+  return controls;
+})();
+setupAppMenu({
+  header: document.querySelector('.header'),
+  navigation,
+  actions: [apiButton],
+  mapControls: [zoomMenuControl],
+});
+refreshIcons();
 const state = { direction: 'front', time: 0, playing: false, rate: 1, follow: false, response: null, responseT: null, ready: false };
 const occlusionCamera = new OcclusionCamera({ pitch: quePitch, zoom: queFollowZoom, birdZoom: queBirdZoom });
 if (isQue) {
@@ -164,24 +191,16 @@ function renderApiStatus(status) {
   if (status.count) $('request-count').textContent = `${status.count} REQUESTS`;
   if (status.status === 'ok') {
     $('request-latency').textContent = `${status.latency} ms`;
-    $('response-status').textContent = `API応答後5秒 · ${status.latency} ms · 最終GPS ${timeLabel(state.responseT)}`;
-    const version = status.result.datasetVersion;
-    $('dataset-version').textContent = `DATASET ${version?.slice(0, 8) || '—'}`;
-    const mismatch = version && version !== data().version;
-    $('dataset-version').classList.toggle('mismatch', Boolean(mismatch));
-    $('dataset-version').title = mismatch ? 'APIと地図の参照データが異なります。駅ジャンプとグラフはローカル地図データに基づきます。' : `APIとローカル地図のデータ: ${data().version}`;
   } else if (status.status === 'error') {
     state.response = null; state.responseT = null; renderReadout(); updateMapResponse();
-    $('response-status').textContent = 'API未接続 · 地図はGPS記録を表示';
     $('response-json').textContent = status.message;
-  } else $('response-status').textContent = 'GPSの位置予測を更新中…';
+  }
 }
 
 let lastCueSignature;
 function renderCues(r) {
   if (!isQue) return;
   const events = cueQueue.cards(r);
-  timetableReference?.update();
   for (const event of events) { const card = cueCards.get(event.key); if (card) timetableReference?.renderCard(card, event); }
   countdown.update(events[0]);
   timetableReference?.renderFocus(events[0]);
@@ -194,7 +213,7 @@ function renderCues(r) {
     let card = cueCards.get(event.key);
     if (!card) {
       card = document.createElement('article');
-      card.innerHTML = '<div class="cue-card-label" aria-hidden="true"><span class="cue-index"></span><span class="cue-category" lang="en"></span></div><h2></h2><p class="cue-countdown"><span class="cue-seconds"><strong></strong><span class="cue-unit">秒</span></span><span class="cue-kind-icon" aria-hidden="true"></span></p>';
+    card.innerHTML = '<div class="cue-card-label" aria-hidden="true"><span class="cue-index"></span><span class="cue-category"></span></div><h2></h2><p class="cue-countdown"><span class="cue-seconds"><strong></strong><span class="cue-unit">秒</span></span><span class="cue-kind-icon" aria-hidden="true"></span></p>';
       cueCards.set(event.key, card);
     }
     card.className = `cue-card${index === 0 ? ' cue-primary' : ''}`;
@@ -202,8 +221,8 @@ function renderCues(r) {
     card.dataset.type = event.type;
     card.dataset.target = event.target;
     card.querySelector('.cue-index').textContent = String(index + 1).padStart(2, '0');
-    card.querySelector('.cue-category').textContent = event.type === 'station' ? 'STATION' : 'TUNNEL';
-    card.querySelector('h2').textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`;
+    card.querySelector('.cue-category').textContent = event.type === 'station' ? '駅' : 'トンネル';
+    card.querySelector('h2').textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '終了' : '開始'}まで`;
     card.querySelector('strong').textContent = number(Math.ceil(event.etaSeconds));
     timetableReference?.renderCard(card, event);
     if (card.querySelector('.cue-kind-icon').dataset.type !== event.type) {
@@ -225,7 +244,6 @@ function renderCues(r) {
   }
   for (const key of cueCards.keys()) if (!events.some(event => event.key === key)) cueCards.delete(key);
   $('cue-status').textContent = simulation && state.time >= simulation.end ? `${simulation.stops.at(-1).name}駅に到着 · シミュレーション終了` : r ? (cueQueue.stopId ? `${r.next.station.name}駅で停車中` : events.length ? r.position.inTunnel ? 'トンネル内を走行中' : '' : '前方のキューはありません') : $('api-badge-text').textContent;
-  $('cue-retry').hidden = $('api-button').dataset.status !== 'error';
 }
 
 function renderReadout() {
@@ -250,12 +268,12 @@ function renderReadout() {
   $('river-side').textContent = sides[river?.side] || '—';
   const signed = river?.signedDistanceMeters;
   $('river-sign').textContent = Number.isFinite(signed) ? `東 + / 西 −　${signed > 0 ? '+' : signed < 0 ? '−' : ''}${number(Math.abs(signed))} m` : river?.status === 'no_intersection' ? 'この位置では川と直交線が交差しません' : '東 + / 西 −';
-  $('tunnel-heading').textContent = r?.position.inTunnel ? 'トンネル出口まで' : '次のトンネル';
-  $('tunnel-status').textContent = r?.position.inTunnel ? 'IN TUNNEL' : 'OUTSIDE';
+  $('tunnel-heading').textContent = r?.position.inTunnel ? 'トンネル終了まで' : '次のトンネル開始まで';
+  $('tunnel-status').textContent = r?.position.inTunnel ? 'トンネル内' : 'トンネル外';
   $('tunnel-status').classList.toggle('in-tunnel', Boolean(r?.position.inTunnel));
   $('tunnel-name').textContent = tunnel?.name || (r ? '前方にありません' : '—');
   $('tunnel-eta').textContent = number(tunnel?.etaSeconds);
-  $('tunnel-detail').textContent = tunnel ? `${tunnel.target === 'exit' ? '出口' : '入口'}まで` : r ? '登録された記録範囲内' : 'API接続中';
+  $('tunnel-detail').textContent = tunnel ? `${tunnel.target === 'exit' ? '終了' : '開始'}まで` : r ? '登録された記録範囲内' : 'API接続中';
   $('tunnel-distance').textContent = number(tunnel?.distanceMeters);
   $('tunnel-distance-value').hidden = !tunnel;
   $('position-match').textContent = r ? `最終照合のずれ ${r.position.matchOffsetMeters.toFixed(1)} m` : '軌跡とのずれ —';
@@ -308,20 +326,33 @@ function updateMapTheme() {
   // Standard also subtracts alpha in its road expressions, so very low alpha is unsafe.
   for (const key of ['colorRoads', 'colorMotorways', 'colorTrunks']) map.setConfigProperty('basemap', key, dark ? '#303943' : '#e1dddd');
   map.setPaintProperty('route-halo', 'line-color', surface);
-  map.setPaintProperty('travelled', 'line-color', dark ? '#ffffff' : '#331e19');
-  map.setPaintProperty('tunnels', 'line-color', '#18ff14');
+  map.setPaintProperty('travelled', 'line-color', queRouteColors.passed);
+  map.setPaintProperty('river', 'line-color', consoleMapColors.river);
+  map.setPaintProperty('river', 'line-opacity', 1);
+  map.setPaintProperty('route', 'line-color', queRouteColors.ahead);
+  map.setPaintProperty('tunnels', 'line-color', dark ? consoleMapColors.tunnelDark : consoleMapColors.tunnel);
   map.setPaintProperty('river-distance', 'line-color', dark ? '#ffffff' : '#000000');
 }
 
 function renderLocationText() {
   const p = point();
   const list = [...stations].sort((a, b) => (a.lat - p.lat) ** 2 + ((a.lon - p.lon) * 0.81) ** 2 - ((b.lat - p.lat) ** 2 + ((b.lon - p.lon) * 0.81) ** 2));
-  $('position-location').textContent = `${list[0].name}付近 · ${state.direction === 'front' ? '樽見方面' : '本巣方面'}`;
+  const location = `${list[0].name}付近 · ${state.direction === 'front' ? '樽見方面' : '本巣方面'}`;
+  $('position-location').textContent = location;
   $('gps-tag').textContent = simulation ? 'TIMETABLE SIMULATION' : p.gap ? 'GPS 欠損' : 'RECORDED GPS';
 }
 
 function lineFeature(coordinates) { return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } }; }
 const empty = { type: 'FeatureCollection', features: [] };
+function recordedTunnelFeatures() {
+  return data().events.filter(event => event.type === 'tunnel' && event.target === 'entrance').flatMap(entry => {
+    const exit = data().events.find(event => event.featureId === entry.featureId && event.target === 'exit');
+    if (!exit) return [];
+    const a = sampleAt(rec().records, entry.t), b = sampleAt(rec().records, exit.t);
+    const points = [[a.lon, a.lat], ...rec().records.filter(record => record.t > entry.t && record.t < exit.t).map(record => [record.lon, record.lat]), [b.lon, b.lat]];
+    return [lineFeature(points)];
+  });
+}
 function initMap() {
   try {
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -331,7 +362,11 @@ function initMap() {
         ? '駅・川・トンネル・鉄橋 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · 駅周辺標高: <a href="https://maps.gsi.go.jp/development/elevation_s.html" target="_blank" rel="noopener">国土地理院の標高データを加工</a>'
         : '駅・川・トンネル © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>' },
       style: 'mapbox://styles/mapbox/standard',
-      config: { basemap: { lightPreset: 'day', theme: 'monochrome', showRoadLabels: false, colorLand: '#ffffff', colorGreenspace: '#ffffff', colorWater: '#ffffff', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false } }
+      config: { basemap: { lightPreset: 'day', theme: 'monochrome', showRoadLabels: false, showPlaceLabels: !matchMedia('(max-width: 600px)').matches, colorLand: '#ffffff', colorGreenspace: '#ffffff', colorWater: '#ffffff', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false } }
+    });
+    const mobileMapLabels = matchMedia('(max-width: 600px)');
+    mobileMapLabels.addEventListener('change', () => {
+      if (mapReady) map.setConfigProperty('basemap', 'showPlaceLabels', !mobileMapLabels.matches);
     });
     map.dragRotate.disable(); map.touchZoomRotate.disableRotation();
     map.on('load', () => {
@@ -347,12 +382,12 @@ function initMap() {
         map.addSource(name, { type: 'geojson', data: empty,
           ...(isQue && ['route', 'travelled', 'tunnels', 'bridges'].includes(name) ? { lineMetrics: true } : {}) });
       }
-      map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 12], 'line-opacity': 0.25 } });
+      map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': isQue ? queRouteColors.river : consoleMapColors.river, 'line-width': isQue ? ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 24] : ['interpolate', ['linear'], ['zoom'], 9, 1.25, 13, 2, 17, 3.5], 'line-opacity': 1 } });
       map.addLayer({ id: 'route-halo', type: 'line', slot: 'top', source: 'route', paint: { 'line-emissive-strength': 1, 'line-color': '#fff', 'line-width': 7 } });
-      map.addLayer({ id: 'route', type: 'line', slot: 'top', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 3.5 } });
-      map.addLayer({ id: 'travelled', type: 'line', slot: 'top', source: 'travelled', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#331e19', 'line-width': 3.5 } });
-      if (isQue) map.addLayer({ id: 'tunnel-halo', type: 'line', slot: 'top', source: 'tunnels', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#e1d5f0', 'line-width': 18 } });
-      map.addLayer({ id: 'tunnels', type: 'line', slot: 'top', source: 'tunnels', paint: { 'line-emissive-strength': 1, 'line-color': '#18ff14', 'line-width': 5, 'line-dasharray': [0.6, 0.7] } });
+      map.addLayer({ id: 'route', type: 'line', slot: 'top', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': queRouteColors.ahead, 'line-width': 3.5 } });
+      map.addLayer({ id: 'travelled', type: 'line', slot: 'top', source: 'travelled', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': queRouteColors.passed, 'line-width': 3.5 } });
+      if (isQue) map.addLayer({ id: 'tunnel-halo', type: 'line', slot: 'top', source: 'tunnels', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#331e19', 'line-width': 18 } });
+      map.addLayer({ id: 'tunnels', type: 'line', slot: 'top', source: 'tunnels', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': isQue ? queRouteColors.ahead : consoleMapColors.tunnel, 'line-width': isQue ? 5 : 3.5, ...(isQue ? { 'line-dasharray': [0.6, 0.7] } : {}) } });
       if (isQue) {
         map.addLayer({ id: 'bridge-halo', type: 'line', slot: 'top', source: 'bridges', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#fff8e4', 'line-width': 15 } });
         map.addLayer({ id: 'bridges', type: 'line', slot: 'top', source: 'bridges', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-emissive-strength': 1, 'line-color': '#b67517', 'line-width': 7 } });
@@ -412,14 +447,7 @@ function updateRouteMap() {
         if (feature) tunnelFeatures.push(feature);
       }
     }
-  } else for (const entry of data().events.filter(e => e.type === 'tunnel' && e.target === 'entrance')) {
-    const exit = data().events.find(e => e.featureId === entry.featureId && e.target === 'exit');
-    if (!exit) continue;
-    const points = rec().records.filter(r => r.t >= entry.t && r.t <= exit.t).map(r => [r.lon, r.lat]);
-    const a = sampleAt(rec().records, entry.t), b = sampleAt(rec().records, exit.t);
-    points.unshift([a.lon, a.lat]); points.push([b.lon, b.lat]);
-    if (points.length > 1) tunnelFeatures.push(lineFeature(points));
-  }
+  } else tunnelFeatures.push(...recordedTunnelFeatures());
   map.getSource('tunnels').setData({ type: 'FeatureCollection', features: tunnelFeatures });
   if (isQue) {
     const low = Math.min(railStartS, railEndS), high = Math.max(railStartS, railEndS);
@@ -460,7 +488,7 @@ function updateRouteMap() {
     if (event) el.addEventListener('click', () => seekTo(event.t));
     const railStation = isQue ? railway.stations.find(item => item.order === station.order) : null;
     const location = railStation ? [railStation.lon, railStation.lat] : [station.lon, station.lat];
-    const stationMarker = new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'left', offset: isQue ? [-14, 0] : [-7, 0] }).setLngLat(location).addTo(map);
+    const stationMarker = new mapboxgl.Marker({ element: el, occludedOpacity: 0.2, anchor: 'left', offset: isQue ? [-14, 0] : [-3, 0] }).setLngLat(location).addTo(map);
     if (isQue) stationMarker.railElevationMeters = railProfile.project(...location).elevationMeters;
     stationMarkers.push(stationMarker);
   }
@@ -471,7 +499,8 @@ function fitMap(animate = true) {
   if (!mapReady || isQue) return;
   setFollow(false);
   const bounds = new mapboxgl.LngLatBounds(); stations.forEach(s => bounds.extend([s.lon, s.lat]));
-  map.fitBounds(bounds, { padding: { top: 120, bottom: 125, left: 45, right: window.innerWidth < 700 ? 90 : 170 }, duration: animate ? 600 : 0 });
+  const mobile = window.innerWidth < 700;
+  map.fitBounds(bounds, { padding: { top: 120, bottom: mobile ? 74 : 70, left: mobile ? 24 : 45, right: mobile ? 24 : 170 }, duration: animate ? 600 : 0 });
 }
 
 function cameraTerrainElevation(lon, lat) {
@@ -490,11 +519,11 @@ function queZoomView() { return occlusionCamera.target === occlusionCamera.birdV
 
 function renderQueZooms() {
   if (!isQue) return;
-  const bird = queZoomView() === 'bird';
+  const bird = (queZoomInteractionView ?? queZoomView()) === 'bird';
   renderedZoomView = bird ? 'bird' : 'normal';
   const slider = $('que-zoom-slider');
-  slider.min = bird ? queFollowZoom : queZoomBounds.min;
-  slider.max = bird ? queZoomBounds.max : queBirdZoom;
+  slider.min = queZoomBounds.min;
+  slider.max = queZoomBounds.max;
   slider.value = bird ? queBirdZoom : queFollowZoom;
   slider.setAttribute('aria-label', `${bird ? '鳥瞰図' : '通常ビュー'}の倍率`);
   $('que-zoom-mode').textContent = bird ? '鳥瞰' : '通常';
@@ -502,6 +531,8 @@ function renderQueZooms() {
 }
 
 function setQueZooms(normal, bird) {
+  normal = clamp(normal, queZoomBounds.min, queZoomBounds.max);
+  bird = clamp(bird, queZoomBounds.min, queZoomBounds.max);
   queFollowZoom = normal;
   queBirdZoom = bird;
   const now = performance.now();
@@ -556,7 +587,7 @@ function queCamera(reset = false, now = performance.now()) {
   lastCameraFrame = now;
   cameraBearing = reset || cameraBearing === null ? target : turnTowards(cameraBearing, target, 1 - Math.exp(-delta / 350));
   const p = railPositionAt(state.time);
-  if (occlusionCamera.mode !== 'auto') return { center: [p.lon, p.lat], ...occlusionCamera.update(null, now), bearing: cameraBearing };
+  if (occlusionCamera.mode !== 'auto' || queZoomInteractionView) return { center: [p.lon, p.lat], ...occlusionCamera.update(null, now), bearing: cameraBearing };
   if (reset || now >= nextOcclusionCheck) {
     nextOcclusionCheck = now + 100;
     const perspective = occlusionCamera.target === occlusionCamera.perspective;
@@ -610,7 +641,7 @@ function queCamera(reset = false, now = performance.now()) {
 
 function updateQueCameraPadding() {
   if (!isQue) return;
-  // The mobile zoom slider sits just above the cue panel, whatever its height.
+  // The cue panel sits at the foot of the map, whatever its current height.
   document.querySelector('.map-panel').style.setProperty('--que-cue-height', `${document.querySelector('.cue-overlay').offsetHeight}px`);
   if (!mapReady) return;
   const container = map.getContainer(), canvas = map.getCanvas();
@@ -618,9 +649,9 @@ function updateQueCameraPadding() {
   // Keep the train in the visible map area above the mobile cue panel.
   const height = document.querySelector('.map-panel').clientHeight;
   const mobile = matchMedia('(max-width: 600px)').matches && (!document.body.classList.contains('countdown-mode') || videoMode);
-  const top = mobile ? Math.min(document.body.classList.contains('has-timetable-reference') ? 100 : 174, height * 0.36) : 0;
-  // Keep the train clear of the cue panel and the zoom slider above it.
-  const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 80, height - top - 60)) : 0;
+  const top = mobile ? Math.min(174, height * 0.36) : 0;
+  // Keep the train clear of the speed readout and compact cue panel.
+  const bottom = mobile ? Math.max(0, Math.min(document.querySelector('.cue-overlay').offsetHeight + 30, height - top - 60)) : 0;
   const padding = map.getPadding();
   if (Math.abs(padding.top - top) > 0.5 || Math.abs(padding.bottom - bottom) > 0.5) {
     map.setPadding({ top, bottom, left: 0, right: 0 });
@@ -731,7 +762,9 @@ function fallbackXY(lon, lat) { return [80 + (lon - 136.61) * 4400, 90 + (35.635
 function drawFallbackMap() {
   if (!state.ready) return;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 500 780'); svg.classList.add('fallback-map');
-  for (const [coords, color, width] of [[data().river, isQue ? queRouteColors.river : '#18ff14', isQue ? 9 : 5], [rec().records.map(r => [r.lon, r.lat]), isQue ? queRouteColors.ahead : '#18ff14', isQue ? 8 : 3]]) {
+  const lines = [[data().river, isQue ? queRouteColors.river : consoleMapColors.river, isQue ? 9 : 1.5], [rec().records.map(r => [r.lon, r.lat]), queRouteColors.ahead, isQue ? 8 : 3]];
+  if (!isQue) for (const tunnel of recordedTunnelFeatures()) lines.push([tunnel.geometry.coordinates, consoleMapColors.tunnel, 3]);
+  for (const [coords, color, width] of lines) {
     const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', coords.map(p => fallbackXY(...p).join(',')).join(' ')); line.setAttribute('fill', 'none'); line.setAttribute('stroke', color); line.setAttribute('stroke-width', width); svg.append(line);
   }
   if (isQue) {
@@ -743,7 +776,13 @@ function drawFallbackMap() {
     svg.append(passed);
   }
   for (const s of stations) {
-    const [x, y] = fallbackXY(s.lon, s.lat); const text = document.createElementNS(svg.namespaceURI, 'text'); text.setAttribute('x', x + 10); text.setAttribute('y', y + 5); text.textContent = s.name; svg.append(text);
+    const [x, y] = fallbackXY(s.lon, s.lat);
+    if (!isQue) {
+      const square = document.createElementNS(svg.namespaceURI, 'rect');
+      for (const [name, value] of Object.entries({ x: x - 3, y: y - 3, width: 6, height: 6, fill: queRouteColors.ahead })) square.setAttribute(name, value);
+      svg.append(square);
+    }
+    const text = document.createElementNS(svg.namespaceURI, 'text'); text.setAttribute('x', x + 10); text.setAttribute('y', y + 5); text.textContent = s.name; svg.append(text);
   }
   const current = document.createElementNS(svg.namespaceURI, 'circle'); current.id = 'fallback-current';
   current.setAttribute('r', '7'); current.setAttribute('fill', '#331e19');
@@ -894,6 +933,20 @@ function restoreRecording() {
   simulationMode(); requestPosition(true);
 }
 
+function applyTimetableReference(selection) {
+  const train = timetable.trains.find(item => item.id === selection.trainId);
+  if (!train) throw new Error('列車を選んでください');
+  if (simulation) restoreRecording();
+  if (state.direction !== train.direction) switchDirection(train.direction);
+  timetableReference?.syncTrain(selection.trainId, selection.day, selection.date);
+  renderReadout();
+}
+
+function clearTimetableReference() {
+  timetableReference?.reference.disconnect();
+  renderReadout();
+}
+
 function frame(now) {
   const delta = (now - lastFrame) / 1000; lastFrame = now;
   if (state.ready && state.playing) {
@@ -920,7 +973,6 @@ $('fit-map').addEventListener('click', () => fitMap());
 $('follow-map').addEventListener('click', () => setFollow(isQue || !state.follow));
 $('zoom-in').addEventListener('click', () => map?.zoomIn());
 $('zoom-out').addEventListener('click', () => map?.zoomOut());
-$('retry-api').addEventListener('click', () => requestPosition(true));
 window.addEventListener('keydown', e => {
   if (!state.ready || document.querySelector('dialog[open]')) return;
   if (e.target.closest('input, select, textarea, button, a')) return;
@@ -930,7 +982,7 @@ window.addEventListener('keydown', e => {
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state.playing) setPlaying(false); });
 function openSettings() { $('endpoint').value = api.endpoint; $('settings-error').textContent = ''; $('settings-dialog').showModal(); }
-$('settings-button').addEventListener('click', openSettings); $('api-button').addEventListener('click', openSettings);
+$('api-button').addEventListener('click', openSettings);
 $('close-settings').addEventListener('click', () => $('settings-dialog').close());
 $('settings-dialog').addEventListener('click', e => { if (e.target === $('settings-dialog')) { const b = e.target.getBoundingClientRect(); if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) e.target.close(); } });
 $('public-endpoint').addEventListener('click', () => { api.endpoint = PUBLIC_ENDPOINT; try { localStorage.setItem('tarumi-api-endpoint', PUBLIC_ENDPOINT); } catch { /* Preferences are optional. */ } $('settings-dialog').close(); seekTo(state.time); });
@@ -958,13 +1010,14 @@ try {
     [timetable, railway] = await Promise.all(['/data/timetable.json', '/data/railway-route.json'].map(loadJSON));
     railProfile = createRailProfile(railway);
     for (const recording of Object.values(recordings)) prepareRailRecording(recording);
-    timetableControls = simulationControls({ timetable, stations: stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation), getDirection: () => state.direction, onStart: startSimulation, onRestore: restoreRecording });
-    loadJSON('/data/timetable-reference.json').then(referenceData => {
-      timetableReference = timetableReferenceControls({ timetable: referenceData, railway, stations: stationCatalog, host: document.querySelector('.playback-panel'),
-        getClock: () => Date.parse(recordedAt(rec(), state.time)), getDirection: () => state.direction, onChange: renderReadout });
-      if (simulation) timetableReference.syncTrain(simulation.train.id, simulation.selection.day);
-      renderReadout();
-    }).catch(() => { const note = document.createElement('p'); note.className = 'timetable-reference'; note.textContent = 'ダイヤ参照を読み込めません。再読み込みしてください。'; document.querySelector('.playback-panel').prepend(note); });
+    timetableControls = simulationControls({ timetable, stations: stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation),
+      getDirection: () => state.direction, getReferenceDate: () => japanDate(Date.parse(recordedAt(rec(), state.time))),
+      hasReference: () => Boolean(timetableReference?.reference.plan),
+      onStart: startSimulation, onReference: applyTimetableReference, onClearReference: clearTimetableReference, onRestore: restoreRecording });
+    timetableReference = timetableReferenceDisplay({ timetable, railway, stations: stationCatalog,
+        getClock: () => Date.parse(recordedAt(rec(), state.time)), getDirection: () => state.direction });
+    if (simulation) timetableReference.syncTrain(simulation.train.id, simulation.selection.day);
+    renderReadout();
   }
   state.ready = true; state.time = range()[0];
   buildTimeline(); buildProfile(); renderReadout(); renderPosition(); initMap();

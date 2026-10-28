@@ -1,6 +1,6 @@
 import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { elevatedLineFeature, railLineZOffset } from './rail-elevation.js';
+import { elevatedLineFeature, railLineZOffsetWithClearance } from './rail-elevation.js';
 import { xy } from './geometry.js';
 import { fadeMapTheme } from './theme.js';
 
@@ -9,6 +9,7 @@ const collection = features => ({ type: 'FeatureCollection', features: features.
 export function createLiveMap({ profile, river, stations, onError }) {
   let map, ready = false, marker, latest = null, mode = 'follow', dark = false;
   const stationMarkers = [];
+  const mobileMapLabels = matchMedia('(max-width: 600px)');
   function theme() {
     if (!ready) return;
     map.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
@@ -53,7 +54,10 @@ export function createLiveMap({ profile, river, stations, onError }) {
     if (!accessToken) throw new Error('地図のアクセストークンが未設定です。');
     map = new mapboxgl.Map({ container: 'map', accessToken, center: [136.65, 35.56], zoom: 11, interactive: false,
       attributionControl: { compact: true, customAttribution: '路線・駅・トンネル © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · 駅周辺標高: 国土地理院の標高データを加工' },
-      style: 'mapbox://styles/mapbox/standard', config: { basemap: { theme: 'monochrome', show3dObjects: false, showPointOfInterestLabels: false, showTransitLabels: false, showRoadLabels: false } } });
+      style: 'mapbox://styles/mapbox/standard', config: { basemap: { theme: 'monochrome', show3dObjects: false, showPlaceLabels: !mobileMapLabels.matches, showPointOfInterestLabels: false, showTransitLabels: false, showRoadLabels: false } } });
+    mobileMapLabels.addEventListener('change', () => {
+      if (ready) map.setConfigProperty('basemap', 'showPlaceLabels', !mobileMapLabels.matches);
+    });
     map.on('load', () => {
       ready = true;
       map.addSource('dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
@@ -69,7 +73,8 @@ export function createLiveMap({ profile, river, stations, onError }) {
       map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', paint: { 'line-color': '#0a84ff', 'line-width': 9, 'line-emissive-strength': 1 } });
       for (const [id, data] of Object.entries(geometry)) {
         map.addSource(id, { type: 'geojson', data, lineMetrics: true });
-        map.addLayer({ id, type: 'line', slot: 'top', source: id, layout: { 'line-elevation-reference': 'sea', 'line-z-offset': railLineZOffset, 'line-elevation-ground-scale': 1 },
+        const clearance = id === 'route' ? 1 : id === 'tunnels' ? 2.5 : 4;
+        map.addLayer({ id, type: 'line', slot: 'top', source: id, layout: { 'line-elevation-reference': 'sea', 'line-z-offset': railLineZOffsetWithClearance(clearance), 'line-elevation-ground-scale': 1 },
           paint: { 'line-color': id === 'bridges' ? '#331e19' : '#00ff36', 'line-width': id === 'tunnels' ? 10 : 7, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.3,
             ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }

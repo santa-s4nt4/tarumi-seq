@@ -17,6 +17,7 @@
 .live-status-row { display: flex; align-items: baseline; gap: 18px; margin-bottom: 10px; font-size: 14px; }
 .live-status-row strong { margin-right: auto; font-size: 18px; }
 .live-status-row > span { white-space: nowrap; }
+#live-timetable { color: var(--muted); font-size: 13px; }
 .live-controls { display: flex; align-items: stretch; gap: 12px; }
 .live-controls .primary-button { min-height: 44px; min-width: 160px; }
 .live-controls .secondary-button { min-width: 72px; }
@@ -43,6 +44,7 @@
   .live-view .live-footer { padding: 10px 14px max(10px, env(safe-area-inset-bottom)); }
   .live-status-row { flex-wrap: wrap; gap: 3px 12px; font-size: 13px; margin-bottom: 8px; }
   .live-status-row strong { flex-basis: 100%; font-size: 16px; }
+  #live-timetable { font-size: 12px; }
   .live-controls { gap: 7px; }
   .live-controls .primary-button { min-width: 0; flex: 1; padding: 8px; font-size: 14px; }
   .live-controls .secondary-button { min-width: 48px; padding: 8px; font-size: 14px; }
@@ -56,4 +58,25 @@
   .live-controls .direction-tabs button span { display: none; }
   .live-view .cue-primary strong { font-size: 50px; }
   .live-view .live-notice h2 { font-size: 21px; }
+}
+
+@media (max-width: 600px) {
+  .live-view .live-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .live-view .live-controls .direction-tabs {
+    order: -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    margin: 0;
+  }
+  .live-view .live-controls .direction-tabs button { min-width: 0; }
+  .live-view .live-controls .primary-button { width: 100%; min-height: 42px; }
+  .live-view .cue-overlay {
+    bottom: 12px;
+    max-height: calc(100% - 110px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 10px;
+  }
+  .live-view #cue-list .cue-card { min-height: 0; }
 }

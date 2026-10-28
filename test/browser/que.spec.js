@@ -179,31 +179,43 @@ test('front playback stays in bird view while the rail is buried and returns on 
 const setZoomSlider = (page, value) => page.locator('#que-zoom-slider').evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
 
 test('zoom slider adjusts the active view, persists settings and fits on mobile', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('tarumi-que-zoom')) localStorage.setItem('tarumi-que-zoom', JSON.stringify({ version: 2, normal: 20, bird: 20 }));
+  });
   await page.goto('/que');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
+  await page.locator('.menu-toggle').click();
   await expect(page.locator('#que-zoom-mode')).toHaveText('通常');
-  await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
+  await expect(page.locator('#que-zoom-value')).toHaveText('20.0');
+  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('min', '14');
+  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('max', '20');
   await setZoomSlider(page, 18.5);
   await expect(page.locator('#que-zoom-value')).toHaveText('18.5');
   // Terrain collision avoidance can reduce the requested zoom at this position.
   await expect.poll(() => page.evaluate(() => window.testMap?.getZoom())).toBeGreaterThan(17);
   await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeLessThanOrEqual(18.50001);
+  await page.locator('.menu-toggle').click();
   await page.locator('#que-mode-bird').click();
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect.poll(() => page.evaluate(() => window.testMap.getPitch()), { timeout: 15000 }).toBeLessThan(0.01);
+  await page.locator('.menu-toggle').click();
   await expect(page.locator('#que-zoom-mode')).toHaveText('鳥瞰');
-  await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
-  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('min', '18.5');
-  await setZoomSlider(page, 20);
   await expect(page.locator('#que-zoom-value')).toHaveText('20.0');
-  await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(20, 2);
+  await expect(page.locator('#que-zoom-slider')).toHaveAttribute('min', '14');
+  await setZoomSlider(page, 18);
+  await expect(page.locator('#que-zoom-value')).toHaveText('18.0');
+  await expect.poll(() => page.evaluate(() => window.testMap.getZoom())).toBeCloseTo(18, 2);
   expect(await page.evaluate(() => window.testMap.getPitch())).toBeCloseTo(0, 2);
   await page.reload();
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.menu-toggle').click();
+  await expect(page.locator('#que-zoom-value')).toHaveText('18.0');
+  await page.locator('.menu-toggle').click();
   await page.locator('#que-mode-normal').click();
+  await page.locator('.menu-toggle').click();
   await expect(page.locator('#que-zoom-mode')).toHaveText('通常');
   await expect(page.locator('#que-zoom-value')).toHaveText('18.5');
   await expect(page.locator('#que-zoom-slider')).toHaveAttribute('max', '20');

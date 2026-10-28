@@ -113,3 +113,7 @@ export function elevatedLineFeature(profile, coordinates, sampleSpacingMeters = 
 export const railLineZOffset = ['at-interpolated',
   ['*', ['line-progress'], ['-', ['length', ['get', 'elevation']], 1]],
   ['get', 'elevation']];
+
+export const railLineZOffsetWithClearance = meters => meters > 0
+  ? ['+', railLineZOffset, meters]
+  : railLineZOffset;

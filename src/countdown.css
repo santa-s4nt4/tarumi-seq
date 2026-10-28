@@ -9,7 +9,7 @@
   z-index: 3;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
+  gap: 12px;
   padding: clamp(12px, 2vw, 28px);
   color: var(--text);
   background: rgb(255 255 255 / 62%);
@@ -17,8 +17,8 @@
   container-type: size;
 }
 .countdown-heading { display: none; }
-.countdown-focus h2 { margin: 0; text-align: center; font: 400 clamp(28px, 5cqw, 64px)/1.25 var(--font); overflow-wrap: anywhere; align-self: center; }
-.countdown-clock { position: relative; width: min(96cqw, calc(100cqh - 100px)); aspect-ratio: 1; justify-self: center; align-self: center; container-type: inline-size; }
+.countdown-focus h2 { z-index: 4; margin: 0; padding: 4px 12px; text-align: center; font: 400 clamp(24px, 4cqw, 48px)/1.25 var(--font); overflow-wrap: anywhere; align-self: start; justify-self: center; background: transparent; }
+.countdown-clock { position: relative; width: min(88cqw, calc(100cqh - 160px)); aspect-ratio: 1; justify-self: center; align-self: center; container-type: inline-size; }
 .countdown-ring { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .countdown-ticks-track { opacity: .16; }
 .countdown-progress { transition: stroke-dasharray 50ms linear; }
@@ -31,8 +31,22 @@
 
 @media (max-height: 500px) and (min-width: 601px) {
   .countdown-focus { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) auto; gap: 16px; }
-  .countdown-focus h2 { font-size: clamp(28px, 5cqw, 52px); }
+  .countdown-focus h2 { grid-column: 1; grid-row: 1; justify-self: center; align-self: start; font-size: clamp(24px, 4cqw, 42px); }
   .countdown-clock { width: min(65cqw, 100cqh); }
+}
+@media (max-width: 600px) {
+  .countdown-focus { grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 12px; }
+  .countdown-focus h2 {
+    position: static;
+    grid-row: 1;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto 8px;
+    padding: 3px 8px;
+    font-size: clamp(22px, 6cqw, 30px);
+    background: transparent;
+  }
+  .countdown-clock { width: min(76cqw, calc(100cqh - 150px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .countdown-progress, .countdown-hand { transition: none; }

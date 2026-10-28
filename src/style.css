@@ -114,11 +114,6 @@ svg.lucide { width: 20px; height: 20px; flex-shrink: 0; }
 .tunnel-readout h3 { margin: 0; font-size: 21px; font-weight: 500; }
 .tunnel-readout p { margin: 6px 0 0; font-size: 11px; color: var(--text); }
 .tunnel-readout strong { font-weight: 500; letter-spacing: -.055em; }
-.data-note { display: flex; gap: 7px; align-items: flex-start; margin-top: auto; padding-top: 18px; color: var(--text); }
-.data-note svg { width: 12px; height: 12px; margin-top: 3px; }
-.data-note p { font-size: 10px; line-height: 1.8; margin: 0; }
-.readout-footer { display: flex; justify-content: space-between; gap: 10px; font: 9px var(--mono); color: var(--text); padding-top: 12px; }
-#response-status { font-family: var(--font); }
 .mismatch { color: var(--text); }
 .api-error { margin-top: 13px; display: flex; align-items: center; gap: 12px; background: var(--surface); color: var(--text); border-radius: 5px; padding: 10px 12px; font-size: 12px; }
 .api-error button { flex-shrink: 0; padding: 6px 8px; border-radius: 4px; background: var(--surface); color: var(--text); }
@@ -213,7 +208,7 @@ dialog::backdrop { background: var(--surface); backdrop-filter: blur(3px); }
 
 
 /* The footer takes its natural height; only the workspace may scroll. */
-body { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+body { height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 .header { min-width: 0; }
 .workspace { grid-template-columns: 44% 56%; height: auto; min-height: 0; overflow: hidden; }
 .map-panel { min-height: 0; }
@@ -320,6 +315,8 @@ dialog::backdrop { background: #00000099; }
 .view-navigation a { color:inherit; text-decoration:none; padding:8px; border-radius:4px; }
 .view-navigation a[aria-current] { background:var(--hover); }
 .brand-logo { display:block; width:180px; height:35px; background:currentColor; mask:url('/logos/header-logo.svg') center / contain no-repeat; }
+.loading-logo.loading-wordmark { display:block; width:min(320px, 72vw); height:54px; padding:0; border-radius:0; background:currentColor; color:var(--text); mask:url('/logos/header-logo.svg') center / contain no-repeat; }
+#loading-message:empty { display:none; }
 
 /* Published timetable selection and simulated train playback. */
 .simulation-button-short { display:none; }
@@ -338,6 +335,10 @@ dialog::backdrop { background: #00000099; }
 .simulation-preview td:not(:first-child) { font-family:var(--mono); font-variant-numeric:tabular-nums; }
 .simulation-explanation { line-height:1.8; margin-bottom:8px; }
 .simulation-source { color:var(--text); font-size:11px; text-underline-offset:3px; }
+.simulation-reference-toggle { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; cursor:pointer; }
+.simulation-reference-toggle input { width:18px; height:18px; margin:0; accent-color:var(--green); }
+.simulation-reference-date { display:flex; flex-direction:column; gap:6px; margin-top:10px; font-size:12px; }
+.simulation-reference-date input { width:100%; min-height:40px; padding:8px; border:1px solid var(--line); background:var(--surface); color:var(--text); font:inherit; }
 #simulation-error, #simulation-empty { font-size:12px; color:var(--text); }
 .timetable-mode .time-display { font-variant-numeric:tabular-nums; }
 :root[data-theme="dark"] #simulation-note { color:#a8d5ae; }
@@ -361,5 +362,4 @@ dialog::backdrop { background: #00000099; }
 .video-view #map { visibility:hidden; }
 .video-view .map-legend, .video-view .map-error { display:none; }
 .video-view .cue-overlay, .video-view .map-speed-card { pointer-events:none; }
-.video-view #cue-retry { pointer-events:auto; }
 

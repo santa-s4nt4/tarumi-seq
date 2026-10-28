@@ -6,6 +6,14 @@ export function serviceDayEpoch(date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') || !Number.isFinite(parsed) || new Date(parsed).toISOString().slice(0, 10) !== date) throw new Error('参照日を確認してください');
   return Date.parse(`${date}T00:00:00+09:00`);
 }
+function timeSeconds(value) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value ?? '');
+  return match ? Number(match[1]) * 3600 + Number(match[2]) * 60 : null;
+}
+export function serviceDayAt(instant) {
+  const local = new Date(instant + 9 * 3600000);
+  return local.getUTCDay() === 0 || local.getUTCDay() === 6 ? 'holiday' : 'weekday';
+}
 export function differenceLabel(seconds) {
   if (!Number.isFinite(seconds)) return '差 —';
   const rounded = Math.round(seconds), value = Math.abs(rounded);
@@ -26,6 +34,32 @@ export class TimetableReference {
     const plan = buildSimulation(this.timetable, this.railway, this.stations, { trainId, day, stationOrder: train.stops[0].station });
     this.plan = plan; this.date = date; this.epoch = epoch; this.day = day;
   }
+  autoSelect({ now = Date.now(), direction = 'front' } = {}) {
+    const date = japanDate(now), day = serviceDayAt(now);
+    const local = new Date(now + 9 * 3600000);
+    const current = local.getUTCHours() * 3600 + local.getUTCMinutes() * 60 + local.getUTCSeconds();
+    const choices = this.timetable.trains.filter(train => train.direction === direction &&
+      (train.operatingDays === 'daily' || day === 'holiday')).map(train => {
+      const first = train.stops.find(stop => stop.departure);
+      const last = [...train.stops].reverse().find(stop => stop.arrival || stop.departure);
+      const start = timeSeconds(first?.departure);
+      let end = timeSeconds(last?.arrival ?? last?.departure);
+      if (start === null || end === null) return null;
+      if (end < start) end += 86400;
+      const at = current < start && end >= 86400 ? current + 86400 : current;
+      const distance = at < start ? start - at : at > end ? at - end : 0;
+      const origin = first.station;
+      return { train, day, date, stationOrder: origin, distance, start };
+    }).filter(Boolean).sort((a, b) => a.distance - b.distance || b.start - a.start);
+    for (const choice of choices) {
+      try {
+        this.connect({ trainId: choice.train.id, day, date, stationOrder: choice.stationOrder });
+        return this.plan;
+      } catch { /* Skip a train whose published stop data cannot form a route. */ }
+    }
+    this.disconnect();
+    return null;
+  }
   comparison(event, now, direction) {
     if (!this.plan || direction !== this.plan.train.direction || !event || !Number.isFinite(now)) return null;
     const match = this.plan.data.events.find(item => item.type === event.type && (event.type === 'station'
@@ -40,6 +74,6 @@ export class TimetableReference {
     const estimated = event.type === 'tunnel' || Boolean(stop?.estimatedArrival);
     const deltaSeconds = Number.isFinite(event.etaSeconds) && !event.arrived ? (now + event.etaSeconds * 1000 - scheduledAt) / 1000 : null;
     return { scheduledAt, seconds, estimated, deltaSeconds, departure: stop?.departure ?? null,
-      label: `ダイヤ${event.type === 'station' ? '着' : event.target === 'exit' ? '通過' : '進入'} ${serviceTime(seconds, estimated)}${estimated ? ' *' : ''}` };
+      label: `ダイヤ${event.type === 'station' ? '着' : event.target === 'exit' ? '終了' : '開始'} ${serviceTime(seconds, estimated)}${estimated ? ' *' : ''}` };
   }
 }

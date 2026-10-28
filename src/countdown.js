@@ -10,7 +10,7 @@ export function createCueCountdown(parent) {
   element.setAttribute('aria-labelledby', 'countdown-target');
   const ticks = Array.from({ length: 120 }, (_, index) =>
     `<line x1="180" y1="16" x2="180" y2="${index % 10 === 0 ? 40 : 31}" transform="rotate(${index * 3} 180 180)" />`).join('');
-  element.innerHTML = `<div class="countdown-heading"><span id="countdown-kind" lang="en"></span><span>まもなく</span></div>
+  element.innerHTML = `<div class="countdown-heading"><span id="countdown-kind"></span><span>まもなく</span></div>
     <h2 id="countdown-target"></h2>
     <div class="countdown-clock">
       <svg class="countdown-ring" viewBox="0 0 360 360" aria-hidden="true">
@@ -73,8 +73,8 @@ export function createCueCountdown(parent) {
         document.body.classList.add('countdown-mode');
       }
       if (key !== previousKey) {
-        target.textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '通過' : ''}まで`;
-        kind.textContent = event.type === 'station' ? 'NEXT STATION' : event.target === 'exit' ? 'TUNNEL PASSAGE' : 'NEXT TUNNEL';
+        target.textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '終了' : '開始'}まで`;
+        kind.textContent = event.type === 'station' ? '次の駅' : event.target === 'exit' ? 'トンネル終了' : 'トンネル開始';
         element.dataset.type = event.type;
         element.dataset.target = event.target;
         previousKey = key;

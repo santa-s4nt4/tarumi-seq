@@ -1,11 +1,11 @@
 import { departures, scheduleStops, serviceTime } from './simulation.js';
 
-export function simulationControls({ timetable, stations, getDirection, onStart, onRestore }) {
+export function simulationControls({ timetable, stations, getDirection, getReferenceDate, hasReference, onStart, onReference, onClearReference, onRestore }) {
   const button = document.createElement('button');
   button.id = 'simulation-button'; button.className = 'secondary-button';
   button.innerHTML = '<span class="simulation-button-long">ダイヤで再生</span><span class="simulation-button-short">ダイヤ</span>';
   button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-controls', 'simulation-dialog');
-  document.getElementById('settings-button').before(button);
+  document.getElementById('api-button').after(button);
   const dialog = document.createElement('dialog'); dialog.id = 'simulation-dialog'; dialog.setAttribute('aria-labelledby', 'simulation-title');
   dialog.innerHTML = `<form id="simulation-form"><div class="dialog-header"><div><span class="eyebrow">TIMETABLE SIMULATION</span><h2 id="simulation-title">ダイヤで再生</h2></div><button type="button" class="icon-button" id="simulation-close" aria-label="閉じる">×</button></div>
     <p class="field-note">本巣〜樽見の区間を再生します。</p>
@@ -15,14 +15,16 @@ export function simulationControls({ timetable, stations, getDirection, onStart,
     <label>発車時刻・列車<select id="simulation-departure"></select></label></div>
     <p id="simulation-empty" role="status" hidden>この条件で発車する列車はありません。</p>
     <div id="simulation-preview" class="simulation-preview"><div class="simulation-summary"><strong id="simulation-route"></strong><span id="simulation-duration"></span></div><p id="simulation-note" hidden></p>
-    <div class="simulation-stops-scroll"><table><thead><tr><th>駅</th><th>到着</th><th>発車</th></tr></thead><tbody id="simulation-stops"></tbody></table></div></div>
+    <div id="simulation-stops-preview" class="simulation-stops-scroll" hidden><table><thead><tr><th>駅</th><th>到着</th><th>発車</th></tr></thead><tbody id="simulation-stops"></tbody></table></div></div>
     <p class="field-note simulation-explanation">2024年4月8日改正ダイヤ。発車時刻と本巣・終点の到着時刻は時刻表に一致します。* は推定の到着時刻です。走行速度も推定です。</p>
     <a class="simulation-source" href="${timetable.sourceURL}" target="_blank" rel="noopener">公式時刻表を見る ↗</a><p id="simulation-error" role="alert" hidden></p>
-    <div class="dialog-actions"><button type="button" id="simulation-restore" class="secondary-button" disabled>GPS記録に戻る</button><button type="submit" id="simulation-start" class="primary-button">この列車で再生</button></div></form>`;
+    <label class="simulation-reference-toggle"><input id="simulation-reference" type="checkbox" />GPS記録にダイヤを表示</label>
+    <label id="simulation-reference-date-field" class="simulation-reference-date" hidden>照合日<input id="simulation-reference-date" type="date" /></label>
+    <div class="dialog-actions"><button type="button" id="simulation-clear-reference" class="secondary-button" hidden>照合を解除</button><button type="button" id="simulation-restore" class="secondary-button" disabled>GPS記録に戻る</button><button type="submit" id="simulation-start" class="primary-button">この列車で再生</button></div></form>`;
   document.body.append(dialog);
   const $ = id => dialog.querySelector(`#simulation-${id}`);
   let active = false;
-  function selection() { return { trainId: $('departure').value, stationOrder: Number($('station').value), day: $('day').value }; }
+  function selection() { return { trainId: $('departure').value, stationOrder: Number($('station').value), day: $('day').value, date: $('reference-date').value }; }
   function preview() {
     $('error').hidden = true;
     const available = Boolean($('departure').value);
@@ -58,16 +60,34 @@ export function simulationControls({ timetable, stations, getDirection, onStart,
   }
   for (const name of ['direction', 'day', 'station']) $(name).addEventListener('change', refresh);
   $('departure').addEventListener('change', preview);
+  $('reference').addEventListener('change', () => {
+    const enabled = $('reference').checked;
+    $('reference-date-field').hidden = !enabled;
+    $('reference-date').required = enabled;
+    $('stops-preview').hidden = !enabled;
+    $('start').textContent = enabled ? '記録と照合する' : 'この列車で再生';
+  });
+  $('clear-reference').addEventListener('click', () => { onClearReference(); $('clear-reference').hidden = true; $('reference').checked = false; $('reference').dispatchEvent(new Event('change')); dialog.close(); });
   $('close').addEventListener('click', () => dialog.close());
   button.addEventListener('click', () => {
     if (!active) $('direction').value = getDirection();
+    $('reference-date').value = getReferenceDate();
+    $('clear-reference').hidden = !hasReference();
     refresh(); dialog.showModal();
   });
   $('form').addEventListener('submit', event => {
     event.preventDefault();
-    try { onStart(selection()); active = true; $('restore').disabled = false; dialog.close(); }
+    try {
+      const chosen = selection();
+      if ($('reference').checked) {
+        onReference(chosen); active = false; $('restore').disabled = true;
+      } else {
+        onStart(chosen); active = true; $('restore').disabled = false;
+      }
+      dialog.close();
+    }
     catch (error) { $('error').textContent = error.message; $('error').hidden = false; }
   });
   $('restore').addEventListener('click', () => { onRestore(); active = false; $('restore').disabled = true; dialog.close(); });
-  return { open(direction) { $('direction').value = direction; refresh(); dialog.showModal(); } };
+  return { open(direction) { $('direction').value = direction; $('reference').checked = false; $('reference').dispatchEvent(new Event('change')); $('reference-date').value = getReferenceDate(); $('clear-reference').hidden = !hasReference(); refresh(); dialog.showModal(); } };
 }

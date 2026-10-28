@@ -1,37 +1,29 @@
-.timetable-reference { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.5; min-width: 0; }
-.timetable-reference button { flex-shrink: 0; padding: 6px 10px; font-size: 14px; min-height: 34px; }
-.timetable-reference > span { min-width: 0; overflow-wrap: anywhere; }
-.que-view .cue-card .cue-schedule { margin-top: 10px; padding-top: 8px; border-top: 1px solid currentColor; font-size: 14px; line-height: 1.6; white-space: pre-line; }
-#reference-dialog { width: min(640px, calc(100vw - 28px)); max-height: calc(100dvh - 28px); }
-#reference-dialog .reference-train-field { grid-column: 1 / -1; }
-#reference-dialog input, #reference-dialog select { width: 100%; min-width: 0; box-sizing: border-box; }
-#reference-dialog input { background: var(--surface); color: var(--text); border: 1px solid var(--green); padding: 10px; }
-#reference-dialog .reference-stops { width: 100%; border-collapse: collapse; text-align: left; font-size: 16px; }
-.reference-stops th, .reference-stops td { padding: 7px 5px; border-bottom: 1px solid var(--green); }
-.reference-stops td:not(:first-child) { white-space: nowrap; }
-.reference-details { margin-block: 12px; font-size: 14px; }
-.reference-details summary { cursor: pointer; padding-block: 6px; }
-#reference-dialog .dialog-actions { position: sticky; bottom: -20px; background: var(--surface); padding-block: 10px; }
-.countdown-focus:has(.countdown-schedule) { grid-template-rows: auto auto minmax(0, 1fr); }
-.countdown-focus:has(.countdown-schedule) .countdown-clock { width: min(96cqw, calc(100cqh - 140px)); }
-.countdown-schedule { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; white-space: pre-line; }
-@media (max-width: 600px) {
-  .timetable-reference { gap: 8px; margin-bottom: 8px; font-size: 12px; }
-  .timetable-reference button { font-size: 13px; min-height: 32px; padding: 5px 8px; }
-  .que-view .cue-card .cue-schedule { font-size: 12px; margin-top: 6px; padding-top: 6px; }
-  #reference-dialog .dialog-header { margin-bottom: 12px; }
-  #reference-dialog .dialog-header h2 { font-size: 24px; }
-  #reference-dialog .simulation-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-block: 12px; gap: 10px; }
-  #reference-dialog .simulation-fields input { padding: 8px 4px; font-size: 14px; }
-  #reference-dialog .dialog-actions { flex-wrap: nowrap; margin-top: 10px; }
-  #reference-dialog .dialog-actions button { flex: 1; font-size: 14px; padding: 9px 6px; min-height: 44px; }
-  #reference-dialog .reference-stops { font-size: 14px; }
-  .que-view.has-timetable-reference .map-speed-card strong { font-size: 36px; }
-  .que-view.has-timetable-reference .map-speed-card .speed-unit { font-size: 14px; }
-  .que-view.has-timetable-reference .cue-overlay { max-height: calc(100% - 220px); }
+.que-view .cue-card .cue-schedule,
+.live-view .cue-card .cue-schedule {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid currentColor;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
+.countdown-focus:has(.countdown-schedule) { grid-template-rows: auto auto minmax(0, 1fr); }
+.countdown-focus:has(.countdown-schedule) .countdown-clock { grid-row: 3; width: min(88cqw, calc(100cqh - 210px)); }
+.countdown-schedule { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; white-space: pre-line; }
+
+@media (max-width: 600px) {
+  .que-view .cue-card .cue-schedule,
+  .live-view .cue-card .cue-schedule { font-size: 12px; margin-top: 6px; padding-top: 6px; }
+  .countdown-focus:has(.countdown-schedule) { grid-template-rows: auto auto minmax(0, 1fr); }
+  .countdown-focus:has(.countdown-schedule) h2 { grid-row: 1; }
+  .countdown-focus:has(.countdown-schedule) .countdown-clock { grid-row: 3; width: min(76cqw, calc(100cqh - 210px)); }
+  .countdown-schedule { grid-row: 2; font-size: 12px; }
+}
+
 @media (max-height: 500px) and (min-width: 601px) {
   .countdown-focus:has(.countdown-schedule) { grid-template-rows: minmax(0, 1fr) auto; }
+  .countdown-focus:has(.countdown-schedule) h2 { grid-column: 1; grid-row: 1; }
   .countdown-focus:has(.countdown-schedule) .countdown-clock { grid-column: 2; grid-row: 1 / span 2; width: min(65cqw, 100cqh); }
   .countdown-schedule { grid-column: 1; grid-row: 2; }
 }
