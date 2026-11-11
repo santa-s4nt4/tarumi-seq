@@ -18,17 +18,17 @@ test('uses elapsed wall time and playback rate; stops exactly at the recorded en
 test('converts synchronized video seconds back to the GPS clock with the original offset', () => {
   const front = JSON.parse(fs.readFileSync('data/gps-front.json', 'utf8'));
   const back = JSON.parse(fs.readFileSync('data/gps-back.json', 'utf8'));
-  assert.equal(recordedAt(front, 419), '2026-07-17T03:53:56.000Z');
-  assert.equal(recordedAt(back, 3), '2026-07-17T04:33:19.000Z');
-  // The source generator extends the first fix backwards by up to five seconds.
-  assert.ok(Math.abs(Date.parse(recordedAt(front, 419)) - Date.parse(front.meta.gps.gps_start)) < 5000);
-  assert.ok(Math.abs(Date.parse(recordedAt(back, 3)) - Date.parse(back.meta.gps.gps_start)) < 5000);
-  // gps_end describes the entire GPS log, which can extend beyond the synchronized video.
-  assert.equal((Date.parse(recordedAt(back, 1741)) - Date.parse(recordedAt(back, 3))) / 1000, 1738);
+  assert.equal(recordedAt(front, 0), '2026-11-04T06:42:35.367Z');
+  assert.equal(recordedAt(back, 0), '2026-11-04T07:30:35.001Z');
+  // The first record is the first usable fix, at or after the start of the raw GPS log.
+  assert.ok(Math.abs(Date.parse(recordedAt(front, 0)) - Date.parse(front.meta.gps.gps_start)) < 5000);
+  assert.ok(Date.parse(recordedAt(back, 0)) >= Date.parse(back.meta.gps.gps_start));
+  assert.equal((Date.parse(recordedAt(back, 2091)) - Date.parse(recordedAt(back, 0))) / 1000, 2091);
 });
 test('station skipping uses each direction’s own event times', () => {
   const data = JSON.parse(fs.readFileSync('public/data/map-data.json', 'utf8'));
   assert.equal(stationEvent(data.front.events, 419, 1).name, '木知原');
-  assert.equal(stationEvent(data.back.events, 3, 1).name, '樽見');
-  assert.equal(stationEvent(data.front.events, 419, -1), undefined);
+  assert.equal(stationEvent(data.back.events, 3, 1).name, '水鳥');
+  assert.equal(stationEvent(data.front.events, 419, -1).name, '織部');
+  assert.equal(stationEvent(data.front.events, 0, -1), undefined);
 });
