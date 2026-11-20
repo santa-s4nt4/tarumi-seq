@@ -21,13 +21,14 @@ export function departures(timetable, direction, day, station) {
 
 // The timetable gives departure minutes, with arrival minutes at Motosu and
 // termini. Other arrival times are estimates; published minutes stay exact.
-export function scheduleStops(timetable, trainId, stationOrder, day = 'weekday') {
+export function scheduleStops(timetable, trainId, stationOrder, day = 'weekday', endStationOrder) {
   const train = timetable.trains.find(train => train.id === trainId);
   if (!train || (train.operatingDays === 'holiday' && day !== 'holiday')) throw new Error('この運行日には選択した列車がありません');
-  let calls = train.stops.map(stop => ({ ...stop }));
   const startIndex = train.stops.findIndex(stop => stop.station === stationOrder && stop.departure);
   if (startIndex < 0 || startIndex >= train.stops.length - 1) throw new Error('この駅から発車する列車を選択してください');
-  calls = calls.slice(startIndex);
+  const endIndex = endStationOrder === undefined ? train.stops.length - 1 : train.stops.findIndex(stop => stop.station === endStationOrder);
+  if (endIndex <= startIndex) throw new Error('降車駅は乗車駅より先の停車駅を選んでください');
+  const calls = train.stops.slice(startIndex, endIndex + 1);
   const stops = calls.map((call, index) => {
     const departure = call.departure ? serviceSeconds(call.departure) : null;
     const arrival = index === 0 ? departure : call.arrival ? serviceSeconds(call.arrival) : departure - 30;
@@ -54,7 +55,7 @@ function inverseProgress(fraction) {
   if (fraction > 1 - edge) return 1 - Math.sqrt((1 - fraction) * 2 * ramp * (1 - ramp));
   return fraction * (1 - ramp) + ramp / 2;
 }
-function positionAlong(simulation, time) {
+export function positionAlong(simulation, time) {
   const { stops } = simulation;
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i], b = stops[i + 1];
@@ -67,7 +68,7 @@ function positionAlong(simulation, time) {
   }
   return { s: stops.at(-1).s, speed: 0 };
 }
-function timeAtDistance(simulation, s) {
+export function timeAtDistance(simulation, s) {
   for (let i = 0; i < simulation.stops.length - 1; i++) {
     const a = simulation.stops[i], b = simulation.stops[i + 1];
     if (s >= Math.min(a.s, b.s) && s <= Math.max(a.s, b.s)) {
@@ -77,31 +78,17 @@ function timeAtDistance(simulation, s) {
   }
   return null;
 }
-export function buildSimulation(timetable, railway, stations, selection, river = []) {
-  const plan = scheduleStops(timetable, selection.trainId, selection.stationOrder, selection.day);
-  let cumulative = 0;
-  const ground = railway.coordinates.map(([lon, lat], index, all) => {
-    const p = xy(lat, lon);
-    if (index) cumulative += distance(xy(all[index - 1][1], all[index - 1][0]), p);
-    return [...p, cumulative];
-  });
+export function buildScheduledRun(timetable, railway, stations, selection) {
+  const plan = scheduleStops(timetable, selection.trainId, selection.stationOrder, selection.day, selection.endStationOrder);
   const stops = plan.stops.map(stop => {
     const track = railway.stations.find(s => s.order === stop.station), station = stations.find(s => s.order === stop.station);
     if (!track || !station) throw new Error('駅の位置を読み込めません');
     return { ...stop, ...track, name: station.name };
   });
-  const simulation = { ...plan, stops, ground, selection, originS: stops[0].s };
-  const records = [];
-  for (let t = plan.start; t <= plan.end; t++) {
-    const p = positionAlong(simulation, t), location = latLon(pointAt(ground, p.s));
-    records.push({ t, lat: location.latitude, lon: location.longitude, speed: p.speed });
-  }
-  simulation.recording = { records, meta: { start_time: '2024-04-08T00:00:00+09:00', offset: 0 } };
-  simulation.nodes = buildRoute(records);
-  const locationAt = s => latLon(pointAt(ground, s));
+  const simulation = { ...plan, stops };
   const events = stops.map((stop, index) => ({ id: `station-${stop.station}`, type: 'station', name: stop.name, target: 'arrival',
-    t: stop.arrivalSeconds, departureT: stop.departureSeconds, s: Math.abs(stop.s - stops[0].s), globalS: stop.s,
-    location: locationAt(stop.s), terminal: index === stops.length - 1 }));
+    t: stop.arrivalSeconds, departureT: index === stops.length - 1 ? null : stop.departureSeconds, s: Math.abs(stop.s - stops[0].s), globalS: stop.s,
+    terminal: index === stops.length - 1 }));
   const tunnels = [];
   const startS = Math.min(stops[0].s, stops.at(-1).s), endS = Math.max(stops[0].s, stops.at(-1).s);
   for (const tunnel of railway.tunnels.filter(tunnel => tunnel.start >= startS && tunnel.end <= endS)) {
@@ -112,21 +99,39 @@ export function buildSimulation(timetable, railway, stations, selection, river =
     for (const [index, target] of ['entrance', 'exit'].entries()) {
       const s = index === 0 ? entry : exit;
       events.push({ id: `${tunnel.id}-${target}`, featureId: tunnel.id, type: 'tunnel', name: tunnel.name, target,
-        t: times[index], s: Math.abs(s - stops[0].s), globalS: s, location: locationAt(s) });
+        t: times[index], s: Math.abs(s - stops[0].s), globalS: s });
     }
   }
   events.sort((a, b) => a.t - b.t);
-  simulation.tunnels = tunnels;
+  return { ...simulation, events, tunnels };
+}
+
+export function buildSimulation(timetable, railway, stations, selection, river = []) {
+  const plan = buildScheduledRun(timetable, railway, stations, selection);
+  const { stops, tunnels } = plan;
+  let cumulative = 0;
+  const ground = railway.coordinates.map(([lon, lat], index, all) => {
+    const p = xy(lat, lon);
+    if (index) cumulative += distance(xy(all[index - 1][1], all[index - 1][0]), p);
+    return [...p, cumulative];
+  });
+  const simulation = { ...plan, ground, selection, originS: stops[0].s };
+  const records = [];
+  for (let t = plan.start; t <= plan.end; t++) {
+    const p = positionAlong(simulation, t), location = latLon(pointAt(ground, p.s));
+    records.push({ t, lat: location.latitude, lon: location.longitude, speed: p.speed });
+  }
+  simulation.recording = { records, meta: { start_time: '2024-04-08T00:00:00+09:00', offset: 0 } };
+  simulation.nodes = buildRoute(records);
+  const locationAt = s => latLon(pointAt(ground, s));
+  const events = plan.events.map(event => ({ ...event, location: locationAt(event.globalS) }));
   simulation.data = { events, tunnels, river: river.map(p => { const ll = latLon(p); return [ll.longitude, ll.latitude]; }), profile: [],
     version: `timetable-${timetable.revision}`, coverage: { start: locationAt(stops[0].s), end: locationAt(stops.at(-1).s), distanceMeters: Math.abs(stops.at(-1).s - stops[0].s) } };
   return simulation;
 }
 export function simulationPrediction(simulation, time, river) {
   const p = positionAlong(simulation, time), location = latLon(pointAt(simulation.ground, p.s));
-  const upcoming = simulation.data.events.filter(event => event.type === 'station' ? event.terminal || time < event.departureT : event.t >= time)
-    .map(event => ({ ...event, etaSeconds: Math.max(0, event.t - time), distanceMeters: Math.abs(event.globalS - p.s),
-      arrived: event.type === 'station' && time >= event.t, departureEtaSeconds: event.departureT === null ? null : Math.max(0, event.departureT - time) }));
-  const tunnel = simulation.tunnels.find(tunnel => time >= tunnel.entryT && time < tunnel.exitT);
+  const { upcoming, tunnel } = scheduledEventsAt(simulation, time, p.s);
   const index = Math.min(simulation.nodes.length - 1, Math.max(0, Math.floor(time - simulation.start)));
   const node = simulation.nodes[index], next = simulation.nodes[Math.min(simulation.nodes.length - 1, index + 1)];
   const s = node[2] + (next[2] - node[2]) * (time - Math.floor(time));
@@ -134,4 +139,12 @@ export function simulationPrediction(simulation, time, river) {
     position: { ...location, distanceAlongRouteMeters: s, matchOffsetMeters: 0, speedKmh: p.speed, speedSource: 'estimated_timetable_speed', inTunnel: Boolean(tunnel), tunnelId: tunnel?.id ?? null },
     upcoming, next: Object.fromEntries(['station', 'tunnel', 'river'].map(type => [type, upcoming.find(e => e.type === type) ?? null])),
     river: { name: '根尾川', ...riverNormal(simulation.nodes, river, { point: xy(location.latitude, location.longitude), s }) } };
+}
+
+export function scheduledEventsAt(run, time, s) {
+  const upcoming = run.events.filter(event => event.type === 'station' ? event.terminal || time < event.departureT : event.t >= time)
+    .map(event => ({ ...event, etaSeconds: Math.max(0, event.t - time), distanceMeters: Math.abs(event.globalS - s),
+      arrived: event.type === 'station' && time >= event.t, departureEtaSeconds: event.departureT === null ? null : Math.max(0, event.departureT - time) }));
+  const tunnel = run.tunnels.find(tunnel => time >= tunnel.entryT && time < tunnel.exitT);
+  return { upcoming, tunnel };
 }

@@ -16,7 +16,7 @@ export class LivePrediction {
   }
   reset() { this.fix = null; this.measurement = null; this.speedAnchor = null; this.status = 'waiting'; }
   setDirection(direction) { this.direction = direction === 'back' ? 'back' : 'front'; this.sign = this.direction === 'front' ? 1 : -1; this.reset(); }
-  accept(position, now = Date.now()) {
+  accept(position, now = Date.now(), { ignoreTunnels = false } = {}) {
     const c = position?.coords, timestamp = position?.timestamp;
     if (!c || !Number.isFinite(c.latitude) || Math.abs(c.latitude) > 90 || !Number.isFinite(c.longitude) || Math.abs(c.longitude) > 180 || !Number.isFinite(timestamp)) {
       this.status = 'invalid'; return false;
@@ -28,6 +28,9 @@ export class LivePrediction {
     const projected = this.profile.project(c.longitude, c.latitude, this.fix?.s);
     this.measurement.offsetMeters = projected.offsetMeters;
     if (projected.offsetMeters > LIVE_MAX_ROUTE_OFFSET) { this.status = 'off-route'; return false; }
+    if (ignoreTunnels && this.tunnels.some(tunnel => projected.s >= tunnel.start && projected.s <= tunnel.end)) {
+      this.status = 'tunnel'; return false;
+    }
     const previous = this.fix, seconds = previous ? (timestamp - previous.timestamp) / 1000 : null;
     const delta = previous ? projected.s - previous.s : 0;
     if (previous && seconds > 0 && Math.abs(delta) > 55 * seconds + previous.accuracy + c.accuracy + 30) { this.status = 'jump'; return false; }

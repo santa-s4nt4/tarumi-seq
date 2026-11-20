@@ -1,3 +1,4 @@
+import JapaneseHolidays from 'japanese-holidays';
 import { buildSimulation, serviceTime } from './simulation.js';
 
 export const japanDate = instant => new Date(instant + 9 * 3600000).toISOString().slice(0, 10);
@@ -12,7 +13,8 @@ function timeSeconds(value) {
 }
 export function serviceDayAt(instant) {
   const local = new Date(instant + 9 * 3600000);
-  return local.getUTCDay() === 0 || local.getUTCDay() === 6 ? 'holiday' : 'weekday';
+  const calendarDate = new Date(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 12);
+  return [0, 6].includes(local.getUTCDay()) || JapaneseHolidays.isHoliday(calendarDate) ? 'holiday' : 'weekday';
 }
 export function differenceLabel(seconds) {
   if (!Number.isFinite(seconds)) return '差 —';
@@ -27,11 +29,11 @@ export function differenceLabel(seconds) {
 export class TimetableReference {
   constructor(timetable, railway, stations) { Object.assign(this, { timetable, railway, stations }); this.disconnect(); }
   disconnect() { this.plan = null; this.date = null; }
-  connect({ trainId, day = 'weekday', date }) {
+  connect({ trainId, day = 'weekday', date, stationOrder, endStationOrder }) {
     const epoch = serviceDayEpoch(date);
     const train = this.timetable.trains.find(item => item.id === trainId);
     if (!train) throw new Error('列車を選んでください');
-    const plan = buildSimulation(this.timetable, this.railway, this.stations, { trainId, day, stationOrder: train.stops[0].station });
+    const plan = buildSimulation(this.timetable, this.railway, this.stations, { trainId, day, stationOrder: stationOrder ?? train.stops[0].station, endStationOrder });
     this.plan = plan; this.date = date; this.epoch = epoch; this.day = day;
   }
   autoSelect({ now = Date.now(), direction = 'front' } = {}) {
@@ -73,7 +75,7 @@ export class TimetableReference {
     const scheduledAt = this.epoch + seconds * 1000;
     const estimated = event.type === 'tunnel' || Boolean(stop?.estimatedArrival);
     const deltaSeconds = Number.isFinite(event.etaSeconds) && !event.arrived ? (now + event.etaSeconds * 1000 - scheduledAt) / 1000 : null;
-    return { scheduledAt, seconds, estimated, deltaSeconds, departure: stop?.departure ?? null,
+    return { scheduledAt, seconds, estimated, deltaSeconds, departure: stop === this.plan.stops.at(-1) ? null : stop?.departure ?? null,
       label: `ダイヤ${event.type === 'station' ? '着' : event.target === 'exit' ? '終了' : '開始'} ${serviceTime(seconds, estimated)}${estimated ? ' *' : ''}` };
   }
 }

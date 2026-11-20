@@ -106,3 +106,19 @@ test('every service has a continuous section trajectory with exact station stops
     assert.equal(simulationPrediction(simulation, simulation.end, []).position.speedKmh, 0);
   }
 });
+
+test('a selected section ends on arrival and contains only its own stations and tunnels in both directions', () => {
+  const full = read('timetable-reference');
+  for (const [trainId, from, to] of [['5', 2, 8], ['10', 16, 11]]) {
+    const run = buildSimulation(full, railway, stations, { trainId, stationOrder: from, endStationOrder: to, day: 'weekday' });
+    const last = run.stops.at(-1);
+    assert.equal(run.stops[0].station, from);
+    assert.equal(last.station, to);
+    assert.equal(run.end, serviceSeconds(last.departure) - 30);
+    assert.ok(run.events.every(event => event.t >= run.start && event.t <= run.end));
+    assert.deepEqual(run.events.filter(event => event.type === 'station').map(event => event.name), run.stops.map(stop => stop.name));
+    assert.equal(run.recording.records.at(-1).t, run.end);
+    assert.equal(simulationPrediction(run, run.end, []).next.station.departureEtaSeconds, null);
+  }
+  for (const end of [2, 1, 20]) assert.throws(() => scheduleStops(full, '5', 2, 'weekday', end), /降車駅/);
+});
