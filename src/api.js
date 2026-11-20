@@ -1,6 +1,6 @@
 export const PUBLIC_ENDPOINT = 'https://tarumi-api.santanaruse.workers.dev/api/position';
 export const LOCAL_ENDPOINT = 'http://localhost:8787/api/position';
-export const DEFAULT_ENDPOINT = PUBLIC_ENDPOINT;
+export const DEFAULT_ENDPOINT = import.meta.env?.DEV ? LOCAL_ENDPOINT : PUBLIC_ENDPOINT;
 export const API_INTERVAL_MS = 5000;
 const LOCAL_RETRY_DELAY_MS = 300;
 

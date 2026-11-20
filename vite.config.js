@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 
+import { phoneAddress } from './scripts/phone-network.mjs';
+
 export default defineConfig({
+  define: { __PHONE_DEV_ORIGIN__: JSON.stringify('https://' + (phoneAddress() ?? 'localhost') + ':5174') },
   server: {
     proxy: {
       '/local-api': {

@@ -12,12 +12,16 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test": "node --test test/*.test.js",
     "test:browser": "playwright test",
-    "postbuild": "node scripts/prepare-pages.mjs"
+    "postbuild": "node scripts/prepare-pages.mjs",
+    "api:sync-local": "node scripts/sync-local-api.mjs",
+    "dev:phone": "node scripts/dev-phone.mjs",
+    "predev:phone": "npm run data:prepare"
   },
   "dependencies": {
     "japanese-holidays": "1.0.10",
     "lucide": "1.52.0",
-    "mapbox-gl": "^3.32.0"
+    "mapbox-gl": "^3.32.0",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

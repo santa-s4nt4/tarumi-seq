@@ -1,0 +1,23 @@
+.live-view #map, .live-view #line-map { isolation: isolate; }
+.gps-actions, .gps-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.gps-tools { margin-top: 8px; }
+.gps-tools select { background: var(--surface); color: var(--text); border: 1px solid currentColor; padding: 6px; font: inherit; }
+.gps-tools button, .gps-tools select { min-height: 36px; }
+.gps-source-status { font-size: 13px; }
+.gps-dialog, .gps-sender main { background: var(--surface); color: var(--text); font-family: var(--font); padding: 24px; }
+.gps-dialog { width: min(420px, calc(100% - 32px)); max-height: 90dvh; overflow: auto; border: 1px solid currentColor; }
+.gps-dialog::backdrop { background: #14251db2; }
+.gps-dialog h2, .gps-sender h1 { margin: 0 0 12px; }
+.gps-dialog p, .gps-sender p { margin: 10px 0; line-height: 1.55; }
+.gps-dialog img { display: block; max-width: 100%; width: 245px; margin: auto; image-rendering: pixelated; }
+.gps-dialog [hidden], .gps-tools [hidden] { display: none; }
+.gps-sender { display: grid; place-items: center; min-height: 100dvh; padding: 16px; overflow: auto; background: var(--map-ground); }
+.gps-sender main { max-width: 420px; border: 1px solid currentColor; }
+.gps-sender .loading-wordmark { display: block; width: 130px; height: 42px; margin-bottom: 20px; }
+.gps-sender .primary-button { min-height: 48px; margin: 12px 0; }
+.gps-marker { pointer-events: none; width: 14px; height: 14px; background: #0075c9; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #004b83; z-index: 3; }
+#line-map .gps-marker { position: absolute; transform: translate(-50%, -50%); }
+@media (max-width: 600px) {
+  .gps-tools { gap: 5px; }
+  .gps-tools button, .gps-tools select { font-size: 12px; }
+}
