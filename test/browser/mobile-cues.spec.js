@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('mobile cue visibility persists while desktop always shows the queue', async ({ page }) => {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible();
   await page.getByRole('button', { name: '次の合図を非表示', exact: true }).click();
   await expect(page.locator('#cue-content')).toBeHidden();
@@ -37,7 +37,7 @@ test('mobile cue visibility persists while desktop always shows the queue', asyn
 test('hiding mobile cues keeps the urgent countdown active and restores the chosen visibility', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.getByRole('button', { name: '次の合図を非表示', exact: true }).click();
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));

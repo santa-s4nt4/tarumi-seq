@@ -12,7 +12,7 @@ async function seekGPS(page, time) {
 }
 
 async function startTimetable(page) {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#play')).toBeEnabled();
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.getByRole('button', { name: 'メニューを開く' }).click();
@@ -87,7 +87,7 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
 });
 
 test('tunnel entrance and passage use the correct label and stale countdown clears on API failure', async ({ page }) => {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const { entry, exit } = await page.evaluate(async () => {
     const data = await (await fetch('/data/map-data.json')).json();
@@ -148,7 +148,7 @@ test('mobile countdown fills the map and keeps the entire playback footer usable
 });
 
 test('GPS playback naturally finishes its fractional last second without waiting for another API poll', async ({ page }) => {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const arrival = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'station').t);
   await seekGPS(page, arrival - 0.3);

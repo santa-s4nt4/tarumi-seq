@@ -53,7 +53,7 @@ export function simulationControls({ timetable, stations, getDirection, getRefer
     if (!onFollow || !plan) return;
     const status = followStatus(selection(), plan);
     $('follow').disabled = !status.available;
-    $('follow').textContent = status.waiting ? 'この区間の発車を待つ' : '現在時刻で追従';
+    $('follow').textContent = status.waiting ? 'この区間の発車を待つ' : (status.label ?? '現在時刻で追従');
     $('follow-status').textContent = status.message;
     $('follow-status').hidden = !status.message;
   }

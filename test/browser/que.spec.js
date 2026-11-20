@@ -34,7 +34,7 @@ test('railway, tunnel and bridge height layers load without Mapbox style errors'
   page.on('console', message => {
     if (message.type() === 'error' && /line-z-offset|expression|bridge|tunnel|style/i.test(message.text())) styleErrors.push(message.text());
   });
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#seek').evaluate(el => { el.value = 1200; el.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -67,7 +67,7 @@ test('an occluded position switches to the closest bird view and stays stable un
   page.on('pageerror', error => errors.push(error.message));
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -101,7 +101,7 @@ test('an occluded position switches to the closest bird view and stays stable un
 test('moving current position, station names and tunnel markers match the rendered map without pixel snapping', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#back-button').click();
@@ -143,7 +143,7 @@ test('moving current position, station names and tunnel markers match the render
 test('front playback stays in bird view while the rail is buried and returns on a clear section', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.evaluate(async () => {
@@ -182,7 +182,7 @@ test('zoom slider adjusts the active view, persists settings and fits on mobile'
   await page.addInitScript(() => {
     if (!localStorage.getItem('tarumi-que-zoom')) localStorage.setItem('tarumi-que-zoom', JSON.stringify({ version: 2, normal: 20, bird: 20 }));
   });
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
@@ -229,7 +229,7 @@ test('zoom slider adjusts the active view, persists settings and fits on mobile'
 test('queue view shows API events and updates countdown with playback', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('本巣駅まで', { timeout: 15000 });
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(3);
@@ -250,7 +250,7 @@ test('queue view shows API events and updates countdown with playback', async ({
 });
 
 test('tunnel checkpoints lead the queue, reuse one card through passage and promote the following checkpoint', async ({ page }) => {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.locator('#speed').selectOption('4');
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
@@ -273,7 +273,7 @@ test('tunnel checkpoints lead the queue, reuse one card through passage and prom
 test('station dwell freezes other cards across API refreshes and departure resumes the queue', async ({ page }) => {
   let requests = 0;
   page.on('response', response => { if (response.url().includes('/api/position') && response.ok()) requests++; });
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.locator('#seek').evaluate(el => { el.value = 621; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('0');
@@ -294,7 +294,7 @@ test('station dwell freezes other cards across API refreshes and departure resum
 test('fixed perspectives fade terrain-hidden labels and bird view persists across seeks and reload', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
@@ -318,7 +318,7 @@ test('fixed perspectives fade terrain-hidden labels and bird view persists acros
 
 test('queue remains usable on mobile and console retains the existing viewer', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
@@ -342,7 +342,7 @@ test('queue remains usable on mobile and console retains the existing viewer', a
 
 test('queue clears stale cues on API failure and offers retry', async ({ page }) => {
   await page.route('**/api/position', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#cue-status')).toHaveText('API 接続エラー');
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
   await page.unroute('**/api/position');
@@ -354,7 +354,7 @@ test('queue clears stale cues on API failure and offers retry', async ({ page })
 
 test('queue camera stays locked against mouse input and tracks seeks and direction switches', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#back-button').click();
@@ -399,7 +399,7 @@ test('tunnel viewer turns black, shows portals and speed, then returns to daylig
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (/Failed to evaluate expression|Could not parse color|Error:/.test(message.text())) errors.push(message.text()); });
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('#map-train-speed')).not.toHaveText('—', { timeout: 15000 });
   await expect(page.locator('.map-speed-card')).toBeVisible();
   const cue = await page.locator('#cue-list .cue-primary').boundingBox();

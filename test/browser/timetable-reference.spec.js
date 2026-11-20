@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('playback can compare a selected timetable, pause the notes and return to recorded GPS', async ({ page }) => {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await page.getByRole('button', { name: 'メニューを開く' }).click();
   await page.locator('#simulation-button').click();
   await page.locator('#simulation-departure').selectOption('17');

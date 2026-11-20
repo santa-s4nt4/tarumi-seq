@@ -20,8 +20,7 @@ import { japanDate, serviceDayAt } from './timetable-reference.js';
 import { setupAppMenu } from './app-menu.js';
 
 const base = import.meta.env.BASE_URL;
-const isQue = /(?:^|\/)que(?:\/(?:index\.html)?)?$/.test(location.pathname);
-document.title = isQue ? 'QUE · ダイヤと区間 | 樽見OTO鉄道' : 'LIVE · 列車位置 | 樽見OTO鉄道';
+document.title = 'LIVE · 列車位置と合図 | 樽見OTO鉄道';
 document.body.className = 'que-view live-view';
 document.documentElement.dataset.theme = 'light';
 document.body.innerHTML = `
@@ -36,26 +35,22 @@ document.body.innerHTML = `
   </section></main>
   <footer class="playback-panel live-footer">
     <div class="live-status-row"><strong id="live-status" role="status">ダイヤ上の列車位置</strong><time id="live-clock"></time>
-      ${isQue ? '<button id="que-select-section" type="button" class="primary-button" disabled>ダイヤ・区間を選ぶ</button>' : ''}</div>
+      <button id="live-select-section" type="button" class="primary-button" disabled>ダイヤ・区間を選ぶ</button></div>
     <div id="live-trains" aria-label="運行中の列車"></div>
     <div class="live-details" hidden><button id="live-overview" class="secondary-button">全線図に戻る</button><span id="live-delay"></span><button type="button" id="live-start" class="secondary-button" aria-pressed="false">乗車中のGPSで遅延補正</button><span id="gps-status" role="status"></span></div>
-    ${isQue ? '' : `<div class="gps-tools" aria-label="LIVEのGPS入力">
+    <div class="gps-tools" aria-label="LIVEのGPS入力">
       <select id="recording-direction" aria-label="GPS記録の方向"><option value="front">往路 · 樽見方面</option><option value="back">復路 · 本巣方面</option></select>
       <button class="secondary-button" id="try-recording" disabled>記録GPSで試す</button>
       <button class="secondary-button" id="phone-link" disabled>スマホのGPSを使う</button>
-      <span id="gps-source" class="gps-source-status" role="status"></span></div>`}
+      <span id="gps-source" class="gps-source-status" role="status"></span></div>
     <p class="live-footnote" id="live-note"></p>
   </footer>`;
 
 const $ = id => document.getElementById(id);
 $('reload-data').addEventListener('click', () => location.reload());
-const navigation = document.createElement('nav');
-navigation.className = 'view-navigation';
-navigation.setAttribute('aria-label', '画面の切り替え');
-navigation.innerHTML = `<a href="${base}console/">CONSOLE</a><a href="${base}que/" ${isQue ? 'aria-current="page"' : ''}>QUE</a><a href="${base}live/" ${isQue ? '' : 'aria-current="page"'}>LIVE</a>`;
 const playback = document.createElement('a');
-playback.href = `${base}que/?mode=playback`; playback.textContent = '記録・ダイヤを再生';
-setupAppMenu({ header: document.querySelector('.header'), navigation, actions: [playback] });
+playback.href = `${base}live/?mode=playback`; playback.textContent = '記録・ダイヤを再生';
+setupAppMenu({ header: document.querySelector('.header'), currentView: 'live', actions: [playback] });
 const countdown = createCueCountdown(document.querySelector('.map-panel'));
 setupMobileCues($('mobile-cue-toggle'));
 const cards = new Map();
@@ -87,22 +82,26 @@ function renderCards(events) {
 }
 
 let fleet, gps, lineMap, terrain, selected = null, mode = 'overview', terrainMode = 'overview', terrainReady = false;
-let autoFollow = isQue, gpsStatus = '', lastMapUpdate = -Infinity, focusedCue = null;
+let autoFollow = true, gpsStatus = '', lastMapUpdate = -Infinity, focusedCue = null;
 let sectionPicker, section = null, completedSection = '', lastPickerSecond;
 const trainButtons = new Map();
 const gpsMessages = {
-  waiting: 'GPS受信待ち', tracking: 'GPS受信中', stale: 'GPS更新待ち',
+  'other-train': '記録GPSは別の列車のため時刻表で追従', waiting: 'GPS受信待ち', tracking: 'GPS受信中', stale: 'GPS更新待ち',
   accuracy: 'GPS精度不足', 'off-section': '選択区間外のGPSは補正を保留', 'off-route': '路線外', direction: '進行方向を確認してください',
   invalid: 'GPS更新待ち', jump: '位置を再確認中', timeout: 'GPS更新待ち', unavailable: 'GPS受信待ち',
   denied: '位置情報の許可が必要です', unsupported: '位置情報を利用できません', insecure: 'GPSにはHTTPSが必要です',
   hidden: 'GPS補正を一時停止しました', stopped: '', protected: 'カウント中は補正を保留', tunnel: 'トンネル内は補正を保留',
 };
-let recording = null, loadingRecording = false, phone, phoneStatus = '', sourceNotice = '', measured = null;
+let recording = null, loadingRecording = false, phoneStatus = '', sourceNotice = '', measured = null;
 const workingFleet = () => recording?.fleet ?? fleet;
 const clockNow = () => recording?.now(performance.now()) ?? Date.now();
 function acceptFix(position, now = clockNow()) {
   measured = position;
   if (!selected || !selected.activeAt(now)) return;
+  if (recording && selected !== recording.train) {
+    gpsStatus = 'other-train';
+    return;
+  }
   if (focusedCue || selected.protectedAt(selected.secondsAt(now))) {
     selected.clearFixes();
     gps.reset();
@@ -153,35 +152,33 @@ function endRecording(message) {
   selectTrain(null);
 }
 
-if (!isQue) {
-  phone = phoneLink({
-    button: $('phone-link'),
-    onFix(position) { acceptFix(position); render(); },
-    onState(message) {
-      if (session.active) session.stop();
-      phoneStatus = message;
-      sourceNotice = '';
-      if (!phone?.active) { measured = null; selected?.clearFixes(); gps?.reset(); gpsStatus = ''; }
-    },
-  });
-  $('try-recording').addEventListener('click', async () => {
-    if (recording) { endRecording('現在時刻に戻りました'); return; }
-    if (loadingRecording || phone.active) return;
-    const direction = $('recording-direction').value;
-    loadingRecording = true;
-    sourceNotice = 'APIからGPS記録を取得中';
-    phoneStatus = '';
-    render();
-    try {
-      const data = await liveRequest('recordings/' + direction);
-      if (data.id !== direction || !data.records?.length || !Number.isFinite(Date.parse(data.meta?.start_time))) throw new Error();
-      const isolated = new LiveTimetable(fleet.timetable, fleet.railway, fleet.stations);
-      recording = new LiveRecording(data, isolated, gps.profile, performance.now());
-      selectTrain(recording.train ?? null);
-    } catch { sourceNotice = 'GPS記録を取得できませんでした。APIの接続とデータ登録を確認してください。'; }
-    finally { loadingRecording = false; render(); }
-  });
-}
+const phone = phoneLink({
+  button: $('phone-link'),
+  onFix(position) { acceptFix(position); render(); },
+  onState(message) {
+    if (session.active) session.stop();
+    phoneStatus = message;
+    sourceNotice = '';
+    if (!phone.active) { measured = null; selected?.clearFixes(); gps?.reset(); gpsStatus = ''; }
+  },
+});
+$('try-recording').addEventListener('click', async () => {
+  if (recording) { endRecording('現在時刻に戻りました'); return; }
+  if (loadingRecording || phone.active) return;
+  const direction = $('recording-direction').value;
+  loadingRecording = true;
+  sourceNotice = 'APIからGPS記録を取得中';
+  phoneStatus = '';
+  render();
+  try {
+    const data = await liveRequest('recordings/' + direction);
+    if (data.id !== direction || !data.records?.length || !Number.isFinite(Date.parse(data.meta?.start_time))) throw new Error();
+    const isolated = new LiveTimetable(fleet.timetable, fleet.railway, fleet.stations);
+    recording = new LiveRecording(data, isolated, gps.profile, performance.now());
+    selectTrain(recording.train ?? null);
+  } catch { sourceNotice = 'GPS記録を取得できませんでした。APIの接続とデータ登録を確認してください。'; }
+  finally { loadingRecording = false; render(); }
+});
 
 function setMode(value) {
   mode = value;
@@ -205,29 +202,31 @@ function showFleet(active) {
   }
 }
 
-function createQuePicker(timetable, stations) {
+function createSectionPicker(timetable, stations) {
   const name = order => stations.find(station => station.order === order).name;
-  function todayRun(id, now) {
-    fleet.at(now);
-    return fleet.runs.find(run => run.train.id === id && run.epoch === fleet.epoch);
+  function serviceRun(id, now) {
+    const current = workingFleet();
+    current.at(now);
+    return current.runs.find(run => run.train.id === id && run.epoch === current.epoch);
   }
   return simulationControls({
-    button: $('que-select-section'), timetable, stations,
+    button: $('live-select-section'), timetable, stations,
     getDirection: () => selected?.train.direction ?? 'front',
     getSelection() {
-      const now = Date.now(), { active, next } = fleet.at(now);
+      const now = clockNow(), { active, next } = workingFleet().at(now);
       const run = selected ?? active[0] ?? next;
       return section?.choice ?? { trainId: run?.train.id, day: serviceDayAt(now) };
     },
     followStatus(choice, plan) {
-      const now = Date.now(), run = todayRun(choice.trainId, now);
-      if (!run) return { available: false, message: 'この列車は本日の運行対象外です。' };
+      const now = clockNow(), run = serviceRun(choice.trainId, now);
+      if (!run) return { available: false, message: recording ? 'この列車は記録日の運行対象外です。' : 'この列車は本日の運行対象外です。' };
       const time = run.secondsAt(now) - run.delay;
-      if (time > plan.end) return { available: false, message: '本日のこの区間は終了しました。出発時刻から再生できます。' };
-      return { available: true, waiting: time < plan.start, message: '' };
+      if (time > plan.end) return { available: false, message: 'この区間は終了しました。出発時刻から再生できます。' };
+      return { available: true, waiting: time < plan.start, label: recording ? '記録時刻で追従' : '現在時刻で追従',
+        message: recording ? `記録GPS · ${japanDate(now)} ${serviceTime(run.secondsAt(now), true)} JST` : '' };
     },
     onFollow(choice, plan) {
-      const run = todayRun(choice.trainId, Date.now());
+      const run = serviceRun(choice.trainId, clockNow());
       const label = `${name(choice.stationOrder)} → ${name(choice.endStationOrder)}`;
       const from = run.stops.find(stop => stop.station === choice.stationOrder).s;
       const to = run.stops.find(stop => stop.station === choice.endStationOrder).s;
@@ -236,7 +235,7 @@ function createQuePicker(timetable, stations) {
     onStart(choice) {
       const params = new URLSearchParams({ mode: 'playback', train: choice.trainId, day: choice.day,
         from: choice.stationOrder, to: choice.endStationOrder });
-      location.assign(`${base}que/?${params}`);
+      location.assign(`${base}live/?${params}`);
     },
   });
 }
@@ -291,19 +290,18 @@ function render() {
   document.querySelector('.map-speed-card').hidden = !prediction;
   $('live-follow').setAttribute('aria-pressed', String(mode === 'follow'));
   $('live-bird').setAttribute('aria-pressed', String(mode === 'bird'));
-  $('live-start').hidden = Boolean(recording || phone?.active || loadingRecording || (waiting && !session.active));
+  $('live-start').hidden = Boolean(recording || phone.active || loadingRecording || (waiting && !session.active));
   $('live-start').setAttribute('aria-pressed', String(session.active));
   text($('live-start'), session.active ? 'GPS補正を停止' : '乗車中のGPSで遅延補正');
   const stale = gpsStatus === 'tracking' && now - gps.fix?.timestamp > LIVE_FRESH_MS;
   text($('gps-status'), gpsMessages[stale ? 'stale' : gpsStatus] ?? '');
-  if (!isQue) {
-    $('try-recording').disabled = loadingRecording || phone.active;
-    $('phone-link').disabled = loadingRecording || Boolean(recording);
-    $('recording-direction').disabled = loadingRecording || Boolean(recording) || phone.active;
-    text($('try-recording'), recording ? '記録を終了' : '記録GPSで試す');
-    const elapsed = recording ? (now - recording.epoch) / 1000 : 0;
-    text($('gps-source'), recording ? `記録GPS · ${japanDate(now)} · ${timeLabel(elapsed)} / ${timeLabel(recording.end)} · 青点は記録位置` : sourceNotice || phoneStatus);
-  }
+  $('live-select-section').disabled = loadingRecording;
+  $('try-recording').disabled = loadingRecording || phone.active;
+  $('phone-link').disabled = loadingRecording || Boolean(recording);
+  $('recording-direction').disabled = loadingRecording || Boolean(recording) || phone.active;
+  text($('try-recording'), recording ? '記録を終了' : '記録GPSで試す');
+  const elapsed = recording ? (now - recording.epoch) / 1000 : 0;
+  text($('gps-source'), recording ? `記録GPS · ${japanDate(now)} · ${timeLabel(elapsed)} / ${timeLabel(recording.end)} · 青点は記録位置` : sourceNotice || phoneStatus);
   text($('live-delay'), selected?.delay ? `推定遅延 +${selected.delay}秒` : '時刻表基準');
   text($('live-note'), waiting ? `${serviceTime(section.start)} の発車から合図を表示します。` : completedSection || (selected ? '位置・速度・合図は時刻表からの推定です。' :
     active.length ? '時刻表による推定位置です。列車をタップすると追従します。' :
@@ -364,10 +362,7 @@ try {
     onReady() { terrainReady = true; lastMapUpdate = -Infinity; render(); },
     onError() { terrainReady = false; lastMapUpdate = -Infinity; },
   });
-  if (isQue) {
-    sectionPicker = createQuePicker(timetable, catalog.stations);
-    $('que-select-section').disabled = false;
-  }
+  sectionPicker = createSectionPicker(timetable, catalog.stations);
   render();
   $('loading').hidden = true;
   setInterval(render, 80);

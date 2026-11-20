@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function setup(page) {
-  await page.goto('/que/?mode=playback');
+  await page.goto('/live/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
   return entry.t;

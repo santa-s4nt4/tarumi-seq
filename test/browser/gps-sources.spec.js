@@ -80,3 +80,22 @@ test('the local relay keeps only the newest fix and enforces the two link roles'
   } finally { await request.delete(resource, { headers: reader }); }
   expect((await request.head(resource, { headers: writer })).status()).toBe(404);
 });
+
+test('the section picker follows the recorded train and clock, then returns to current service', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-21T03:00:00+09:00') });
+  await page.goto('/live/');
+  await page.getByRole('button', { name: '記録GPSで試す' }).click();
+  await expect(page.locator('#live-status')).toContainText('23列車');
+  await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
+  await expect(page.locator('#simulation-departure')).toHaveValue('23');
+  await expect(page.locator('#simulation-day')).toHaveValue('weekday');
+  await page.locator('#simulation-station').selectOption('1');
+  await page.locator('#simulation-end-station').selectOption('18');
+  await expect(page.locator('#simulation-follow-status')).toContainText('2026-11-04');
+  await page.getByRole('button', { name: '記録時刻で追従' }).click();
+  await expect(page.locator('#live-status')).toContainText('23列車 · 大垣 → 水鳥 · 追従中');
+  await page.getByRole('button', { name: '記録を終了' }).click();
+  await expect(page.locator('#live-status')).toContainText('運行中の列車はありません');
+  await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
+  await expect(page.locator('#simulation-day')).toHaveValue('holiday');
+});

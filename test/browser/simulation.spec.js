@@ -7,7 +7,7 @@ const seconds = time => { const [h,m,s=0] = time.split(':').map(Number); return 
 async function seek(page,time) { await page.locator('#seek').evaluate((element,value)=>{element.value=value;element.dispatchEvent(new Event('input',{bubbles:true}));},seconds(time)); }
 async function pause(page) { if (await page.locator('#play').getAttribute('aria-pressed') === 'true') await page.locator('#play').click(); }
 async function setup(page) {
-  await page.goto('/que/?mode=playback'); await expect(page.locator('.current-marker')).toBeVisible();
+  await page.goto('/live/?mode=playback'); await expect(page.locator('.current-marker')).toBeVisible();
   await page.getByRole('button', { name: 'メニューを開く' }).click();
   await page.locator('#simulation-button').click(); await expect(page.locator('#simulation-dialog')).toBeVisible();
 }

@@ -50,10 +50,10 @@ test('full-line overview shows both directions and follows the tapped service wi
   await expect(page.locator('#line-map .line-train')).toHaveCount(0);
 });
 
-test('QUE uses the timetable, GPS changes only the selected delay and a refused watch leaves cues running', async ({ page }) => {
+test('LIVE uses the timetable, GPS changes only the selected delay and a refused watch leaves cues running', async ({ page }) => {
   const time = 7 * 3600 + 24 * 60;
   const run = currentRun('5', time);
-  await open(page, time, '/que/');
+  await open(page, time);
   await page.locator('.train-choice.front').click();
   await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('90');
   await page.locator('#live-start').click();
@@ -99,20 +99,25 @@ test('a running countdown survives erratic and missing GPS through tunnel entry 
 });
 
 test('playback opens from the realtime menu and posts to the local API in development', async ({ page }) => {
-  await open(page, 3 * 3600, '/que/');
+  await open(page, 3 * 3600, '/que/index.html');
+  await expect(page).toHaveURL(/\/live\/$/);
+  await expect(page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'スマホのGPSを使う' })).toBeEnabled();
   await page.getByRole('button', { name: 'メニューを開く' }).click();
+  await expect(page.locator('.view-navigation a')).toHaveText(['CONSOLE', 'LIVE']);
   const request = page.waitForResponse(r => r.url().endsWith('/local-api/api/position') && r.request().method() === 'POST');
   await page.getByRole('link', { name: '記録・ダイヤを再生' }).click();
   await page.clock.resume();
   const response = await request;
   expect(response.status()).toBe(200);
   expect((await response.json()).next.station.name).toBeTruthy();
+  await expect(page).toHaveURL(/\/live\/\?mode=playback$/);
   await expect(page.locator('#play')).toBeEnabled();
 });
 
-test('one active QUE service follows automatically and returns to the overview after the terminal countdown', async ({ page }) => {
+test('one active service follows automatically and returns to the overview after the terminal countdown', async ({ page }) => {
   // 41 is the final train, due at Motosu at 23:29.
-  await open(page, 23 * 3600 + 28 * 60 + 52, '/que/');
+  await open(page, 23 * 3600 + 28 * 60 + 52);
   await expect(page.locator('#live-status')).toContainText('41列車');
   await expect(page.locator('#countdown-target')).toHaveText('本巣駅まで');
   await expect(page.locator('#countdown-seconds')).toHaveText('8');
@@ -123,9 +128,9 @@ test('one active QUE service follows automatically and returns to the overview a
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
 });
 
-test('QUE selects a train from the diagram and waits for exactly the chosen boarding and alighting stations', async ({ page }) => {
+test('LIVE selects a train from the diagram and waits for exactly the chosen boarding and alighting stations', async ({ page }) => {
   const now = 7 * 3600 + 25 * 60 + 50;
-  await open(page, now, '/que/');
+  await open(page, now);
   await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
   await page.locator('#simulation-direction').selectOption('front');
   await page.locator('#simulation-departure').selectOption('3');
@@ -153,8 +158,8 @@ test('QUE selects a train from the diagram and waits for exactly the chosen boar
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
 });
 
-test('QUE can replay a holiday train section outside service hours, including an intermediate final station', async ({ page }) => {
-  await open(page, 23 * 3600 + 51 * 60, '/que/');
+test('LIVE can replay a holiday train section outside service hours, including an intermediate final station', async ({ page }) => {
+  await open(page, 23 * 3600 + 51 * 60);
   await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
   await page.locator('#simulation-direction').selectOption('back');
   await page.locator('#simulation-day').selectOption('weekday');
@@ -171,6 +176,10 @@ test('QUE can replay a holiday train section outside service hours, including an
   await page.locator('#seek').evaluate((el, max) => { el.value = max; el.dispatchEvent(new Event('input', { bubbles: true })); }, max);
   await expect(page.locator('#cue-status')).toContainText('北方真桑駅に到着');
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(1);
+  const shared = new URL(page.url());
+  expect(shared.pathname).toBe('/live/');
+  await page.goto('/que/' + shared.search);
+  await expect(page).toHaveURL(shared.href);
   await page.reload();
   await expect(page.locator('#sample-count')).toContainText('1002列車 · 糸貫 → 北方真桑');
 });

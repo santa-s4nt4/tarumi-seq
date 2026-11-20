@@ -1,4 +1,15 @@
-export function setupAppMenu({ header, navigation, actions = [], mapControls = [] }) {
+export function setupAppMenu({ header, currentView, actions = [], mapControls = [] }) {
+  const navigation = document.createElement('nav');
+  navigation.className = 'view-navigation';
+  navigation.setAttribute('aria-label', '画面の切り替え');
+  for (const view of ['console', 'live']) {
+    const link = document.createElement('a');
+    link.href = import.meta.env.BASE_URL + view + '/';
+    link.textContent = view.toUpperCase();
+    if (view === currentView) link.setAttribute('aria-current', 'page');
+    navigation.append(link);
+  }
+
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'menu-toggle';
