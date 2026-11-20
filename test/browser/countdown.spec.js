@@ -12,11 +12,13 @@ async function seekGPS(page, time) {
 }
 
 async function startTimetable(page) {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#play')).toBeEnabled();
   await expect(page.locator('.current-marker')).toBeVisible();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
   await page.locator('#simulation-button').click();
   await page.locator('#simulation-departure').selectOption('5');
+  await page.locator('#simulation-station').selectOption('9');
   await page.locator('#simulation-start').click();
   await page.locator('#play[aria-pressed="true"]').click();
 }
@@ -85,7 +87,7 @@ test('station countdown starts at ten, moves within a second, follows pause/rate
 });
 
 test('tunnel entrance and passage use the correct label and stale countdown clears on API failure', async ({ page }) => {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const { entry, exit } = await page.evaluate(async () => {
     const data = await (await fetch('/data/map-data.json')).json();
@@ -96,11 +98,11 @@ test('tunnel entrance and passage use the correct label and stale countdown clea
   const focus = page.locator('#cue-countdown-focus');
   await seekGPS(page, entry.t - 5);
   await expect(focus).toBeVisible();
-  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}まで`);
+  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}開始まで`);
   await expect(focus).toHaveAttribute('data-target', 'entrance');
   await seekGPS(page, exit.t - 5);
   await expect(focus).toBeVisible();
-  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}通過まで`);
+  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}終了まで`);
   await expect(focus).toHaveAttribute('data-target', 'exit');
   await page.screenshot({ path: 'test-results/countdown-tunnel-desktop.png' });
   await page.route('**/api/position', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }));
@@ -108,7 +110,9 @@ test('tunnel entrance and passage use the correct label and stale countdown clea
   await expect(page.locator('#cue-status')).toHaveText('API 接続エラー');
   await expect(focus).toBeHidden();
   await page.unroute('**/api/position');
-  await page.locator('#cue-retry').click();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
+  await page.locator('#api-button').click();
+  await page.getByRole('button', { name: '接続する', exact: true }).click();
   await expect(focus).toBeVisible();
   await seekGPS(page, entry.t - 30);
   await expect(focus).toBeHidden();
@@ -144,7 +148,7 @@ test('mobile countdown fills the map and keeps the entire playback footer usable
 });
 
 test('GPS playback naturally finishes its fractional last second without waiting for another API poll', async ({ page }) => {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const arrival = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'station').t);
   await seekGPS(page, arrival - 0.3);

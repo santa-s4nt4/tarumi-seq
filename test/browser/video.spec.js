@@ -8,7 +8,7 @@ test('video mode embeds each direction, survives reload and removes the player w
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('https://www.youtube.com/embed/**', route => route.fulfill({contentType:'text/html',body:'<html><body style="background:black;color:white">YouTube embed fixture</body></html>'}));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#play')).toBeEnabled();
   await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
   await page.locator('#que-mode-video').click();
@@ -35,9 +35,10 @@ test('video mode embeds each direction, survives reload and removes the player w
 test('updates old saved zooms to 19 and switches the embedded direction for timetable playback', async ({ page }) => {
   await page.addInitScript(()=>{if(!localStorage.getItem('tarumi-que-zoom'))localStorage.setItem('tarumi-que-zoom',JSON.stringify({normal:17,bird:19}));});
   await page.route('https://www.youtube.com/embed/**', route=>route.fulfill({contentType:'text/html',body:'<html><body>Video</body></html>'}));
-  await page.goto('/que'); await expect(page.locator('#play')).toBeEnabled();
+  await page.goto('/que/?mode=playback'); await expect(page.locator('#play')).toBeEnabled();
   await expect(page.locator('#que-zoom-value')).toHaveText('19.0');
   await page.locator('#que-mode-video').click();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
   await page.locator('#simulation-button').click();
   await page.locator('#simulation-direction').selectOption('back');
   await page.locator('#simulation-start').click();

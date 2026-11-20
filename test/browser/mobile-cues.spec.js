@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('mobile cue visibility persists while desktop always shows the queue', async ({ page }) => {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible();
   await page.getByRole('button', { name: '次の合図を非表示', exact: true }).click();
   await expect(page.locator('#cue-content')).toBeHidden();
@@ -37,20 +37,20 @@ test('mobile cue visibility persists while desktop always shows the queue', asyn
 test('hiding mobile cues keeps the urgent countdown active and restores the chosen visibility', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.getByRole('button', { name: '次の合図を非表示', exact: true }).click();
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
   const seek = async time => page.locator('#seek').evaluate((element, value) => { element.value = value; element.dispatchEvent(new Event('input', { bubbles: true })); }, time);
   await seek(entry.t - 5);
   await expect(page.locator('#cue-countdown-focus')).toBeVisible();
-  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}まで`);
+  await expect(page.locator('#countdown-target')).toHaveText(`${entry.name}開始まで`);
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
   await seek(entry.t - 30);
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
   await expect(page.locator('#cue-content')).toBeHidden();
   await page.getByRole('button', { name: '次の合図を表示', exact: true }).click();
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText(`${entry.name}まで`);
+  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText(`${entry.name}開始まで`);
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible();
   expect(errors).toEqual([]);
 });

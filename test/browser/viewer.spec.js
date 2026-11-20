@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+import { recordedAt, timeLabel } from '../../src/timeline.js';
+const front = JSON.parse(fs.readFileSync('data/gps-front.json'));
+const back = JSON.parse(fs.readFileSync('data/gps-back.json'));
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
@@ -29,8 +32,8 @@ test('polls every five real seconds while countdown and GPS continue; pause free
   await page.locator('#play').click(); await next;
   expect(requests).toHaveLength(2); expect(requests[1].at - requests[0].at).toBeGreaterThanOrEqual(4900);
   const latestT = Number(await page.locator('#seek').inputValue());
-  const start = Date.parse('2026-07-17T03:52:47Z');
-  const sentT = (Date.parse(requests[1].body.recordedAt) - start) / 1000 + 350;
+  const start = Date.parse(recordedAt(front, 0));
+  const sentT = (Date.parse(requests[1].body.recordedAt) - start) / 1000;
   expect(Math.abs(latestT - sentT)).toBeLessThan(0.5);
 });
 
@@ -48,12 +51,12 @@ test('promotes a station and tunnel exit between polls without an additional req
     await route.fulfill({ json: result });
   });
   await ready(page); await page.locator('#speed').selectOption('4'); await page.locator('#play').click();
-  await expect(page.locator('#station-name')).toHaveText('谷汲口');
-  await expect(page.locator('#tunnel-heading')).toHaveText('トンネル出口まで');
-  await expect(page.locator('#tunnel-detail')).toContainText('出口まで'); expect(count).toBe(1);
+  await expect(page.locator('#station-name')).toHaveText('織部');
+  await expect(page.locator('#tunnel-heading')).toHaveText('トンネル終了まで');
+  await expect(page.locator('#tunnel-detail')).toContainText('終了まで'); expect(count).toBe(1);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.locator('#speed').selectOption('16');
-  await expect(page.locator('#tunnel-status')).toHaveText('OUTSIDE');
+  await expect(page.locator('#tunnel-status')).toHaveText('トンネル外');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(count).toBe(1);
 });
@@ -63,10 +66,10 @@ test('renders real API predictions and Mapbox route; sends the corrected GPS tim
   const request = page.waitForRequest(r => r.url().endsWith('/api/position') && r.method() === 'POST');
   await ready(page);
   const body = (await request).postDataJSON();
-  expect(body).toEqual({ latitude: 35.514371, longitude: 136.653235, direction: 'front', recordedAt: '2026-07-17T03:53:56.000Z' });
-  await expect(page.locator('#station-name')).toHaveText('木知原');
-  await expect(page.locator('#station-distance')).toHaveText('492');
-  await expect(page.locator('#river-distance')).toHaveText('115');
+  expect(body).toEqual({ latitude: front.records[0].lat, longitude: front.records[0].lon, direction: 'front', recordedAt: recordedAt(front, front.records[0].t) });
+  await expect(page.locator('#station-name')).toHaveText('本巣');
+  await expect(page.locator('#station-distance')).toHaveText('3');
+  await expect(page.locator('#river-distance')).toHaveText('7,366');
   await expect(page.locator('.current-marker')).toBeVisible();
   await expect(page.locator('.station-marker')).toHaveCount(11);
   await expect(page.locator('.mapboxgl-canvas')).toBeVisible();
@@ -81,12 +84,12 @@ test('playback, speed, pause, skip and seeking move the actual GPS request', asy
   await ready(page);
   await page.locator('#speed').selectOption('4');
   await page.getByRole('button', { name: '再生', exact: true }).click();
-  await expect.poll(async () => Number(await page.locator('#seek').inputValue())).toBeGreaterThan(423);
+  await expect.poll(async () => Number(await page.locator('#seek').inputValue())).toBeGreaterThan(front.records[0].t + 4);
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
   const stopped = Number(await page.locator('#seek').inputValue());
   await page.getByRole('button', { name: '10秒進む' }).click();
   expect(Number(await page.locator('#seek').inputValue())).toBeCloseTo(stopped + 10, 0);
-  const request = page.waitForRequest(r => r.url().endsWith('/api/position') && r.postDataJSON()?.recordedAt === '2026-07-17T04:00:17.000Z');
+  const request = page.waitForRequest(r => r.url().endsWith('/api/position') && r.postDataJSON()?.recordedAt === recordedAt(front, 800));
   await seek(page, 800);
   expect((await request).postDataJSON().direction).toBe('front');
   await expect(page.locator('#time-current')).toHaveText('13:20');
@@ -97,13 +100,13 @@ test('direction switching and station skipping use the selected recording', asyn
   await ready(page);
   const response = page.waitForResponse(r => r.url().endsWith('/api/position') && r.request().postDataJSON()?.direction === 'back');
   await page.locator('#back-button').click();
-  expect((await response).request().postDataJSON().recordedAt).toBe('2026-07-17T04:33:19.000Z');
-  await expect(page.locator('#time-current')).toHaveText('00:03');
+  expect((await response).request().postDataJSON().recordedAt).toBe(recordedAt(back, back.records[0].t));
+  await expect(page.locator('#time-current')).toHaveText(timeLabel(back.records[0].t));
   await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み');
   await page.getByRole('button', { name: '次の駅へ', exact: true }).click();
   expect(Number(await page.locator('#seek').inputValue())).toBeGreaterThan(3);
   await page.locator('#front-button').click();
-  await expect(page.locator('#time-current')).toHaveText('06:59');
+  await expect(page.locator('#time-current')).toHaveText(timeLabel(front.records[0].t));
 });
 
 test('tunnel interior switches the prediction to its exit; record endpoint stops playback', async ({ page }) => {
@@ -113,18 +116,18 @@ test('tunnel interior switches the prediction to its exit; record endpoint stops
   const response = page.waitForResponse(r => r.url().endsWith('/api/position') && r.request().postDataJSON()?.latitude > entrance.location.latitude);
   await seek(page, entrance.t + 5);
   await response;
-  await expect(page.locator('#tunnel-heading')).toHaveText('トンネル出口まで');
-  await expect(page.locator('#tunnel-detail')).toContainText('出口まで');
+  await expect(page.locator('#tunnel-heading')).toHaveText('トンネル終了まで');
+  await expect(page.locator('#tunnel-detail')).toContainText('終了まで');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const exit = meta.events.find(e => e.featureId === entrance.featureId && e.target === 'exit');
   await seek(page, exit.t + 1);
   await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await seek(page, 2210.5);
+  await seek(page, front.records.at(-1).t - 0.5);
   await page.locator('#speed').selectOption('16');
   await page.getByRole('button', { name: '再生', exact: true }).click();
   await expect(page.getByRole('button', { name: '再生', exact: true })).toBeVisible();
-  await expect(page.locator('#seek')).toHaveValue('2211');
+  await expect(page.locator('#seek')).toHaveValue(String(front.records.at(-1).t));
 });
 
 test('API failures clear predictions and retry reconnects; connection settings show raw diagnostics', async ({ page }) => {
@@ -134,9 +137,12 @@ test('API failures clear predictions and retry reconnects; connection settings s
   await expect(page.locator('#api-error-message')).toContainText('503');
   await expect(page.locator('#station-name')).toHaveText('—');
   await page.unroute('**/api/position');
-  await page.getByRole('button', { name: '再接続', exact: true }).click();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
+  await page.locator('#api-button').click();
+  await page.getByRole('button', { name: '接続する', exact: true }).click();
   await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み', { timeout: 15000 });
-  await page.getByRole('button', { name: 'API接続設定' }).click();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
+  await page.locator('#api-button').click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByText('リクエスト・レスポンス', { exact: true }).click();
   await expect(page.locator('#response-json')).toContainText('datasetVersion');
@@ -147,7 +153,7 @@ test('mobile layout has no horizontal overflow and preserves seek and direction 
   await ready(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.locator('#back-button').click();
-  await expect(page.locator('#time-current')).toHaveText('00:03');
+  await expect(page.locator('#time-current')).toHaveText(timeLabel(back.records[0].t));
   await seek(page, 500);
   await expect(page.locator('#time-current')).toHaveText('08:20');
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
@@ -172,7 +178,7 @@ test('keeps the entire playback inside the viewport and aligns prediction metric
       expect(Math.abs(await y('#station-distance') - await y('#tunnel-distance'))).toBeLessThan(1);
     }
   }
-  await page.locator('.workspace').evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await page.locator('.river-block').scrollIntoViewIfNeeded();
   await expect(page.locator('#river-distance')).toBeInViewport();
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
 });

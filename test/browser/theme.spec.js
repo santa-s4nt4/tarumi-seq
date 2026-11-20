@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function setup(page) {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
   return entry.t;
@@ -26,14 +26,14 @@ test('crossfades a real map frame and UI colors in both theme directions', async
     return pixels[3] > 0;
   });
   expect(hasFrame).toBe(true);
-  await expect.poll(() => page.locator('.header').evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgb(255, 255, 255)');
-  await expect.poll(() => page.locator('.header').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
+  await expect.poll(() => page.locator('.playback-panel').evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgb(255, 255, 255)');
+  await expect.poll(() => page.locator('.playback-panel').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
   await expect(page.locator('.map-theme-fade')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/theme-dark.png' });
   await seek(page, entry - 30);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('.map-theme-fade')).toHaveCount(1);
-  await expect.poll(() => page.locator('.header').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(255, 255, 255)');
+  await expect.poll(() => page.locator('.playback-panel').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(255, 255, 255)');
   await expect(page.locator('.map-theme-fade')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -50,7 +50,7 @@ test('rapid seeks cancel the previous fade and leave no stale frame', async ({ p
   await seek(page, entry + 5);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.map-theme-fade')).toHaveCount(0);
-  await expect.poll(() => page.locator('.header').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
+  await expect.poll(() => page.locator('.playback-panel').evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
   expect(errors).toEqual([]);
 });
 
@@ -60,5 +60,5 @@ test('reduced-motion preference skips the animated map layer', async ({ page }) 
   await seek(page, entry + 5);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.map-theme-fade')).toHaveCount(0);
-  await expect(page.locator('.header')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(page.locator('.playback-panel')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
 });

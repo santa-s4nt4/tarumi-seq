@@ -29,7 +29,10 @@ export function interpolatePrediction(response, responseT, time, nodes, river, m
   if (elapsed < 0.001) return response;
   const start = routeAt(nodes, responseT), current = routeAt(nodes, time);
   const travelled = Math.max(0, current[2] - start[2]);
-  const upcoming = response.upcoming.filter(e => e.target === 'arrival' && Number.isFinite(e.departureDistanceMeters) ? e.departureDistanceMeters + 0.01 >= travelled : !Number.isFinite(e.etaSeconds) || e.etaSeconds + 0.001 >= elapsed)
+  // The API rounds distances to 0.1 m. A stationary fix may be almost
+  // half a decimetre beyond the rounded departure distance for the entire dwell.
+  const roundingTolerance = 0.050001;
+  const upcoming = response.upcoming.filter(e => e.target === 'arrival' && Number.isFinite(e.departureDistanceMeters) ? e.departureDistanceMeters + roundingTolerance >= travelled : !Number.isFinite(e.etaSeconds) || e.etaSeconds + 0.001 >= elapsed)
     .map(e => ({ ...e, arrived: e.target === 'arrival' && travelled >= e.distanceMeters, etaSeconds: Number.isFinite(e.etaSeconds) ? Math.max(0, e.etaSeconds - elapsed) : null,
       distanceMeters: Number.isFinite(e.distanceMeters) ? Math.max(0, e.distanceMeters - travelled) : null }));
   let tunnelId = response.position.tunnelId;

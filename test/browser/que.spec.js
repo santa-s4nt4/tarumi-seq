@@ -34,7 +34,7 @@ test('railway, tunnel and bridge height layers load without Mapbox style errors'
   page.on('console', message => {
     if (message.type() === 'error' && /line-z-offset|expression|bridge|tunnel|style/i.test(message.text())) styleErrors.push(message.text());
   });
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#seek').evaluate(el => { el.value = 1200; el.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -67,7 +67,7 @@ test('an occluded position switches to the closest bird view and stays stable un
   page.on('pageerror', error => errors.push(error.message));
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#seek').evaluate(el => { el.value = 1497; el.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -101,7 +101,7 @@ test('an occluded position switches to the closest bird view and stays stable un
 test('moving current position, station names and tunnel markers match the rendered map without pixel snapping', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#back-button').click();
@@ -143,7 +143,7 @@ test('moving current position, station names and tunnel markers match the render
 test('front playback stays in bird view while the rail is buried and returns on a clear section', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.evaluate(async () => {
@@ -182,7 +182,7 @@ test('zoom slider adjusts the active view, persists settings and fits on mobile'
   await page.addInitScript(() => {
     if (!localStorage.getItem('tarumi-que-zoom')) localStorage.setItem('tarumi-que-zoom', JSON.stringify({ version: 2, normal: 20, bird: 20 }));
   });
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
@@ -229,9 +229,9 @@ test('zoom slider adjusts the active view, persists settings and fits on mobile'
 test('queue view shows API events and updates countdown with playback', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#loading')).toBeHidden();
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('木知原駅まで', { timeout: 15000 });
+  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('本巣駅まで', { timeout: 15000 });
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(3);
   await expect(page.locator('.readout')).toBeHidden();
   await expect(page.locator('#follow-map')).toHaveAttribute('aria-pressed', 'true');
@@ -250,34 +250,34 @@ test('queue view shows API events and updates countdown with playback', async ({
 });
 
 test('tunnel checkpoints lead the queue, reuse one card through passage and promote the following checkpoint', async ({ page }) => {
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.locator('#speed').selectOption('4');
   const entry = await page.evaluate(async () => (await (await fetch('/data/map-data.json')).json()).front.events.find(event => event.type === 'tunnel' && event.target === 'entrance'));
   await page.locator('#seek').evaluate((el, time) => { el.value = time; el.dispatchEvent(new Event('input', { bubbles: true })); }, entry.t - 2);
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText(`${entry.name}まで`);
+  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText(`${entry.name}開始まで`);
   await page.evaluate(() => { window.firstTunnelCard = document.querySelector('#cue-list .cue-primary'); });
   const card = page.locator(`#cue-list [data-key="tunnel:${entry.featureId}"]`);
   await expect(card.locator('.cue-kind-icon svg')).toHaveCount(1);
   await expect(page.locator('#cue-countdown-focus')).toBeVisible();
   await expect(card).toHaveCount(1);
   await page.locator('#play').click();
-  await expect(card.locator('h2')).toHaveText(`${entry.name}通過まで`);
+  await expect(card.locator('h2')).toHaveText(`${entry.name}終了まで`);
   expect(await page.evaluate(() => window.firstTunnelCard === document.querySelector('#cue-list .cue-primary'))).toBe(true);
   await expect(card).toHaveCount(0, { timeout: 12000 });
   await page.locator('#play').click();
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('トンネル4まで');
+  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('トンネル2開始まで');
   await page.screenshot({ path: 'test-results/que-checkpoints-tunnel.png' });
 });
 
 test('station dwell freezes other cards across API refreshes and departure resumes the queue', async ({ page }) => {
   let requests = 0;
   page.on('response', response => { if (response.url().includes('/api/position') && response.ok()) requests++; });
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
-  await page.locator('#seek').evaluate(el => { el.value = 470; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#seek').evaluate(el => { el.value = 621; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('0');
-  await expect(page.locator('#cue-status')).toHaveText('木知原駅で停車中');
+  await expect(page.locator('#cue-status')).toHaveText('谷汲口駅で停車中');
   const other = page.locator('#cue-list .cue-card:not(.cue-primary) strong');
   const frozen = await other.allTextContents(), initialRequests = requests;
   await page.locator('#speed').selectOption('4');
@@ -286,7 +286,7 @@ test('station dwell freezes other cards across API refreshes and departure resum
   expect(requests).toBeGreaterThan(initialRequests);
   expect(await other.allTextContents()).toEqual(frozen);
   await page.locator('#speed').selectOption('16');
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('谷汲口駅まで', { timeout: 6000 });
+  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('神海駅まで', { timeout: 6000 });
   await page.locator('#play').click();
   expect(Number(await page.locator('#cue-list .cue-primary strong').textContent())).toBeLessThan(Number(frozen[0]));
 });
@@ -294,7 +294,7 @@ test('station dwell freezes other cards across API refreshes and departure resum
 test('fixed perspectives fade terrain-hidden labels and bird view persists across seeks and reload', async ({ page }) => {
   // Keep the known terrain-occlusion scenario at its original zoom.
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#que-mode-normal').click();
@@ -318,7 +318,7 @@ test('fixed perspectives fade terrain-hidden labels and bird view persists acros
 
 test('queue remains usable on mobile and console retains the existing viewer', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/que/');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible({ timeout: 15000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await expect(page.locator('#play')).toBeInViewport({ ratio: 1 });
@@ -329,30 +329,32 @@ test('queue remains usable on mobile and console retains the existing viewer', a
     return train && cues ? train.y + train.height < cues.y : false;
   }).toBe(true);
   await page.locator('#back-button').click();
-  await expect(page.locator('#time-current')).toHaveText('00:03');
+  await expect(page.locator('#time-current')).toHaveText('00:00');
   await expect(page.locator('.current-marker')).toBeVisible();
   await page.waitForTimeout(2000);
   await page.screenshot({ path: 'test-results/que-mobile.png' });
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
   await page.getByRole('link', { name: 'CONSOLE', exact: true }).click();
   await expect(page).toHaveURL(/\/console\/?$/);
   await expect(page.locator('.readout')).toBeVisible();
-  await expect(page.locator('#station-name')).toHaveText('木知原', { timeout: 15000 });
+  await expect(page.locator('#station-name')).toHaveText('本巣', { timeout: 15000 });
 });
 
 test('queue clears stale cues on API failure and offers retry', async ({ page }) => {
   await page.route('**/api/position', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#cue-status')).toHaveText('API 接続エラー');
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await expect(page.locator('#cue-retry')).toBeVisible();
   await page.unroute('**/api/position');
-  await page.locator('#cue-retry').click();
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
+  await page.locator('#api-button').click();
+  await page.getByRole('button', { name: '接続する', exact: true }).click();
   await expect(page.locator('#cue-list .cue-primary')).toBeVisible({ timeout: 15000 });
 });
 
 test('queue camera stays locked against mouse input and tracks seeks and direction switches', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarumi-que-zoom', JSON.stringify({version:2,normal:17,bird:19})));
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('.current-marker')).toBeVisible();
   await captureMapMarkers(page);
   await page.locator('#back-button').click();
@@ -397,19 +399,19 @@ test('tunnel viewer turns black, shows portals and speed, then returns to daylig
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (/Failed to evaluate expression|Could not parse color|Error:/.test(message.text())) errors.push(message.text()); });
-  await page.goto('/que');
+  await page.goto('/que/?mode=playback');
   await expect(page.locator('#map-train-speed')).not.toHaveText('—', { timeout: 15000 });
   await expect(page.locator('.map-speed-card')).toBeVisible();
   const cue = await page.locator('#cue-list .cue-primary').boundingBox();
   const speed = await page.locator('.map-speed-card').boundingBox();
-  expect(speed.width).toBe(cue.width);
+  expect(speed.x + speed.width).toBeLessThanOrEqual(cue.x);
   const seek = async t => page.locator('#seek').evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, t);
   await seek(entry.t + 5);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.tunnel-marker.entrance').filter({ hasText: entry.name })).toBeVisible();
   await expect(page.locator('#cue-list')).not.toContainText(/入口|出口/);
   expect((await page.locator('.tunnel-marker-label').allTextContents()).join('')).not.toMatch(/入口|出口/);
-  await expect.poll(() => page.locator('.header').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 0, 0)');
+  await expect.poll(() => page.locator('.playback-panel').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 0, 0)');
   await expect(page.locator('#map-train-speed')).toHaveText(await page.locator('#train-speed').textContent());
   await page.waitForTimeout(1800);
   await page.screenshot({ path: 'test-results/que-tunnel-dark.png' });

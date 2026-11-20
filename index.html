@@ -119,7 +119,7 @@
   <footer class="playback-panel" aria-label="GPS再生コントロール">
     <div class="playback-heading">
       <div class="playback-title"><i data-lucide="audio-lines"></i><span>GPS PLAYBACK</span><span
-          class="playback-date">2026.07.17</span></div>
+          class="playback-date"></span></div>
       <div class="direction-tabs" role="group" aria-label="走行記録の選択"><button id="front-button" class="selected"
           aria-pressed="true">往路<span>樽見方面</span></button><button id="back-button"
           aria-pressed="false">復路<span>本巣方面</span></button></div><span id="sample-count" class="sample-count">— GPS
@@ -162,7 +162,7 @@
         </div><button type="button" id="close-settings" class="icon-button" aria-label="閉じる"><i
             data-lucide="x"></i></button>
       </div><label for="endpoint">位置予測APIのURL</label><input id="endpoint" type="url" required spellcheck="false" />
-      <p class="field-note">GPSを POST で送信します。初期接続先は公開APIです。ローカルAPIを使う場合はURLを切り替えてください。</p>
+      <p class="field-note">GPSを POST で送信します。開発時の初期接続先はローカルAPI、公開版は公開APIです。</p>
       <p id="settings-error" role="alert"></p>
       <div class="dialog-actions"><button type="button" id="reset-endpoint"
           class="secondary-button">ローカルURLを入力</button><button type="button" id="public-endpoint"
