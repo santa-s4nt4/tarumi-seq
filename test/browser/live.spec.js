@@ -1,171 +1,176 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { createRailProfile } from '../../src/rail-elevation.js';
+import { LiveTimetable } from '../../src/live-timetable.js';
+import { positionAlong } from '../../src/simulation.js';
 
-test.beforeEach(async ({ page }, info) => {
+const read = name => JSON.parse(readFileSync(new URL(`../../public/data/${name}.json`, import.meta.url)));
+const railway = read('railway-route'), profile = createRailProfile(railway);
+const fleet = new LiveTimetable(read('timetable-reference'), railway, read('stations').stations);
+const midnight = Date.parse('2026-11-21T00:00:00+09:00');
+const at = seconds => new Date(midnight + Math.round(seconds * 1000));
+const currentRun = (id, seconds) => fleet.at(at(seconds).getTime()).active.find(run => run.train.id === id);
+
+async function open(page, seconds, path = '/live/') {
+  await page.clock.install({ time: at(seconds - 30) });
+  await page.clock.pauseAt(at(seconds));
   await page.setViewportSize({ width: 390, height: 844 });
-  if (info.title.startsWith('native')) return;
+  await page.route('https://*.mapbox.com/**', route => route.abort());
   await page.addInitScript(() => {
-    const watches = new Map(); let id = 0;
-    window.fakeGPS = {
-      calls: 0, clears: 0, last: null,
-      emit(coords) { for (const watch of [...watches.values()]) watch.ok({ coords, timestamp: Date.now() }); },
-      fail(code) { for (const watch of [...watches.values()]) watch.bad({ code }); },
-    };
-    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: {
-      watchPosition(ok, bad) { window.fakeGPS.calls++; window.fakeGPS.last = ok; watches.set(++id, { ok, bad }); return id; },
-      clearWatch(value) { watches.delete(value); window.fakeGPS.clears++; },
+    window.watches = 0;
+    Object.defineProperty(navigator, 'geolocation', { value: {
+      watchPosition(ok, bad) { window.fix = ok; window.gpsError = bad; return ++window.watches; },
+      clearWatch() { window.fix = null; },
     } });
   });
+  await page.goto(path);
+  await expect(page.locator('#loading')).toBeHidden();
+}
+
+async function emit(page, s, accuracy = 3) {
+  const [longitude, latitude] = profile.coordinateAt(s);
+  await page.evaluate(coords => window.fix({ timestamp: Date.now(), coords }), { longitude, latitude, accuracy, speed: null });
+}
+
+test('full-line overview shows both directions and follows the tapped service without GPS', async ({ page }) => {
+  const time = 7 * 3600 + 25 * 60;
+  await open(page, time);
+  await expect(page.locator('#line-map .line-train')).toHaveCount(3);
+  for (const [id, name] of [['5', '下り'], ['10', '上り']]) {
+    await page.getByRole('button', { name: `${name} ${id}列車を追従`, exact: true }).click();
+    await expect(page.locator('#live-status')).toContainText(`${id}列車`);
+    await expect(page.locator('#cue-list .cue-primary h2')).not.toBeEmpty();
+    await page.locator('#live-overview').click();
+    await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
+  }
+  expect(await page.evaluate(() => window.watches)).toBe(0);
+  await page.clock.fastForward(86400000 - time * 1000 + 3 * 3600000);
+  await expect(page.locator('#live-status')).toContainText('運行中の列車はありません');
+  await expect(page.locator('#live-note')).toContainText('05:37');
+  await expect(page.locator('#line-map .line-train')).toHaveCount(0);
 });
 
-async function setup(page) {
-  await page.goto('/live/');
-  await expect(page.locator('#live-start')).toBeEnabled();
-}
-async function locationAt(page, offset = -75, speed = 10) {
-  return page.evaluate(async ({ offset, speed }) => {
-    const { createRailProfile } = await import('/src/rail-elevation.js');
-    const railway = await (await fetch('/data/railway-route.json')).json();
-    const profile = createRailProfile(railway);
-    const station = railway.stations.find(station => station.order === 9);
-    const [longitude, latitude] = profile.coordinateAt(station.s + offset);
-    return { longitude, latitude, speed, accuracy: 5 };
-  }, { offset, speed });
-}
-async function emit(page, coords) { await page.evaluate(coords => window.fakeGPS.emit(coords), coords); }
-
-test('live GPS requests permission only on start, issues a real-position cue and stops all updates', async ({ page }) => {
-  const errors = [], apiRequests = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('request', request => { if (request.url().includes('/api/position')) apiRequests.push(request.url()); });
-  await setup(page);
-  expect(await page.evaluate(() => window.fakeGPS.calls)).toBe(0);
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await expect(page.locator('#live-notice')).toBeVisible();
-  const coords = await locationAt(page);
+test('QUE uses the timetable, GPS changes only the selected delay and a refused watch leaves cues running', async ({ page }) => {
+  const time = 7 * 3600 + 24 * 60;
+  const run = currentRun('5', time);
+  await open(page, time, '/que/');
+  await page.locator('.train-choice.front').click();
+  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('90');
   await page.locator('#live-start').click();
-  expect(await page.evaluate(() => window.fakeGPS.calls)).toBe(1);
-  await emit(page, coords);
-  await expect(page.locator('#countdown-target')).toHaveText('本巣駅まで');
-  await expect(page.locator('#cue-countdown-focus')).toBeVisible();
-  await expect(page.locator('#map-train-speed')).toHaveText('36.0');
-  await expect(page.locator('#live-quality')).toHaveText('精度 ±5m');
-  await expect(page.locator('#live-stop')).toBeInViewport({ ratio: 1 });
-  await page.locator('#live-stop').click();
-  await expect(page.locator('#cue-countdown-focus')).toBeHidden();
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await expect(page.locator('#live-start')).toBeEnabled();
-  await page.evaluate(coords => window.fakeGPS.last({ coords, timestamp: Date.now() }), coords);
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  expect(await page.evaluate(() => window.fakeGPS.clears)).toBe(1);
-  expect(apiRequests).toEqual([]);
-  expect(errors).toEqual([]);
-});
-
-test('poor accuracy, off-route positions and lost fixes clear live cues', async ({ page }) => {
-  await setup(page);
-  const coords = await locationAt(page, -500);
-  await page.locator('#live-start').click();
-  await emit(page, { ...coords, accuracy: 90 });
-  await expect(page.locator('#live-status')).toContainText('測位精度');
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await emit(page, { ...coords, longitude: coords.longitude + 0.02 });
-  await expect(page.locator('#live-status')).toContainText('路線外');
-  await emit(page, coords);
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(3);
-  await page.clock.install();
-  await emit(page, coords);
+  await emit(page, positionAlong(run, time - 45).s);
+  await page.clock.fastForward(3000);
+  await emit(page, positionAlong(run, time + 3 - 45).s);
+  await expect(page.locator('#live-delay')).toHaveText('推定遅延 +45秒');
+  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('132');
+  await page.evaluate(() => window.gpsError({ code: 1 }));
   await page.clock.fastForward(4000);
-  await expect(page.locator('#live-status')).toContainText('GPS更新待ち');
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
+  await expect(page.locator('#gps-status')).toContainText('許可');
+  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('128');
+  await page.locator('#live-overview').click();
+  await page.locator('.train-choice.back').first().click();
+  await expect(page.locator('#live-delay')).toHaveText('時刻表基準');
+});
+
+test('a running countdown survives erratic and missing GPS through tunnel entry and exit', async ({ page }) => {
+  const run = currentRun('1', 6.5 * 3600);
+  const tunnel = run.tunnels[1];
+  const start = Math.ceil(tunnel.entryT) - 8;
+  await open(page, start);
+  await page.getByRole('button', { name: '下り 1列車を追従', exact: true }).click();
+  await expect(page.locator('#countdown-seconds')).toHaveText('8');
+  await page.locator('#live-start').click();
+  await emit(page, run.stops[0].s);
+  await page.clock.fastForward(3000);
+  await emit(page, run.stops[0].s + 20);
+  await expect(page.locator('#countdown-seconds')).toHaveText('5');
+  await page.clock.fastForward(6000);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  for (const offset of [0, 3]) {
+    await page.clock.fastForward(3000);
+    await emit(page, run.stops[0].s + offset);
+  }
+  await expect(page.locator('#live-delay')).toHaveText('時刻表基準');
+  await page.clock.fastForward(Math.floor((tunnel.exitT - start - 15 - 5) * 1000));
+  await expect(page.locator('#countdown-target')).toContainText('終了');
+  await expect(page.locator('#countdown-seconds')).toHaveText(/^[56]$/);
+  await page.clock.fastForward(6500);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
-  await expect(page.locator('#map-train-speed')).toHaveText('—');
 });
 
-test('permission refusal and backgrounding stop the watch without replaying a recording', async ({ page }) => {
-  await setup(page);
-  await page.locator('#live-start').click();
-  await page.evaluate(() => window.fakeGPS.fail(1));
-  await expect(page.locator('#live-status')).toContainText('許可');
-  await expect(page.locator('#live-start')).toBeEnabled();
-  await page.locator('#live-start').click();
-  await emit(page, await locationAt(page, -500));
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(3);
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
-    document.dispatchEvent(new Event('visibilitychange'));
-  });
-  await expect(page.locator('#live-status')).toContainText('非表示');
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await expect(page.locator('#live-stop')).toBeDisabled();
-  expect(await page.evaluate(() => window.fakeGPS.clears)).toBe(2);
+test('playback opens from the realtime menu and posts to the local API in development', async ({ page }) => {
+  await open(page, 3 * 3600, '/que/');
+  await page.getByRole('button', { name: 'メニューを開く' }).click();
+  const request = page.waitForResponse(r => r.url().endsWith('/local-api/api/position') && r.request().method() === 'POST');
+  await page.getByRole('link', { name: '記録・ダイヤを再生' }).click();
+  await page.clock.resume();
+  const response = await request;
+  expect(response.status()).toBe(200);
+  expect((await response.json()).next.station.name).toBeTruthy();
+  await expect(page.locator('#play')).toBeEnabled();
 });
 
-test('device speed may be unknown, position differences estimate it, and reversing direction resets predictions', async ({ page }) => {
-  await setup(page);
-  await page.clock.install();
-  await page.locator('#live-start').click();
-  await emit(page, await locationAt(page, -500, null));
-  await expect(page.locator('#map-train-speed')).toHaveText('—');
-  await expect(page.locator('#cue-list .cue-primary strong')).toHaveText('—');
-  await page.clock.fastForward(2100);
-  await emit(page, await locationAt(page, -479, null));
-  await expect.poll(async () => Number(await page.locator('#map-train-speed').textContent()), { intervals: [50] }).toBeGreaterThan(35);
-  expect(Number(await page.locator('#map-train-speed').textContent())).toBeLessThan(37);
-  await page.locator('#live-back').click();
-  await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
-  await emit(page, await locationAt(page, 75));
+test('one active QUE service follows automatically and returns to the overview after the terminal countdown', async ({ page }) => {
+  // 41 is the final train, due at Motosu at 23:29.
+  await open(page, 23 * 3600 + 28 * 60 + 52, '/que/');
+  await expect(page.locator('#live-status')).toContainText('41列車');
   await expect(page.locator('#countdown-target')).toHaveText('本巣駅まで');
-  await expect(page.locator('#cue-countdown-focus')).toBeVisible();
-  await expect(page.locator('#live-back')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#countdown-seconds')).toHaveText('8');
+  await page.clock.fastForward(8000);
+  await expect(page.locator('#countdown-seconds')).toHaveText('0');
+  await page.clock.fastForward(500);
+  await expect(page.locator('#live-note')).toContainText('本日の運行は終了');
+  await expect(page.locator('#cue-countdown-focus')).toBeHidden();
 });
 
-test('mobile live view keeps start/stop and direction usable at small widths and supports cue hiding', async ({ page }) => {
-  await setup(page);
-  await page.screenshot({ path: 'test-results/live-idle-mobile.png' });
-  await page.locator('#live-start').click();
-  const coords = await locationAt(page, -500);
-  await emit(page, coords);
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('本巣駅まで');
-  await page.getByRole('button', { name: '次の合図を非表示', exact: true }).click();
-  await expect(page.locator('#cue-content')).toBeHidden();
-  await page.setViewportSize({ width: 320, height: 720 });
-  await expect(page.locator('#live-stop')).toBeInViewport({ ratio: 1 });
-  await expect(page.locator('#live-back')).toBeInViewport({ ratio: 1 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
-  await page.getByRole('button', { name: '次の合図を表示', exact: true }).click();
-  await emit(page, coords);
-  await expect(page.locator('#cue-list .cue-primary')).toBeVisible();
-  await page.screenshot({ path: 'test-results/live-tracking-mobile.png' });
-});
-
-test('native browser Geolocation API works with a simulated device position and the LIVE link', async ({ page, context }) => {
-  await context.grantPermissions(['geolocation']);
-  await page.goto('/que');
-  await page.getByRole('link', { name: 'LIVE', exact: true }).click();
-  await expect(page).toHaveURL(/\/live\/$/);
-  await expect(page.locator('#live-start')).toBeEnabled();
-  const coords = await locationAt(page, -500);
-  await context.setGeolocation({ latitude: coords.latitude, longitude: coords.longitude, accuracy: 5 });
-  await page.locator('#live-start').click();
-  await expect(page.locator('#live-status')).toContainText('GPS受信中');
-  await expect(page.locator('#cue-list .cue-primary h2')).toHaveText('本巣駅まで');
-  await page.locator('#live-stop').click();
+test('QUE selects a train from the diagram and waits for exactly the chosen boarding and alighting stations', async ({ page }) => {
+  const now = 7 * 3600 + 25 * 60 + 50;
+  await open(page, now, '/que/');
+  await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
+  await page.locator('#simulation-direction').selectOption('front');
+  await page.locator('#simulation-departure').selectOption('3');
+  const track = page.locator('#simulation-diagram [data-train="5"] .diagram-hit');
+  await expect(track).toBeVisible();
+  const hit = await track.evaluate(el => {
+    const { x, y } = el.getPointAtLength(el.getTotalLength() * 0.74).matrixTransform(el.getScreenCTM());
+    return { x, y };
+  });
+  await page.mouse.click(hit.x, hit.y);
+  await expect(page.locator('#simulation-departure')).toHaveValue('5');
+  await page.locator('#simulation-station').selectOption('6');
+  await page.locator('#simulation-end-station').selectOption('8');
+  await expect(page.locator('#simulation-end-station option[value="6"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'この区間の発車を待つ' }).click();
+  await expect(page.locator('#live-status')).toContainText('北方真桑 → 糸貫 · 出発待ち');
+  await expect(page.locator('.cue-overlay')).toBeHidden();
+  await page.clock.fastForward(11000);
+  await expect(page.locator('#live-status')).toContainText('北方真桑 → 糸貫 · 追従中');
+  await expect(page.locator('#cue-list h2')).toHaveText(['モレラ岐阜駅まで', '糸貫駅まで']);
+  await page.clock.fastForward(262000);
+  await expect(page.locator('#countdown-target')).toHaveText('糸貫駅まで');
+  await page.clock.fastForward(8000);
+  await expect(page.locator('#live-note')).toContainText('北方真桑 → 糸貫 の合図は終了');
   await expect(page.locator('#cue-list .cue-card')).toHaveCount(0);
 });
 
-test('live terrain, full railway and device marker render without map style errors', async ({ page }) => {
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error' && /expression|line-z-offset|style|Could not parse color/i.test(message.text())) errors.push(message.text()); });
-  await setup(page);
-  await page.locator('#live-start').click();
-  const coords = await locationAt(page, -500);
-  await emit(page, coords);
-  await expect(page.locator('.current-marker')).toBeVisible({ timeout: 15000 });
-  await emit(page, coords);
-  await page.waitForTimeout(700);
-  await page.screenshot({ path: 'test-results/live-map-mobile.png' });
-  await expect(page.locator('#live-stop')).toBeInViewport({ ratio: 1 });
-  await expect(page.locator('#cue-list .cue-primary')).toBeVisible();
-  expect(errors).toEqual([]);
+test('QUE can replay a holiday train section outside service hours, including an intermediate final station', async ({ page }) => {
+  await open(page, 23 * 3600 + 51 * 60, '/que/');
+  await page.getByRole('button', { name: 'ダイヤ・区間を選ぶ' }).click();
+  await page.locator('#simulation-direction').selectOption('back');
+  await page.locator('#simulation-day').selectOption('weekday');
+  await expect(page.locator('#simulation-departure option[value="1002"]')).toHaveCount(0);
+  await page.locator('#simulation-day').selectOption('holiday');
+  await page.locator('#simulation-departure').selectOption('1002');
+  await page.locator('#simulation-station').selectOption('8');
+  await page.locator('#simulation-end-station').selectOption('6');
+  await expect(page.locator('#simulation-follow')).toBeDisabled();
+  await page.getByRole('button', { name: 'この区間を再生' }).click();
+  await expect(page.locator('body')).toHaveClass(/timetable-mode/);
+  await expect(page.locator('#sample-count')).toContainText('1002列車 · 糸貫 → 北方真桑');
+  const max = await page.locator('#seek').getAttribute('max');
+  await page.locator('#seek').evaluate((el, max) => { el.value = max; el.dispatchEvent(new Event('input', { bubbles: true })); }, max);
+  await expect(page.locator('#cue-status')).toContainText('北方真桑駅に到着');
+  await expect(page.locator('#cue-list .cue-card')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('#sample-count')).toContainText('1002列車 · 糸貫 → 北方真桑');
 });

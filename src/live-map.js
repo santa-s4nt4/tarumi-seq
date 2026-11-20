@@ -2,13 +2,39 @@ import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { elevatedLineFeature, railLineZOffsetWithClearance } from './rail-elevation.js';
 import { xy } from './geometry.js';
+import { trainMarkerButton } from './line-map.js';
 import { fadeMapTheme } from './theme.js';
 
 const collection = features => ({ type: 'FeatureCollection', features: features.filter(Boolean) });
 
-export function createLiveMap({ profile, river, stations, onError }) {
-  let map, ready = false, marker, latest = null, mode = 'follow', dark = false;
+export function createLiveMap({ profile, river, stations, onSelect, onReady, onError }) {
+  let map, ready = false, marker, latest = null, mode = 'overview', dark = false;
+  let gpsMarker;
+  function showGps(point) {
+    if (!ready) return;
+    if (!point) { gpsMarker?.remove(); gpsMarker = null; return; }
+    if (!gpsMarker) {
+      const element = document.createElement('div');
+      element.className = 'gps-marker'; element.setAttribute('aria-label', 'GPS測位位置'); element.setAttribute('role', 'img');
+      gpsMarker = new mapboxgl.Marker({ element }).setLngLat([point.longitude, point.latitude]).addTo(map);
+    } else gpsMarker.setLngLat([point.longitude, point.latitude]);
+  }
   const stationMarkers = [];
+  const trainMarkers = new Map();
+  function showTrains(trains) {
+    if (!ready) return;
+    for (const [run, trainMarker] of trainMarkers) {
+      if (!trains.some(train => train.run === run)) { trainMarker.remove(); trainMarkers.delete(run); }
+    }
+    for (const { run, longitude, latitude } of trains) {
+      if (!trainMarkers.has(run)) {
+        const element = document.createElement('div');
+        element.className = 'terrain-train';
+        element.append(trainMarkerButton(run, onSelect));
+        trainMarkers.set(run, new mapboxgl.Marker({ element }).setLngLat([longitude, latitude]).addTo(map));
+      } else trainMarkers.get(run).setLngLat([longitude, latitude]);
+    }
+  }
   const mobileMapLabels = matchMedia('(max-width: 600px)');
   function theme() {
     if (!ready) return;
@@ -23,7 +49,13 @@ export function createLiveMap({ profile, river, stations, onError }) {
     map.fitBounds(bounds, { padding: 70, pitch: 0, bearing: 0, duration: 500 });
   }
   function update() {
-    if (!ready || !latest) return;
+    if (!ready) return;
+    if (mode === 'overview') {
+      marker.getElement().hidden = true;
+      for (const item of stationMarkers) item.marker.getElement().hidden = ![1, 9, 19].includes(item.order);
+      return;
+    }
+    if (!latest) return;
     const p = latest.position;
     const location = [p.longitude, p.latitude];
     const ground = map.queryTerrainElevation(location, { exaggerated: true });
@@ -44,6 +76,7 @@ export function createLiveMap({ profile, river, stations, onError }) {
     if (!ready) return;
     const container = map.getContainer(), canvas = map.getCanvas();
     if (canvas.clientHeight !== container.clientHeight || canvas.clientWidth !== container.clientWidth) map.resize();
+    if (mode === 'overview') { fit(); return; }
     const mobile = matchMedia('(max-width: 600px)').matches && !document.body.classList.contains('countdown-mode');
     const bottom = mobile ? Math.min(document.querySelector('.cue-overlay').offsetHeight + 28, container.clientHeight * 0.55) : 0;
     map.setPadding({ top: mobile ? 80 : 0, bottom, left: 0, right: 0 });
@@ -78,7 +111,7 @@ export function createLiveMap({ profile, river, stations, onError }) {
           paint: { 'line-color': id === 'bridges' ? '#331e19' : '#00ff36', 'line-width': id === 'tunnels' ? 10 : 7, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.3,
             ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
-      const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>'; element.hidden = true; element.setAttribute('aria-label', 'スマートフォンの現在地');
+      const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>'; element.hidden = true; element.setAttribute('aria-label', '追従中の列車の推定位置');
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.3 }).setLngLat([136.65, 35.56]).addTo(map);
       for (const station of stations) {
         const element = document.createElement('div'); element.className = 'station-marker';
@@ -86,17 +119,20 @@ export function createLiveMap({ profile, river, stations, onError }) {
         element.querySelector('.station-marker-name').textContent = station.name;
         stationMarkers.push({ ...station, marker: new mapboxgl.Marker({ element, anchor: 'left', offset: [-14, 0], occludedOpacity: 0.3 }).setLngLat(profile.coordinateAt(station.s)).addTo(map) });
       }
-      theme(); padding(); if (latest) update(); else fit();
+      theme(); padding(); update();
+      onReady();
     });
-    map.on('error', () => onError('地図を読み込めません。通信状態を確認してください。GPSの合図判定は継続します。'));
+    map.on('error', () => { if (!ready) onError(); });
+    map.on('webglcontextlost', onError);
+    map.on('webglcontextrestored', () => { if (ready) onReady(); });
     const observer = new ResizeObserver(padding);
     observer.observe(document.querySelector('.map-panel'));
     observer.observe(document.querySelector('.cue-overlay'));
-  } catch (error) { onError(`${error.message} GPSの合図判定は利用できます。`); }
+  } catch { onError(); }
   return {
-    update(prediction) { latest = prediction; marker?.getElement().classList.remove('live-location-stale'); update(); },
-    stale() { marker?.getElement().classList.add('live-location-stale'); },
-    setMode(value) { mode = value; if (!ready) return; if (mode === 'overview') fit(); else update(); },
+    showTrains, showGps,
+    update(prediction) { latest = prediction; update(); },
+    setMode(value) { mode = value; if (!ready) return; padding(); update(); },
     setDark(value) { if (dark === value) return; dark = value; if (ready) fadeMapTheme(map, theme); },
   };
 }
