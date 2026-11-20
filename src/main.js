@@ -202,7 +202,9 @@ function renderCues(r) {
   if (!isQue) return;
   const events = cueQueue.cards(r);
   for (const event of events) { const card = cueCards.get(event.key); if (card) timetableReference?.renderCard(card, event); }
-  countdown.update(events[0]);
+  // Keep the menu accessible before starting a recording that begins mid-cue.
+  const atRecordingStart = r && !simulation && !state.playing && state.time === range()[0];
+  countdown.update(atRecordingStart ? null : events[0]);
   timetableReference?.renderFocus(events[0]);
   const signature = JSON.stringify([events.map(e => [e.key, e.name, e.type, e.target, number(Math.ceil(e.etaSeconds))]), cueQueue.stopId, Boolean(r?.position.inTunnel), $('api-button').dataset.status]);
   if (signature === lastCueSignature) return;
@@ -337,7 +339,8 @@ function updateMapTheme() {
 function renderLocationText() {
   const p = point();
   const list = [...stations].sort((a, b) => (a.lat - p.lat) ** 2 + ((a.lon - p.lon) * 0.81) ** 2 - ((b.lat - p.lat) ** 2 + ((b.lon - p.lon) * 0.81) ** 2));
-  const location = `${list[0].name}付近 · ${state.direction === 'front' ? '樽見方面' : '本巣方面'}`;
+  const destination = simulation?.stops.at(-1).name ?? (state.direction === 'front' ? '樽見' : '本巣');
+  const location = `${list[0].name}付近 · ${destination}方面`;
   $('position-location').textContent = location;
   $('gps-tag').textContent = simulation ? 'TIMETABLE SIMULATION' : p.gap ? 'GPS 欠損' : 'RECORDED GPS';
 }
@@ -461,7 +464,7 @@ function updateRouteMap() {
   tunnelMarkers.forEach(m => m.remove()); tunnelMarkers = [];
   if (isQue) for (const event of data().events.filter(e => e.type === 'tunnel')) {
     const tunnel = railway.tunnels.find(t => t.id === event.featureId);
-    const location = tunnel ? railProfile.coordinateAt(event.target === 'entrance' ? tunnel.start : tunnel.end)
+    const location = tunnel ? railProfile.coordinateAt((event.target === 'entrance') === (state.direction === 'front') ? tunnel.start : tunnel.end)
       : [event.location.longitude, event.location.latitude];
     const el = document.createElement('div'); el.className = `tunnel-marker ${event.target}`;
     const portal = document.createElement('span'); portal.className = 'tunnel-portal'; portal.textContent = '∩';
@@ -878,6 +881,11 @@ function seekTo(value) {
   }
 }
 
+function showRecordingInfo() {
+  $('route-description').textContent = rec().label + ' のGPS記録';
+  document.querySelector('.playback-date').textContent = japanDate(Date.parse(recordedAt(rec(), rec().records[0].t))).replaceAll('-', '.');
+}
+
 function switchDirection(direction) {
   if (!state.ready || direction === state.direction) return;
   if (simulation) { setPlaying(false); timetableControls.open(direction); return; }
@@ -886,7 +894,7 @@ function switchDirection(direction) {
   if (isQue) updateVideoViewer();
   cueQueue.reset();
   for (const dir of ['front', 'back']) { $(`${dir}-button`).classList.toggle('selected', direction === dir); $(`${dir}-button`).setAttribute('aria-pressed', String(direction === dir)); }
-  $('route-description').textContent = direction === 'front' ? '往路 · 木知原の手前から樽見までの記録' : '復路 · 樽見から織部付近までの記録';
+  showRecordingInfo();
   if (isQue) setFollow(true, true);
   buildTimeline(); buildProfile(); updateRouteMap(); renderReadout(); renderPosition();
   requestPosition(true);
@@ -897,7 +905,7 @@ function simulationMode() {
   document.body.classList.toggle('timetable-mode', Boolean(simulation));
   document.querySelector('.playback-title > span').textContent = simulation ? 'TIMETABLE SIMULATION' : 'GPS PLAYBACK';
   $('seek').setAttribute('aria-label', simulation ? 'シミュレーション時刻' : 'GPSの再生位置');
-  $('back-button').querySelector('span').textContent = '本巣方面';
+  $('back-button').querySelector('span').textContent = simulation ? '大垣方面' : '本巣方面';
   for (const direction of ['front', 'back']) {
     $(`${direction}-button`).classList.toggle('selected', direction === state.direction);
     $(`${direction}-button`).setAttribute('aria-pressed', String(direction === state.direction));
@@ -908,7 +916,7 @@ function simulationMode() {
     $('route-description').textContent = `${simulation.train.id}列車 · ${simulation.stops[0].name} → ${simulation.stops.at(-1).name}`;
   } else {
     renderApiStatus({ status: 'loading' });
-    $('route-description').textContent = state.direction === 'front' ? '往路 · 木知原の手前から樽見までの記録' : '復路 · 樽見から織部付近までの記録';
+    showRecordingInfo();
   }
   cueQueue.reset(); lastCueSignature = null;
   buildTimeline(); buildProfile(); updateRouteMap(); renderPosition();
@@ -920,12 +928,25 @@ function startSimulation(selection) {
   prepareRailRecording(next.recording);
   setPlaying(false); clearTimeout(seekTimer); seekTimer = null; api.reset();
   simulation = next; state.direction = next.train.direction; state.time = next.start;
-  timetableReference?.syncTrain(next.train.id, selection.day);
-  state.response = null; state.responseT = null; stations = stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation);
+  timetableReference?.syncTrain(selection);
+  state.response = null; state.responseT = null; stations = stationCatalog.filter(station => next.stops.some(stop => stop.station === station.order));
+  updatePlaybackURL(selection);
   simulationMode(); setPlaying(true);
 }
 
+function updatePlaybackURL(selection) {
+  const url = new URL(location.href);
+  url.searchParams.set('mode', 'playback');
+  for (const [key, value] of Object.entries({ train: selection?.trainId, day: selection?.day,
+    from: selection?.stationOrder, to: selection?.endStationOrder })) {
+    if (value == null) url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+  }
+  history.replaceState(null, '', url);
+}
+
 function restoreRecording() {
+  updatePlaybackURL(null);
   setPlaying(false); clearTimeout(seekTimer); seekTimer = null; api.reset();
   simulation = null; stations = stationCatalog.filter(station => station.order >= 9);
   state.time = range()[0]; state.response = null; state.responseT = null;
@@ -938,7 +959,7 @@ function applyTimetableReference(selection) {
   if (!train) throw new Error('列車を選んでください');
   if (simulation) restoreRecording();
   if (state.direction !== train.direction) switchDirection(train.direction);
-  timetableReference?.syncTrain(selection.trainId, selection.day, selection.date);
+  timetableReference?.syncTrain(selection, selection.date);
   renderReadout();
 }
 
@@ -1007,7 +1028,7 @@ try {
   routes = Object.fromEntries(Object.entries(recordings).map(([dir, recording]) => [dir, buildRoute(recording.records)]));
   rivers = Object.fromEntries(Object.entries(mapData).map(([dir, d]) => [dir, d.river.map(([lon, lat]) => xy(lat, lon))]));
   if (isQue) {
-    [timetable, railway] = await Promise.all(['/data/timetable.json', '/data/railway-route.json'].map(loadJSON));
+    [timetable, railway] = await Promise.all(['/data/timetable-reference.json', '/data/railway-route.json'].map(loadJSON));
     railProfile = createRailProfile(railway);
     for (const recording of Object.values(recordings)) prepareRailRecording(recording);
     timetableControls = simulationControls({ timetable, stations: stationCatalog.filter(station => station.order >= timetable.section.firstStation && station.order <= timetable.section.lastStation),
@@ -1016,14 +1037,25 @@ try {
       onStart: startSimulation, onReference: applyTimetableReference, onClearReference: clearTimetableReference, onRestore: restoreRecording });
     timetableReference = timetableReferenceDisplay({ timetable, railway, stations: stationCatalog,
         getClock: () => Date.parse(recordedAt(rec(), state.time)), getDirection: () => state.direction });
-    if (simulation) timetableReference.syncTrain(simulation.train.id, simulation.selection.day);
     renderReadout();
   }
   state.ready = true; state.time = range()[0];
   buildTimeline(); buildProfile(); renderReadout(); renderPosition(); initMap();
   $('play').disabled = false; $('loading').hidden = true;
-  $('route-description').textContent = '往路 · 木知原の手前から樽見までの記録';
-  requestPosition(true);
+  showRecordingInfo();
+  const params = new URLSearchParams(location.search);
+  if (isQue && params.has('train')) {
+    const choice = { trainId: params.get('train'), day: params.get('day'), stationOrder: Number(params.get('from')),
+      endStationOrder: Number(params.get('to')) };
+    try {
+      timetableControls.start(choice);
+    } catch {
+      timetableControls.open();
+      $('simulation-error').textContent = '指定した列車または区間を確認してください。';
+      $('simulation-error').hidden = false;
+      requestPosition(true);
+    }
+  } else requestPosition(true);
 } catch (error) {
   $('loading-message').textContent = `データを読み込めませんでした。${error.message}`; $('reload-data').hidden = false;
 }

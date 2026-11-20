@@ -23,9 +23,9 @@ export function timetableReferenceDisplay({ timetable, railway, stations, getClo
 
   return {
     reference,
-    syncTrain(trainId, day, date = japanDate(getClock())) { reference.connect({ trainId, day, date }); },
+    syncTrain(selection, date = japanDate(getClock())) { reference.connect({ ...selection, date }); },
     syncDate() {
-      if (reference.plan) reference.connect({ trainId: reference.plan.train.id, day: reference.day, date: japanDate(getClock()) });
+      if (reference.plan) reference.connect({ ...reference.plan.selection, date: japanDate(getClock()) });
     },
     autoSelect() { return reference.autoSelect({ now: getClock(), direction: getDirection() }); },
     renderCard(card, event) { renderNote(card, event, 'cue-schedule'); },

@@ -1,0 +1,18 @@
+#simulation-dialog .dialog-header { margin-bottom: 0; }
+#simulation-dialog .simulation-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 12px 0; }
+#simulation-dialog .simulation-fields label { line-height: 1.45; }
+#simulation-dialog .dialog-actions button { min-height: 42px; }
+#simulation-dialog .train-field { grid-column: 1 / -1; }
+.train-diagram { margin: 16px 0; }
+.train-diagram figcaption { font-size: 14px; margin-bottom: 5px; }
+.train-diagram > div { overflow-x: auto; }
+.train-diagram svg { display: block; width: 100%; height: 142px; }
+.train-diagram text { fill: var(--text); font: 12px var(--font); }
+.train-diagram line { stroke: currentColor; opacity: .15; }
+.train-diagram polyline { fill: none; stroke-linejoin: round; }
+.diagram-service { stroke: currentColor; opacity: .45; stroke-width: 1.5; }
+.selected > .diagram-service { stroke-width: 3; opacity: .9; }
+.diagram-hit { stroke: transparent; stroke-width: 10; cursor: pointer; pointer-events: stroke; }
+.diagram-section { stroke: #00883b; stroke-width: 4; }
+:root[data-theme="dark"] .diagram-section { stroke: var(--green); }
+#simulation-dialog .dialog-actions { justify-content: flex-end; }
