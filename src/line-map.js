@@ -57,7 +57,7 @@ export function createLineMap(container, profile, stations, river, onSelect) {
     const center = focus ? xy(focus.latitude, focus.longitude) : [(west + east) / 2, (north + south) / 2];
     const scale = focus ? Math.min(w, h) / (mode === 'bird' ? 7500 : 3500) : Math.min((w - 130) / (east - west), (h - 95) / (north - south));
     const left = w / 2 - center[0] * scale;
-    const top = (focus && w <= 600 ? h * 0.36 : h / 2 + 14) + center[1] * scale;
+    const top = (focus ? h / 2 : h / 2 + 14) + center[1] * scale;
     paths.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
     gpsMarker.hidden = !gpsPoint;
     if (gpsPoint) {
@@ -76,6 +76,7 @@ export function createLineMap(container, profile, stations, river, onSelect) {
     for (const { run, longitude, latitude } of latest) {
       const [x, y] = xy(latitude, longitude);
       const marker = markers.get(run);
+      marker.classList.toggle('is-followed', focus?.run === run);
       marker.style.left = `${left + x * scale}px`;
       marker.style.top = `${top - y * scale}px`;
     }

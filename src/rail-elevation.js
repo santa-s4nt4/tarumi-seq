@@ -117,3 +117,22 @@ export const railLineZOffset = ['at-interpolated',
 export const railLineZOffsetWithClearance = meters => meters > 0
   ? ['+', railLineZOffset, meters]
   : railLineZOffset;
+
+// GeoJSON lineMetrics measures projected Mercator length. Precompute that
+// mapping once so the passed-line boundary can move without rebuilding GeoJSON.
+export function createLineProgress(profile) {
+  let total = 0, previous;
+  const lengths = profile.track.map(point => {
+    const next = [point.lon * Math.PI / 180, Math.log(Math.tan(Math.PI / 4 + point.lat * Math.PI / 360))];
+    if (previous) total += Math.hypot(next[0] - previous[0], next[1] - previous[1]);
+    previous = next; return total;
+  });
+  return distance => {
+    if (distance <= 0) return 0;
+    if (distance >= profile.maxS) return 1;
+    let low = 0, high = profile.track.length - 1;
+    while (high - low > 1) { const mid = (low + high) >> 1; if (profile.track[mid].s <= distance) low = mid; else high = mid; }
+    const fraction = (distance - profile.track[low].s) / (profile.track[high].s - profile.track[low].s);
+    return (lengths[low] + fraction * (lengths[high] - lengths[low])) / total;
+  };
+}

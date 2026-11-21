@@ -10,7 +10,7 @@ test('development uses the local API and respects an explicitly selected endpoin
   }
   const localResponse = () => page.waitForResponse(r => r.url().endsWith('/local-api/api/position'));
   const initial = localResponse();
-  await page.goto('/');
+  await page.goto('/console/');
   expect((await initial).status()).toBe(200);
   await settings();
   await expect(page.locator('#endpoint')).toHaveValue(localEndpoint);

@@ -110,11 +110,11 @@
 .que-view #fallback-current { fill: var(--green); stroke: var(--ink); }
 
 /* Markers keep their original anchor sizes for terrain projection. */
-.que-view .station-marker { pointer-events: none; opacity: 1; gap: 0; z-index: 1; }
-.que-view .station-tick { display: grid; place-items: center; width: 28px; height: 28px; background: var(--surface); border: 2px solid var(--green); border-radius: 50%; color: var(--text); font-size: 14px; font-weight: 400; box-shadow: none; }
-.que-view .station-marker-name { margin-left: 6px; padding: 7px 10px; background: var(--panel); color: var(--text); border: 1px solid var(--green); border-radius: 0; font: 18px/1.2 var(--font); opacity: 1; text-shadow: none; box-shadow: none; }
-.que-view .station-marker-name small { display: none; }
-.que-view .station-marker.next-station .station-marker-name { background: var(--green); color: var(--ink); }
+:is(.que-view, .experience) .station-marker { pointer-events: none; opacity: 1; gap: 0; z-index: 1; }
+:is(.que-view, .experience) .station-tick { display: grid; place-items: center; width: 28px; height: 28px; background: var(--surface); border: 2px solid var(--green); border-radius: 50%; color: var(--text); font-size: 14px; font-weight: 400; box-shadow: none; }
+:is(.que-view, .experience) .station-marker-name { margin-left: 6px; padding: 7px 10px; background: var(--panel); color: var(--text); border: 1px solid var(--green); border-radius: 0; font: 18px/1.2 var(--font); opacity: 1; text-shadow: none; box-shadow: none; }
+:is(.que-view, .experience) .station-marker-name small { display: none; }
+:is(.que-view, .experience) .station-marker.next-station .station-marker-name { background: var(--green); color: var(--ink); }
 .que-view .current-marker { width: 52px; height: 52px; border-radius: 50%; background: #00ff3626; box-shadow: none; z-index: 2; }
 .que-view .current-marker span { width: 30px; height: 30px; border: 2px solid var(--ink); background: var(--green); box-shadow: 0 0 0 5px #ffffff80; }
 .que-view .mapboxgl-marker.terrain-buried { opacity: .2 !important; }
@@ -190,7 +190,7 @@
   .cue-primary strong { font-size: 90px; }
   .map-speed-card strong { font-size: 72px; }
   .que-view #recorded-time { display: none; }
-  .que-view .station-marker-name { font-size: 16px; }
+  :is(.que-view, .experience) .station-marker-name { font-size: 16px; }
   .que-view .playback-title { font-size: 14px; }
 }
 
@@ -240,7 +240,7 @@
   .que-view .map-legend span { gap: 4px; }
   .que-view .legend-line { width: 12px; }
   .que-view .map-error { top: 180px; }
-  .que-view .station-marker-name { font-size: 15px; padding: 5px 7px; }
+  :is(.que-view, .experience) .station-marker-name { font-size: 15px; padding: 5px 7px; }
   .tunnel-marker-label { font-size: 13px; padding: 5px 7px; }
   .que-view dialog { padding: 20px; }
   .que-view .simulation-fields { gap: 12px; }

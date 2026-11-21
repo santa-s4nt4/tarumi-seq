@@ -9,7 +9,7 @@ const valid = /^[a-f0-9-]{36}$/.test(id) && /^[a-f0-9]{64}$/.test(token);
 document.title = 'スマホGPS送信 | 樽見OTO鉄道';
 document.body.className = 'gps-sender';
 document.body.innerHTML = `<main><span class="loading-logo loading-wordmark" role="img" aria-label="樽見OTO鉄道"></span>
-  <h1>スマホGPS送信</h1><p>このスマホの現在地を、連携したPCのLIVE画面に送ります。乗車中はこの画面を開いておいてください。</p>
+  <h1>スマホGPS送信</h1><p>このスマホの現在地を、連携したPCの画面に送ります。乗車中はこの画面を開いておいてください。</p>
   <button class="primary-button" id="send-gps">GPSを送信する</button>
   <p role="status" id="sender-status"></p></main>`;
 const button = document.getElementById('send-gps'), output = document.getElementById('sender-status');
@@ -65,6 +65,12 @@ async function flush() {
 }
 button.disabled = closed;
 output.textContent = valid ? '送信待ち' : '連携リンクが無効です。PCでQRコードを開いてください。';
+// Opening the invitation only acknowledges the scan. Geolocation still starts
+// exclusively from the explicit button below.
+if (valid) liveRequest(resource + '/join', { method: 'POST', token }).catch(error => {
+  if (error.status === 404) expired();
+  else output.textContent = 'PCと接続できません。通信状況を確認して再読み込みしてください。';
+});
 button.addEventListener('click', async () => {
   if (!session.active && !closed) { session.start(); return; }
   session.stop();

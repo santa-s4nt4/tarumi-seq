@@ -171,7 +171,7 @@ function requestPosition(immediate = false) {
   // Resolve the GPS at dispatch time, rather than sending a queued, older sample.
   api.enqueue(() => {
     const latest = point();
-    return { body: { latitude: latest.lat, longitude: latest.lon, direction: state.direction, recordedAt: recordedAt(rec(), state.time) }, t: state.time };
+    return { body: { latitude: latest.lat, longitude: latest.lon, direction: state.direction, recordedAt: recordedAt(rec(), state.time), datasetVersion: data().version }, t: state.time };
   }, null, immediate);
 }
 
@@ -1011,7 +1011,7 @@ $('settings-form').addEventListener('submit', e => {
 $('reload-data').addEventListener('click', () => location.reload());
 
 async function loadJSON(path) {
-  const response = await fetch(`${baseURL}${path.replace(/^\//, '')}`, { signal: AbortSignal.timeout(15000) });
+  const response = await fetch(`${baseURL}${path.replace(/^\//, '')}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return response.json();
 }

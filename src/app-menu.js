@@ -2,7 +2,7 @@ export function setupAppMenu({ header, currentView, actions = [], mapControls = 
   const navigation = document.createElement('nav');
   navigation.className = 'view-navigation';
   navigation.setAttribute('aria-label', '画面の切り替え');
-  for (const view of ['console', 'live']) {
+  for (const view of import.meta.env.DEV ? ['console', 'live', 'custom', 'performance'] : ['live', 'custom']) {
     const link = document.createElement('a');
     link.href = import.meta.env.BASE_URL + view + '/';
     link.textContent = view.toUpperCase();

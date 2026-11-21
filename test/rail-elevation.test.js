@@ -61,3 +61,32 @@ test('projection and equal-distance elevation samples support both travel direct
   assert.equal(elevatedLineFeature(profile, south).properties.elevation[0], 168.4);
   assert.equal(railLineZOffset[0], 'at-interpolated');
 });
+
+test('every mapped Neo River crossing falls inside its bridge segment', () => {
+  const river=JSON.parse(fs.readFileSync('public/data/map-data.json')).front.river;
+  const cross=(a,b)=>a[0]*b[1]-a[1]*b[0];
+  let crossings=0;
+  for(let i=1;i<railway.coordinates.length;i++) {
+    const a=railway.coordinates[i-1], b=railway.coordinates[i], r=[b[0]-a[0],b[1]-a[1]];
+    for(let j=1;j<river.length;j++) {
+      const c=river[j-1],d=river[j],s=[d[0]-c[0],d[1]-c[1]],delta=[c[0]-a[0],c[1]-a[1]],den=cross(r,s);
+      if(Math.abs(den)<1e-15)continue;
+      const t=cross(delta,s)/den,u=cross(delta,r)/den;
+      if(t<0||t>1||u<0||u>1)continue;
+      crossings++;
+      const at=profile.project(a[0]+t*r[0],a[1]+t*r[1]).s;
+      assert(railway.bridges.some(bridge=>at>=bridge.start-2&&at<=bridge.end+2),`crossing at ${at}m has no bridge`);
+    }
+  }
+  assert(crossings>=10);
+});
+
+test('cached line progress preserves both route endpoints and advances through curved sections', async () => {
+  const {createLineProgress}=await import('../src/rail-elevation.js');
+  const progress=createLineProgress(profile);
+  assert.equal(progress(-1),0);assert.equal(progress(0),0);assert.equal(progress(profile.maxS),1);assert.equal(progress(Infinity),1);
+  let previous=0;
+  for(let s=100;s<profile.maxS;s+=100) {
+    const next=progress(s);assert(next>previous&&next<1);assert(Math.abs(next-s/profile.maxS)<0.001);previous=next;
+  }
+});

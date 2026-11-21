@@ -40,5 +40,5 @@ subjectAltName=IP:${ip},IP:127.0.0.1,DNS:localhost
 const server = await createServer({ server: { host: '0.0.0.0', port: 5174, strictPort: true,
   https: { key: readFileSync(join(dir, 'server.key')), cert: readFileSync(join(dir, 'server.crt')) } } });
 await server.listen();
-console.log('スマホ用HTTPS  https://' + ip + ':5174/live/');
+console.log('スマホ用HTTPS  https://' + ip + ':5174/performance/');
 console.log('スマホで信頼するローカルCA証明書  ' + join(dir, 'tarumi-phone-ca.crt'));

@@ -3,19 +3,41 @@ import fs from 'node:fs';
 import { recordedAt, timeLabel } from '../../src/timeline.js';
 const front = JSON.parse(fs.readFileSync('data/gps-front.json'));
 const back = JSON.parse(fs.readFileSync('data/gps-back.json'));
+const mapData = JSON.parse(fs.readFileSync('public/data/map-data.json'));
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarumi-api-endpoint', 'http://localhost:8787/api/position'));
 });
 
 async function ready(page) {
-  await page.goto('/');
+  await page.goto('/console/');
   await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み', { timeout: 15000 });
 }
 async function seek(page, t) {
   await page.locator('#seek').evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, t);
 }
+
+test('development Console uses the latest GPS recording and matching API dataset in both directions', async ({ page }) => {
+  await page.route('https://*.mapbox.com/**', route => route.abort());
+  let response = page.waitForResponse(r => r.url().endsWith('/api/position') && r.request().method() === 'POST');
+  await page.goto('/console/');
+  for (const [direction, recording] of [['front', front], ['back', back]]) {
+    if (direction === 'back') {
+      response = page.waitForResponse(r => r.url().endsWith('/api/position') && r.request().postDataJSON()?.direction === 'back');
+      await page.locator('#back-button').click();
+    }
+    const received = await response;
+    expect(received.status()).toBe(200);
+    expect(received.request().postDataJSON()).toMatchObject({ latitude: recording.records[0].lat, longitude: recording.records[0].lon,
+      direction, datasetVersion: mapData[direction].version });
+    expect((await received.json()).datasetVersion).toBe(mapData[direction].version);
+    await expect(page.locator('#api-badge-text')).toHaveText('API 接続済み');
+    await expect(page.locator('.playback-date')).toHaveText('2026.11.04');
+    await expect(page.locator('#seek')).toHaveAttribute('max', String(recording.records.at(-1).t));
+    await expect(page.locator('#api-error')).toBeHidden();
+  }
+});
 
 test('polls every five real seconds while countdown and GPS continue; pause freezes the prediction', async ({ page }) => {
   const requests = [];
@@ -66,7 +88,7 @@ test('renders real API predictions and Mapbox route; sends the corrected GPS tim
   const request = page.waitForRequest(r => r.url().endsWith('/api/position') && r.method() === 'POST');
   await ready(page);
   const body = (await request).postDataJSON();
-  expect(body).toEqual({ latitude: front.records[0].lat, longitude: front.records[0].lon, direction: 'front', recordedAt: recordedAt(front, front.records[0].t) });
+  expect(body).toEqual({ latitude: front.records[0].lat, longitude: front.records[0].lon, direction: 'front', recordedAt: recordedAt(front, front.records[0].t), datasetVersion: mapData.front.version });
   await expect(page.locator('#station-name')).toHaveText('本巣');
   await expect(page.locator('#station-distance')).toHaveText('3');
   await expect(page.locator('#river-distance')).toHaveText('7,366');
@@ -132,7 +154,7 @@ test('tunnel interior switches the prediction to its exit; record endpoint stops
 
 test('API failures clear predictions and retry reconnects; connection settings show raw diagnostics', async ({ page }) => {
   await page.route('**/api/position', route => route.fulfill({ status: 503, json: { error: 'dataset_unavailable', message: '参照データ未登録' } }));
-  await page.goto('/');
+  await page.goto('/console/');
   await expect(page.locator('#api-error')).toBeVisible();
   await expect(page.locator('#api-error-message')).toContainText('503');
   await expect(page.locator('#station-name')).toHaveText('—');

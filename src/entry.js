@@ -1,20 +1,17 @@
 const base = import.meta.env.BASE_URL;
 const url = new URL(location.href);
-const path = url.pathname.slice(base.length);
-
-// Old QUE bookmarks and shared sections open in the same LIVE view, with
-// the original playback parameters and phone invitation fragment intact.
-if (/^(?:que|live)(?:\/(?:index\.html)?)?$/.test(path)) {
-  if (url.pathname !== base + 'live/') {
-    url.pathname = base + 'live/';
-    history.replaceState(history.state, '', url);
+const path = url.pathname.slice(base.length).replace(/\/?index\.html$/, '').replace(/\/$/, '');
+if (import.meta.env.DEV && path === 'console') {
+  document.body.innerHTML = (await import('./console.html?raw')).default;
+  await import('./main.js');
+} else if (import.meta.env.DEV && new URLSearchParams(url.hash.slice(1)).has('gps-send')) {
+  await import('./phone-sender.js');
+} else {
+  if (path === 'que' || (path === 'live' && url.searchParams.get('mode') === 'playback')) {
+    url.pathname = base + 'custom/'; url.searchParams.delete('mode');
+    history.replaceState(null, '', url);
+  } else if (!['', 'live', 'custom'].includes(path) && !(import.meta.env.DEV && path === 'performance')) {
+    history.replaceState(null, '', base);
   }
-  if (new URLSearchParams(url.hash.slice(1)).has('gps-send')) {
-    await import('./phone-sender.js');
-  } else if (url.searchParams.get('mode') === 'playback') {
-    await import('./main.js');
-  } else {
-    document.querySelector('#loading h2').textContent = '全線の時刻表を読み込んでいます';
-    await import('./live.js');
-  }
-} else await import('./main.js');
+  await import('./experience.js');
+}
