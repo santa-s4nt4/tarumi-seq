@@ -1,5 +1,6 @@
 import { xy } from './geometry.js';
-import { overviewPadding } from './menu-motion.js';
+import { overviewPadding, overviewRightEdge } from './menu-motion.js';
+import { placeOverviewLabels, placeOverviewTrain } from './overview-labels.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -40,15 +41,19 @@ export function createLineMap(container, profile, stations, river, onSelect) {
   line(profile.railway.coordinates, 'line-track');
   const first = stations.find(station => station.order === 9), last = stations.find(station => station.order === 19);
   const section = profile.section(first.s, last.s);
+  line(river, 'line-overview-river');
   line(section, 'line-overview-track');
   const labels = stations.map(station => {
-    const group = svgElement('g', { 'data-station': station.order }, svg);
+    const group = svgElement('g', { 'data-station': station.order, class: station.order === 9 || station.order === 19 ? 'section-endpoint' : '' }, svg);
     svgElement('circle', { r: 3 }, group);
     const label = svgElement('text', { x: 8, y: 4 }, group);
-    label.textContent = station.name;
+    svgElement('tspan', { class: 'station-name-jp' }, label).textContent = station.name;
+    svgElement('tspan', { class: 'station-romaji', dx: 8 }, label).textContent = station.romaji;
     const [lon, lat] = profile.coordinateAt(station.s);
     return { group, label, order: station.order, point: xy(lat, lon) };
   });
+  const labelSizes = new Map();
+  document.fonts.ready.then(() => { labelSizes.clear(); draw(); });
   const points = section.map(([lon, lat]) => xy(lat, lon)), xs = points.map(p => p[0]), ys = points.map(p => p[1]);
   const west = Math.min(...xs), east = Math.max(...xs), north = Math.max(...ys), south = Math.min(...ys);
   const gpsMarker = document.createElement('div');
@@ -73,13 +78,33 @@ export function createLineMap(container, profile, stations, river, onSelect) {
       gpsMarker.style.left = `${left + x * scale}px`;
       gpsMarker.style.top = `${top - y * scale}px`;
     }
+    const rightEdge = overviewRightEdge(w);
+    const trainScreens = overview ? latest.filter(train => {
+      const s = profile.project(train.longitude, train.latitude).s;
+      return s >= first.s - 1 && s <= last.s + 1;
+    }).map(train => {
+      const button = markers.get(train.run), [x, y] = xy(train.latitude, train.longitude);
+      button.classList.remove('is-followed');
+      const pointX = left + x * scale, pointY = top - y * scale;
+      return { run: train.run, pointX, x: pointX + 16, y: pointY + (train.run.train.direction === 'front' ? 18 : -18) - button.offsetHeight / 2,
+        width: button.offsetWidth, height: button.offsetHeight };
+    }) : [];
+    const placements = overview ? placeOverviewLabels(labels.filter(station => station.order >= 9).map(station => {
+      if (!labelSizes.has(station)) {
+        const box = station.label.getBBox();
+        labelSizes.set(station, { width: box.width, height: box.height, centerY: box.y + box.height / 2 });
+      }
+      const size = labelSizes.get(station);
+      return { order: station.order, x: left + station.point[0] * scale, y: top - station.point[1] * scale + size.centerY,
+        ...size, leftGap: 14 };
+    }), trainScreens, rightEdge) : [];
     let previousY = Infinity;
     for (const { group, label, order, point: [x, y] } of labels) {
       group.style.display = overview && order < 9 ? 'none' : '';
       const py = top - y * scale;
       group.style.transform = `translate(${left + x * scale}px, ${py}px)`;
-      const nearTrain = overview && latest.some(train => Math.abs(py - (top - xy(train.latitude,train.longitude)[1] * scale + (train.run.train.direction === 'front' ? 18 : -18))) < 28);
-      label.setAttribute('x', nearTrain ? -14 : 8); label.setAttribute('text-anchor', nearTrain ? 'end' : 'start');
+      const labelLeft = placements.find(label => label.order === order)?.left;
+      label.setAttribute('x', labelLeft ? -14 : 8); label.setAttribute('text-anchor', labelLeft ? 'end' : 'start');
       const show = overview || [1, 9, 19].includes(order) || Math.abs(py - previousY) > 20;
       label.style.display = show ? '' : 'none';
       if (show) previousY = py;
@@ -92,13 +117,16 @@ export function createLineMap(container, profile, stations, river, onSelect) {
       marker.classList.toggle('is-followed', focus?.run === run);
       marker.style.left = `${left + x * scale}px`;
       marker.style.top = `${top - y * scale}px`;
+      const train = trainScreens.find(train => train.run === run);
+      if (train) marker.style.setProperty('--overview-train-offset', `${placeOverviewTrain(train, placements, rightEdge).x - train.pointX}px`);
     }
   }
 
-  new ResizeObserver(draw).observe(container);
+  new ResizeObserver(() => { labelSizes.clear(); draw(); }).observe(container);
   return {
     setOverview(value, duration = 0) {
       overview = value; container.dataset.overview = String(value);
+      labelSizes.clear();
       clearTimeout(moveTimer); container.classList.toggle('menu-moving', duration > 0);
       container.style.setProperty('--line-menu-duration', `${duration}ms`);
       moveTimer = setTimeout(() => container.classList.remove('menu-moving'), duration);

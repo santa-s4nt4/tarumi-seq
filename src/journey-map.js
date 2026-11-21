@@ -4,7 +4,8 @@ import { elevatedLineFeature, railLineZOffsetWithClearance, createLineProgress }
 import { JourneyCamera, cameraEye } from './journey-camera.js';
 import { createLineMap, trainMarkerButton } from './line-map.js';
 import { fadeMapTheme } from './theme.js';
-import { overviewPadding } from './menu-motion.js';
+import { overviewPadding, overviewRightEdge } from './menu-motion.js';
+import { placeOverviewLabels, placeOverviewTrain } from './overview-labels.js';
 import { turnTowards } from './camera.js';
 
 const collection = features => ({ type: 'FeatureCollection', features: features.filter(Boolean) });
@@ -18,6 +19,8 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
   let map, ready = false, overview = true, latest, dark = false, previousTime, marker, lastS, lastTheme;
   let lastProgress, lastStations = -Infinity, mapHeight = 1, lastDirection;
   const heights = new WeakMap();
+  const labelSizes = new Map(), trainOffsets = new WeakMap();
+  document.fonts.ready.then(() => labelSizes.clear());
   const stationMarkers = [], tunnelMarkers = [], trainMarkers = new Map();
   let fleet = [], gpsMarker, layoutKey, returning;
   function fit(duration = 0) {
@@ -33,7 +36,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     for (const key of ['colorLand', 'colorGreenspace', 'colorCommercial', 'colorEducation', 'colorMedical', 'colorIndustrial']) {
       map.setConfigProperty('basemap', key, dark ? '#18231b' : '#c4c1b0');
     }
-    map.setConfigProperty('basemap', 'colorWater', overview ? '#c4c1b0' : '#0a84ff');
+    map.setConfigProperty('basemap', 'colorWater', overview ? '#c4dce8' : '#0a84ff');
     map.setPaintProperty('contours', 'line-color', dark ? '#bfffcc' : '#56655b');
   }
   function terrainHeight(lon, lat) { return map.queryTerrainElevation([lon, lat], { exaggerated: false }); }
@@ -45,10 +48,12 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     }
   }
   function overviewLayers() {
+    labelSizes.clear();
     mapElement.dataset.overview = String(overview);
     if (!ready) return;
     for (const id of ['route', 'travelled', 'river', 'bridges', 'tunnels', 'tunnel-halo']) map.setLayoutProperty(id, 'visibility', overview ? 'none' : 'visible');
     map.setLayoutProperty('overview-route', 'visibility', overview ? 'visible' : 'none');
+    map.setLayoutProperty('overview-river', 'visibility', overview ? 'visible' : 'none');
     for (const station of stationMarkers) {
       station.marker.getElement().hidden = overview && station.order < 9;
       if (overview) { station.marker.setAltitude(0); heights.delete(station.marker); }
@@ -133,10 +138,24 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         item = new mapboxgl.Marker({ element: button, anchor: 'left', offset: [16, run.train.direction === 'front' ? 18 : -18] })
           .setLngLat([longitude, latitude]).addTo(map); trainMarkers.set(run, item);
       } else item.setLngLat([longitude, latitude]);
-      trainScreens.push(map.project([longitude, latitude]).y + (run.train.direction === 'front' ? 18 : -18));
+      const point = map.project([longitude, latitude]), offsetY = run.train.direction === 'front' ? 18 : -18;
+      const button = item.getElement();
+      trainScreens.push({ item, point, offsetY, x: point.x + 16, y: point.y + offsetY - button.offsetHeight / 2, width: button.offsetWidth, height: button.offsetHeight });
     }
-    for (const station of stationMarkers) station.marker.getElement().classList.toggle('near-overview-train',
-      trainScreens.some(y => Math.abs(map.project(profile.coordinateAt(station.s)).y - y) < 28));
+    const rightEdge = overviewRightEdge(mapElement.clientWidth);
+    const labels = placeOverviewLabels(stationMarkers.filter(station => station.order >= 9).map(station => {
+      const element = station.marker.getElement(), point = map.project(profile.coordinateAt(station.s));
+      if (!labelSizes.has(station)) {
+        const name = element.querySelector('.station-marker-name');
+        labelSizes.set(station, { width: name.offsetWidth, height: name.offsetHeight });
+      }
+      return { element, ...point, ...labelSizes.get(station), leftGap: 20 };
+    }), trainScreens, rightEdge);
+    for (const label of labels) label.element.classList.toggle('overview-label-left', label.left);
+    for (const train of trainScreens) {
+      const placed = placeOverviewTrain(train, labels, rightEdge), offset = placed.x - train.point.x;
+      if (trainOffsets.get(train.item) !== offset) { train.item.setOffset([offset, train.offsetY]); trainOffsets.set(train.item, offset); }
+    }
   }
   try {
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -153,6 +172,9 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       map.addLayer({ id: 'contours', type: 'line', slot: 'middle', source: 'topography', 'source-layer': 'contour', paint: { 'line-color': '#56655b', 'line-opacity': 0.45, 'line-width': 0.6, 'line-emissive-strength': 1 } });
       map.addSource('river', { type: 'geojson', data: collection([{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: river } }]) });
       map.addLayer({ id: 'river', type: 'line', slot: 'top', source: 'river', paint: { 'line-color': '#0a84ff', 'line-width': 6, 'line-emissive-strength': 1 } });
+      map.addLayer({ id: 'overview-river', type: 'line', slot: 'top', source: 'river',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#75bee5', 'line-opacity': 0.55, 'line-width': 6, 'line-emissive-strength': 1 } });
       const geometry = {
         route: collection([elevatedLineFeature(profile, profile.railway.coordinates)]), travelled: null,
         bridges: collection(profile.railway.bridges.map(item => elevatedLineFeature(profile, profile.section(item.start, item.end)))),
@@ -177,8 +199,12 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.25 }).setLngLat(profile.coordinateAt(0)).addTo(map);
       for (const station of stations) {
         const element = document.createElement('div'); element.className = 'station-marker';
+        element.dataset.station = station.order;
+        element.classList.toggle('section-endpoint', station.order === 9 || station.order === 19);
         const tick = document.createElement('span'); tick.className = 'station-tick'; tick.textContent = '駅';
         const label = document.createElement('span'); label.className = 'station-marker-name'; label.textContent = station.name;
+        const roman = document.createElement('small'); roman.className = 'station-romaji'; roman.textContent = station.romaji;
+        label.append(roman);
         element.append(tick, label);
         stationMarkers.push({ ...station, marker: new mapboxgl.Marker({ element, anchor: 'left', offset: [-14, 0], occludedOpacity: 0.2 })
           .setLngLat(profile.coordinateAt(station.s)).addTo(map) });
@@ -194,7 +220,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       overviewLayers(); if (overview) fit(); showFleet();
     });
     map.on('error', () => { if (!ready) { fallback.hidden = false; onError(); } });
-    new ResizeObserver(([entry]) => { mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(document.querySelector('.map-panel'));
+    new ResizeObserver(([entry]) => { labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(document.querySelector('.map-panel'));
   } catch { fallback.hidden = false; onError(); }
   requestAnimationFrame(animate);
   return {

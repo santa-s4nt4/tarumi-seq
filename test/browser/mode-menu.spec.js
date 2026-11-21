@@ -6,6 +6,27 @@ const timetable=JSON.parse(fs.readFileSync('public/data/timetable-reference.json
 const custom='/custom/?train=18&day=holiday&from=19&to=10';
 async function load(page,path='/') { await page.goto(path);await expect(page.locator('#loading')).toBeHidden(); }
 
+async function checkOverviewNames(page, selector, mobile) {
+  const labels=await page.locator(selector).evaluateAll(nodes=>nodes.filter(node=>node.getBoundingClientRect().width).map(node=>{
+    const rect=node.getBoundingClientRect(), roman=node.querySelector('.station-romaji');
+    return {station:Number(node.parentNode.dataset.station),font:parseFloat(getComputedStyle(node).fontSize),
+      roman:getComputedStyle(roman).display,romaji:roman.textContent,x:rect.x,y:rect.y,width:rect.width,height:rect.height};
+  }));
+  expect(labels).toHaveLength(11);
+  const regular=labels.find(label=>label.station===10);
+  expect(labels.find(label=>label.station===9).font).toBeGreaterThan(regular.font);
+  expect(labels.find(label=>label.station===19).font).toBeGreaterThan(regular.font);
+  expect(labels.find(label=>label.station===18).romaji).toBe('Midori');
+  for(const label of labels) {
+    expect(label.roman).toBe(mobile?'none':'inline');
+    expect(label.x).toBeGreaterThanOrEqual(0);
+  }
+  for(let i=0;i<labels.length;i++) for(let j=i+1;j<labels.length;j++) {
+    const a=labels[i],b=labels[j];
+    expect(a.x>=b.x+b.width||b.x>=a.x+a.width||a.y>=b.y+b.height||b.y>=a.y+a.height,`station names ${a.station} and ${b.station} overlap`).toBe(true);
+  }
+}
+
 test('both menus exclude trains that only run between Ogaki and Motosu, including old direct links',async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());
   await page.clock.setFixedTime(new Date('2026-11-21T07:25:00+09:00'));
@@ -42,7 +63,7 @@ test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrolla
   await expect(page).toHaveURL(new RegExp('/live/\\?train='+chosen+'$'));
 });
 
-for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`menu preserves the selected train, time, view and playback at ${viewport.width}px`,async({page})=>{
+for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:320,height:640}]) test(`menu preserves the selected train, time, view and playback at ${viewport.width}px`,async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);await page.setViewportSize(viewport);await load(page,custom);
   await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await page.locator('#custom-play').click();
   await expect(page.locator('#journey-clock')).toHaveText('10:33:01');await page.getByRole('button',{name:'メニューを開く'}).click();
@@ -53,6 +74,8 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`m
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveAttribute('data-train','18');
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveText('大垣行き');
   await expect(page.locator('#line-map .line-river')).toBeHidden();await expect(page.locator('#line-map .line-track')).toBeHidden();
+  await expect(page.locator('#line-map .line-overview-river')).toBeVisible();
+  await checkOverviewNames(page,'#line-map [data-station] text',viewport.width<=760);
   const visible=await page.locator('#line-map [data-station]').evaluateAll(nodes=>nodes.filter(e=>getComputedStyle(e).display!=='none').map(e=>Number(e.dataset.station)));
   expect(visible).toEqual([9,10,11,12,13,14,15,16,17,18,19]);
   const rect=await page.locator('#mode-menu').boundingBox();
@@ -62,12 +85,15 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`m
   await expect(page.getByRole('button',{name:'鳥瞰',exact:true})).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('#custom-play')).toHaveAttribute('aria-pressed','true');await expect(page.locator('#custom-timeline')).toBeVisible();
   await expect(page.locator('#journey-clock')).not.toHaveText(time);await expect(page).toHaveURL(/from=19&to=10/);
+  await expect(page.locator('#line-map .line-overview-river')).toBeHidden();
+  await expect(page.locator('#line-map .station-romaji:visible')).toHaveCount(0);
 });
 
 for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`terrain overview and menu animate together and restore centered tracking at ${viewport.width}px`,async({page})=>{
   let mapboxModule;page.on('request',request=>{if(request.url().includes('/deps/mapbox-gl.js'))mapboxModule=request.url();});
   await page.setViewportSize(viewport);await page.clock.setFixedTime(fixed);await load(page,custom);
   await expect(page.locator('.current-marker')).toBeVisible();await page.waitForTimeout(1200);
+  const followedFont=await page.locator('#map [data-station="19"] .station-marker-name').evaluate(node=>getComputedStyle(node).fontSize);
   await page.evaluate(async resource=>{
     const lib=(await import(resource)).default;
     const fit=lib.Map.prototype.fitBounds;
@@ -81,6 +107,9 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   const scene=await page.evaluate(()=>({zoom:window.menuMap.getZoom(),river:window.menuMap.getLayoutProperty('river','visibility'),tunnels:window.menuMap.getLayoutProperty('tunnels','visibility'),route:window.menuMap.getLayoutProperty('overview-route','visibility')}));
   expect(scene.zoom).toBeLessThan(14);expect(scene.river).toBe('none');expect(scene.tunnels).toBe('none');expect(scene.route).toBe('visible');
   await expect(page.locator('.station-marker:not([hidden])')).toHaveCount(11);await expect(page.locator('.overview-train')).toHaveCount(1);
+  await checkOverviewNames(page,'#map .station-marker:not([hidden]) .station-marker-name',viewport.width<=760);
+  expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('visible');
+  expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-river','line-opacity'))).toBe(.55);
   await expect(page.locator('.overview-train')).toHaveText('大垣行き');
   await page.getByRole('button',{name:'メニューを閉じる'}).click();await expect(page.locator('#mode-menu')).toBeHidden();
   await expect.poll(()=>page.evaluate(()=>{
@@ -88,6 +117,10 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
     return Math.hypot(m.x+m.width/2-p.x-p.width/2,m.y+m.height/2-p.y-p.height/2);
   })).toBeLessThan(6);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('tunnels','visibility'))).toBe('visible');
+  expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('none');
+  expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('river','visibility'))).toBe('visible');
+  expect(await page.locator('#map [data-station="19"] .station-marker-name').evaluate(node=>getComputedStyle(node).fontSize)).toBe(followedFont);
+  await expect(page.locator('#map .station-romaji:visible')).toHaveCount(0);
   await expect(page.locator('.overview-train')).toHaveCount(0);
 });
 
