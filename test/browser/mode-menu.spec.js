@@ -48,6 +48,7 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
 test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrollable keyboard-selectable list',async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);
   await page.setViewportSize({width:390,height:844});await load(page);
+  expect(await page.locator('.mode-tabs').evaluate(node=>getComputedStyle(node).outlineStyle)).toBe('none');
   await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('#mode-menu')).toBeVisible();
   const choices=page.locator('#menu-trains [role=option]');

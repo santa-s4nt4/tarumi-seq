@@ -41,6 +41,7 @@
 .mode-menu::backdrop,.performance-dialog::backdrop { background:#ffffff38; backdrop-filter:blur(2px); }
 .mode-close { position:absolute; top:5px; right:10px; background:transparent; font:26px var(--font); padding:2px 8px; }
 .mode-tabs { display:grid; grid-template-columns:1fr 1fr; margin-bottom:30px; border:0; border-bottom:1px solid var(--track); }
+.mode-tabs:focus { outline:none; }
 .mode-tabs button { background:transparent; color:var(--text); padding:16px 8px; font-size:26px; border-bottom:3px solid transparent; margin-bottom:-1px; }
 .mode-tabs button[aria-selected=true] { border-bottom-color:var(--green); }
 #menu-clock { display:block; text-align:center; font-size:70px; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:38px 0; }
