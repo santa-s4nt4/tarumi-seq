@@ -1,7 +1,7 @@
 import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { elevatedLineFeature, railLineZOffsetWithClearance, createLineProgress } from './rail-elevation.js';
-import { JourneyCamera, cameraRadius } from './journey-camera.js';
+import { JourneyCamera, cameraEye } from './journey-camera.js';
 import { createLineMap } from './line-map.js';
 import { fadeMapTheme } from './theme.js';
 
@@ -12,9 +12,9 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
   const camera = new JourneyCamera();
   const progressAt = createLineProgress(profile), mapElement = document.getElementById('map');
   let map, ready = false, overview = true, latest, dark = false, previousTime, marker, lastS, lastTheme;
-  let lastProgress, lastStations = -Infinity, mapHeight = 1;
+  let lastProgress, lastStations = -Infinity, mapHeight = 1, lastDirection;
   const heights = new WeakMap();
-  const stationMarkers = [], trainMarkers = new Map();
+  const stationMarkers = [], tunnelMarkers = [], trainMarkers = new Map();
   let fleet = [], gpsMarker;
   function fit() {
     if (!ready) return;
@@ -49,13 +49,9 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     const moved = p.s !== lastS;
     const view = camera.at({ profile, s: p.s, direction: latest.direction, height: mapHeight,
       sampleElevation: terrainHeight, now, elapsed });
-    const radius = cameraRadius(view.center[1], mapHeight, view.zoom);
-    const target = mapboxgl.MercatorCoordinate.fromLngLat(view.center, view.elevation + 1);
-    const unit = target.meterInMercatorCoordinateUnits(), pitch = view.pitch * Math.PI / 180, bearing = view.bearing * Math.PI / 180;
-    const horizontal = radius * Math.sin(pitch), vertical = radius * Math.cos(pitch);
+    const eye = cameraEye(view, view.radius);
     const free = map.getFreeCameraOptions();
-    free.position = new mapboxgl.MercatorCoordinate(target.x - Math.sin(bearing) * horizontal * unit,
-      target.y + Math.cos(bearing) * horizontal * unit, target.z + vertical * unit);
+    free.position = mapboxgl.MercatorCoordinate.fromLngLat([eye.longitude, eye.latitude], eye.altitude);
     free.setPitchBearing(view.pitch, view.bearing);
     // Terrain tile loading can adjust Mapbox's camera even while paused.
     // Reapply the intended pose to keep the rail position at the centre.
@@ -67,12 +63,27 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     if (marker.getElement().hidden) marker.getElement().hidden = false;
     const mode = camera.targetBird ? 'bird' : 'normal';
     if (mapElement.dataset.camera !== mode) { mapElement.dataset.camera = mode; mapElement.dataset.zoom = (camera.targetBird ? 19 : 20).toString(); }
+    if (lastDirection !== latest.direction) {
+      for (const portal of tunnelMarkers) {
+        const entrance = portal.start === (latest.direction === 'front'), element = portal.marker.getElement();
+        element.classList.toggle('exit', !entrance); element.classList.toggle('entrance', entrance);
+        element.dataset.target = entrance ? 'entrance' : 'exit';
+        element.setAttribute('aria-label', `${portal.name} ${entrance ? '入口' : '出口'}`);
+        element.querySelector('.tunnel-marker-label').hidden = !entrance;
+      }
+      lastDirection = latest.direction;
+    }
     if (now - lastStations >= 250) {
       for (const station of stationMarkers) {
         const element = station.marker.getElement(), hidden = Math.abs(station.s - p.s) > 2200;
         if (element.hidden !== hidden) element.hidden = hidden;
         element.classList.toggle('next-station', station.name === latest.next?.station?.name);
         if (!hidden) altitude(station.marker, station.s);
+      }
+      for (const portal of tunnelMarkers) {
+        const element = portal.marker.getElement(), hidden = Math.abs(portal.s - p.s) > 1600;
+        if (element.hidden !== hidden) element.hidden = hidden;
+        if (!hidden) altitude(portal.marker, portal.s);
       }
       lastStations = now;
     }
@@ -121,10 +132,13 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       };
       for (const [id, data] of Object.entries(geometry)) {
         if (data) map.addSource(id, { type: 'geojson', data, lineMetrics: true });
+        if (id === 'tunnels') map.addLayer({ id: 'tunnel-halo', type: 'line', slot: 'top', source: 'tunnels',
+          layout: { 'line-cap': 'round', 'line-join': 'round', 'line-elevation-reference': 'sea', 'line-z-offset': railLineZOffsetWithClearance(1), 'line-elevation-ground-scale': 1 },
+          paint: { 'line-color': '#331e19', 'line-width': 18, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.1 } });
         map.addLayer({ id, type: 'line', slot: 'top', source: id === 'travelled' ? 'route' : id, layout: { 'line-elevation-reference': 'sea',
           'line-z-offset': railLineZOffsetWithClearance(id === 'bridges' ? 1.5 : 1), 'line-elevation-ground-scale': 1 },
         paint: { 'line-color': id === 'bridges' ? '#6e3f22' : id === 'travelled' ? '#bfffcc' : '#00ff36',
-          'line-width': id === 'bridges' ? 8 : 5, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.25,
+          'line-width': id === 'bridges' ? 8 : id === 'tunnels' ? 13 : 5, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.25,
           ...(id === 'travelled' ? { 'line-trim-offset': [0, 1] } : {}),
           ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
@@ -138,6 +152,14 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         element.append(tick, label);
         stationMarkers.push({ ...station, marker: new mapboxgl.Marker({ element, anchor: 'left', offset: [-14, 0], occludedOpacity: 0.2 })
           .setLngLat(profile.coordinateAt(station.s)).addTo(map) });
+      }
+      for (const tunnel of profile.railway.tunnels) for (const start of [true, false]) {
+        const s = start ? tunnel.start : tunnel.end, element = document.createElement('div');
+        element.className = 'tunnel-marker'; element.hidden = true; element.dataset.tunnel = tunnel.id;
+        element.innerHTML = '<span class="tunnel-portal">∩</span><span class="tunnel-marker-label"></span>';
+        element.querySelector('.tunnel-marker-label').textContent = tunnel.name;
+        tunnelMarkers.push({ s, start, name: tunnel.name, marker: new mapboxgl.Marker({ element, anchor: 'bottom-left', offset: [-14, 0], occludedOpacity: 0.2 })
+          .setLngLat(profile.coordinateAt(s)).addTo(map) });
       }
       theme(); if (overview) fit(); showFleet();
     });
@@ -166,6 +188,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         marker.getElement().hidden = value;
         if (value) { fit(); map.setPaintProperty('travelled', 'line-trim-offset', [0, 1]); lastProgress = undefined; }
         for (const station of stationMarkers) station.marker.getElement().hidden = value && ![1, 9, 19].includes(station.order);
+        if (value) for (const portal of tunnelMarkers) portal.marker.getElement().hidden = true;
         showFleet();
       }
     },

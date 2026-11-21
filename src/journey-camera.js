@@ -6,12 +6,33 @@ export const TERRAIN_CHECK_INTERVAL = 200;
 export function cameraRadius(latitude, height, zoom) {
   return 1.5 * height * 40075016.686 * Math.cos(latitude * Math.PI / 180) / (512 * 2 ** zoom);
 }
+// Match the Mercator orbit used by the map, so clearance is checked at the
+// actual camera position rather than only along the ray towards the train.
+export function cameraEye({ center, elevation, pitch, bearing }, radius) {
+  const radians = Math.PI / 180, unit = 1 / (40075016.686 * Math.cos(center[1] * radians));
+  const horizontal = radius * Math.sin(pitch * radians);
+  const y = (1 - Math.log(Math.tan(Math.PI / 4 + center[1] * radians / 2)) / Math.PI) / 2 + Math.cos(bearing * radians) * horizontal * unit;
+  return { longitude: center[0] - Math.sin(bearing * radians) * horizontal * unit * 360,
+    latitude: Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) / radians,
+    altitude: elevation + 1 + radius * Math.cos(pitch * radians) };
+}
+export function terrainSafeRadius(view, nominal, sampleElevation, initial = nominal) {
+  let radius = Math.max(nominal, initial);
+  const vertical = Math.cos(view.pitch * Math.PI / 180);
+  const clearance = Math.max(20, nominal * vertical * 0.6);
+  for (let i = 0; i < 16; i++) {
+    const eye = cameraEye(view, radius), ground = sampleElevation(eye.longitude, eye.latitude);
+    if (!Number.isFinite(ground) || eye.altitude >= ground + clearance - 0.01) break;
+    radius += (ground + clearance - eye.altitude) / vertical;
+  }
+  return radius;
+}
 // Test the same hypothetical forward view in both modes. The visible marker's
 // opacity changes with the camera and must never feed back into mode selection.
 export class JourneyCamera {
-  constructor() { this.mode = 'auto'; this.targetBird = false; this.bearing = null; this.changedAt = -Infinity; this.candidate = null; this.pitch = FORWARD_PITCH; this.zoom = FORWARD_ZOOM; this.lastTerrainCheck = -Infinity; this.obscured = null; }
-  setMode(mode) { this.mode = mode; this.candidate = null; this.lastTerrainCheck = -Infinity; }
-  reset() { this.bearing = null; this.candidate = null; this.lastTerrainCheck = -Infinity; this.obscured = null; }
+  constructor() { this.mode = 'auto'; this.targetBird = false; this.bearing = null; this.changedAt = -Infinity; this.candidate = null; this.pitch = FORWARD_PITCH; this.zoom = FORWARD_ZOOM; this.lastTerrainCheck = -Infinity; this.obscured = null; this.lastSafetyCheck = -Infinity; this.radius = null; this.requiredRadius = 0; }
+  setMode(mode) { this.mode = mode; this.candidate = null; this.lastTerrainCheck = this.lastSafetyCheck = -Infinity; }
+  reset() { this.bearing = null; this.candidate = null; this.lastTerrainCheck = this.lastSafetyCheck = -Infinity; this.obscured = null; this.radius = null; this.requiredRadius = 0; }
   decide(obscured, now) {
     if (this.mode !== 'auto') { this.targetBird = this.mode === 'bird'; this.candidate = null; return; }
     if (obscured === null || obscured === this.targetBird) { this.candidate = null; return; }
@@ -43,7 +64,8 @@ export class JourneyCamera {
         return terrainClearance({ center: { lon: point[0], lat: point[1] }, bearing: this.bearing, radius,
           pitch: FORWARD_PITCH, targetElevation: profile.elevationAt(distance), sampleElevation });
       });
-      if (clearances.some(value => value !== null && value > 6)) obscured = true;
+      const nearTunnel = profile.railway.tunnels.some(tunnel => s >= tunnel.start - (sign > 0 ? 300 : 100) && s <= tunnel.end + (sign > 0 ? 100 : 300));
+      if (nearTunnel || clearances.some(value => value !== null && value > 6)) obscured = true;
       else if (clearances.every(value => value !== null && value < -6)) obscured = false;
       this.obscured = obscured;
     }
@@ -52,6 +74,24 @@ export class JourneyCamera {
     const pitch = this.targetBird ? 0 : FORWARD_PITCH, zoom = this.targetBird ? BIRD_ZOOM : FORWARD_ZOOM;
     this.pitch = Math.abs(this.pitch - pitch) < 0.01 ? pitch : this.pitch + (pitch - this.pitch) * fraction;
     this.zoom = Math.abs(this.zoom - zoom) < 0.001 ? zoom : this.zoom + (zoom - this.zoom) * fraction;
-    return { center, elevation, pitch: this.pitch, zoom: this.zoom, bearing: this.bearing };
+    const view = { center, elevation, pitch: this.pitch, zoom: this.zoom, bearing: this.bearing };
+    const nominal = cameraRadius(center[1], height, view.zoom);
+    if (sampleElevation) {
+      // Anticipate a rising slope, then ease back after it. This also protects
+      // manually selected views and the intermediate poses during transitions.
+      if (now - this.lastSafetyCheck >= TERRAIN_CHECK_INTERVAL) {
+        this.lastSafetyCheck = now;
+        this.requiredRadius = Math.max(...[0, 80, 160, 240].map(offset => {
+          const distance = Math.max(0, Math.min(profile.maxS, s + sign * offset));
+          return terrainSafeRadius({ ...view, center: profile.coordinateAt(distance), elevation: profile.elevationAt(distance) }, nominal, sampleElevation);
+        }));
+      }
+      const wanted = Math.max(nominal, this.requiredRadius), previous = this.radius ?? nominal;
+      const eased = previous + (wanted - previous) * (1 - Math.exp(-elapsed / (wanted > previous ? 350 : 1500)));
+      // Never submit a camera below the DEM: Mapbox otherwise clamps it on
+      // every frame, fighting our next pose and making the terrain jump.
+      this.radius = terrainSafeRadius(view, nominal, sampleElevation, eased);
+    } else this.radius = nominal;
+    return { ...view, radius: this.radius };
   }
 }

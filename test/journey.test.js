@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { activeServices, services, StationRange, customPlan, nearestRun } from '../src/journey.js';
-import { JourneyCamera, cameraRadius } from '../src/journey-camera.js';
+import { JourneyCamera, cameraRadius, cameraEye, terrainSafeRadius } from '../src/journey-camera.js';
 import { LiveTimetable } from '../src/live-timetable.js';
 import { createRailProfile } from '../src/rail-elevation.js';
 import { positionAlong } from '../src/simulation.js';
@@ -74,5 +74,41 @@ test('camera tracks every frame while terrain checks stay bounded, including aft
   const before=queries;camera.reset();camera.at({profile,s:15000,direction:'front',height:800,sampleElevation,now:990});
   assert(queries>before,'a seek must not reuse the old terrain result');
   camera.setMode('normal');const fixed=queries;
-  camera.at({profile,s:15001,direction:'front',height:800,sampleElevation,now:1100});assert.equal(queries,fixed);
+  camera.at({profile,s:15001,direction:'front',height:800,sampleElevation,now:1100});
+  assert(queries-fixed<=5,'manual views check camera clearance without scanning all occlusion rays');
+});
+
+test('camera keeps its nominal distance on open track but clears deep terrain at every pitch', () => {
+  const center=[136.62,35.63],elevation=165;
+  for(const height of [250,450,800]) for(const pitch of [0,15,35,55,68]) {
+    const view={center,elevation,pitch,bearing:180}, nominal=cameraRadius(center[1],height,pitch===0?19:20);
+    assert.equal(terrainSafeRadius(view,nominal,()=>0),nominal);
+    assert.equal(terrainSafeRadius(view,nominal,()=>null),nominal);
+    const ground=330, radius=terrainSafeRadius(view,nominal,()=>ground);
+    assert(cameraEye(view,radius).altitude>=ground+20-0.01);
+    assert(radius>=nominal);
+  }
+});
+
+test('all tunnel runs remain above a mountain in both directions and all camera modes', () => {
+  const profile=createRailProfile(railway),ground=400;
+  for(const direction of ['front','back']) for(const mode of ['auto','normal','bird']) for(const tunnel of railway.tunnels) {
+    const camera=new JourneyCamera();camera.setMode(mode);
+    for(let frame=0;frame<90;frame++) {
+      const fraction=direction==='front'?frame/89:1-frame/89,s=tunnel.start+(tunnel.end-tunnel.start)*fraction;
+      const view=camera.at({profile,s,direction,height:300,sampleElevation:()=>ground,now:frame*1000/60});
+      const eye=cameraEye(view,view.radius);
+      assert(eye.altitude>=ground+20-0.01,`${tunnel.name} ${direction} ${mode} camera entered terrain`);
+      assert(view.radius<2500,'terrain clearance must not create an unbounded orbit');
+    }
+  }
+});
+
+test('automatic view anticipates a tunnel even before its DEM is available', () => {
+  const profile=createRailProfile(railway),tunnel=railway.tunnels.at(-1);
+  for(const direction of ['front','back']) {
+    const camera=new JourneyCamera(),s=direction==='front'?tunnel.start-150:tunnel.end+150;
+    for(let now=0;now<=1000;now+=100) camera.at({profile,s,direction,height:450,sampleElevation:()=>null,now,elapsed:100});
+    assert.equal(camera.targetBird,true);
+  }
 });

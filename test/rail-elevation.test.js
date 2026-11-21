@@ -25,6 +25,18 @@ test('station-ground anchors form a continuous moderate railway grade through th
   }
 });
 
+test('all tunnel map intervals match the recorded OSM portal coordinates', () => {
+  const rows=fs.readFileSync('public/data/tarumi_tunnels.csv','utf8').trim().replace(/^\uFEFF/,'').split(/\r?\n/).slice(1);
+  assert.equal(railway.tunnels.length,rows.length);
+  for(const row of rows) {
+    const [,id,,entryLat,entryLon,exitLat,exitLon]=row.split(',');
+    const tunnel=railway.tunnels.find(item=>item.id===`tunnel-${id}`);
+    assert(tunnel);
+    assert(Math.abs(profile.project(Number(entryLon),Number(entryLat)).s-tunnel.start)<1);
+    assert(Math.abs(profile.project(Number(exitLon),Number(exitLat)).s-tunnel.end)<1);
+  }
+});
+
 test('OSM bridge ways stay on the mainline and can be cut into elevated map features', () => {
   const motosuS = railway.stations.find(station => station.order === 9).s;
   assert.ok(railway.bridges.length >= 20);
