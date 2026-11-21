@@ -125,6 +125,12 @@ function configureRoute(target) {
       timeline = createStationTimeline({ container: footer, plan, from: target.searchParams.get('from'), to: target.searchParams.get('to'),
         onSeek: seek, onRange: updateRange, onPlay(value) { if (value && time >= timeline.range.end) seek(timeline.range.start); resumeAfterMenu = playing = value; lastFrame = undefined; } });
       time = timeline.range.start;
+      if (target.searchParams.has('from') || target.searchParams.has('to')) {
+        const currentRoute = target.href === location.href;
+        target.searchParams.set('from', plan.stops[timeline.range.first].station);
+        target.searchParams.set('to', plan.stops[timeline.range.last].station);
+        if (currentRoute) history.replaceState(null, '', target);
+      }
     } catch { plan = null; }
   } else if (selection.trainId) selected = fleet.runs.find(run => run.train.id === selection.trainId);
 }

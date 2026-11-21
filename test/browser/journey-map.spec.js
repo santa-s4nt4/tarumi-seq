@@ -42,7 +42,7 @@ test('real terrain map centers the train, fixes view zooms, and does not oscilla
   await page.goto('/custom/?train=23&day=weekday');await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('.current-marker')).toBeVisible();
   expect(await page.locator('.station-tick').evaluateAll(nodes=>nodes.every(node=>node.textContent===''))).toBe(true);
-  const name=page.locator('.station-marker[data-station="1"] .station-marker-name');
+  const name=page.locator('.station-marker[data-station="9"] .station-marker-name');
   await name.hover();expect(await name.evaluate(node=>getComputedStyle(node).textDecorationLine)).toBe('none');
   await page.getByRole('button',{name:'進行方向',exact:true}).click();await expect(page.locator('#map')).toHaveAttribute('data-zoom','20');
   await expect.poll(()=>centerError(page)).toBeLessThan(6);
@@ -51,7 +51,7 @@ test('real terrain map centers the train, fixes view zooms, and does not oscilla
   await expect.poll(()=>centerError(page)).toBeLessThan(6);
   await page.getByRole('button',{name:'自動',exact:true}).click();
   // Between 高科 and 鍋原, within tunnel country. Keep the same paused point.
-  await seek(page,740);await page.waitForTimeout(3500);
+  await seek(page,532);await page.waitForTimeout(3500);
   const modes=[];for(let i=0;i<8;i++){modes.push(await page.locator('#map').getAttribute('data-camera'));await page.waitForTimeout(400);}
   expect(new Set(modes).size).toBe(1);await expect.poll(()=>centerError(page)).toBeLessThan(6);
   expect(errors).toEqual([]);await page.screenshot({path:'test-results/journey-terrain.png'});
@@ -59,7 +59,9 @@ test('real terrain map centers the train, fixes view zooms, and does not oscilla
 
 test('moving position follows display frames without per-frame terrain scans',async({page})=>{
   await page.goto('/custom/?train=23&day=weekday');
-  await expect(page.locator('.current-marker')).toBeVisible();await seek(page,600);
+  // Keep the original moving point between Kochibora and Tanigumiguchi;
+  // 60% of the shorter timeline would now land in a station dwell.
+  await expect(page.locator('.current-marker')).toBeVisible();await seek(page,280);
   await page.locator('#custom-play').click();
   const result=await page.evaluate(async()=>{
     const resource=performance.getEntriesByType('resource').map(e=>e.name).find(name=>name.includes('/deps/mapbox-gl.js'));

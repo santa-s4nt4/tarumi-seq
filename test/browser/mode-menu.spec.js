@@ -42,7 +42,10 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
     await page.locator(`input[name=direction][value=${direction}]`).check();
     const ids=await page.locator('#custom-service [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train));
     expect(ids).toEqual(section.trains.filter(train=>train.direction===direction).map(train=>train.id));
+    await expect(page.locator('#custom-service [role=option]')).toHaveText(section.trains.filter(train=>train.direction===direction)
+      .map(train=>`${direction==='front'?'本巣':'樽見'}発　${train.stops[0].departure}–${train.stops.at(-1).arrival}`));
   }
+  await expect(page.getByRole('radio',{name:'本巣行き',exact:true})).toBeVisible();
 });
 
 test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrollable keyboard-selectable list',async({page})=>{
@@ -80,7 +83,7 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:32
   await expect(page.locator('#journey-speed')).toBeHidden();await expect(page.locator('#custom-timeline')).toBeHidden();await expect(page.locator('.cue-overlay')).toBeHidden();
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveCount(1);
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveAttribute('data-train','18');
-  await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveText('樽見発 10:33–11:36');
+  await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveText('樽見発 10:33–11:04');
   await expect(page.locator('#line-map .line-river')).toBeHidden();await expect(page.locator('#line-map .line-track')).toBeHidden();
   await expect(page.locator('#line-map .line-overview-river')).toBeVisible();
   await checkOverviewNames(page,'#line-map [data-station] text',viewport.width<=760);
@@ -138,7 +141,7 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   await checkOverviewNames(page,'#map .station-marker:not([hidden]) .station-marker-name',viewport.width<=760);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('visible');
   expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-river','line-opacity'))).toBe(.55);
-  await expect(page.locator('.overview-train')).toHaveText('樽見発 10:33–11:36');
+  await expect(page.locator('.overview-train')).toHaveText('樽見発 10:33–11:04');
   await page.evaluate(()=>{window.returnFrames=[];});
   await page.getByRole('button',{name:'メニューを閉じる'}).click();await expect(page.locator('#mode-menu')).toBeHidden();
   await expect(page.locator('body')).not.toHaveClass(/menu-returning/);

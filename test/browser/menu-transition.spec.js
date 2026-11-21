@@ -87,7 +87,8 @@ test('sliding the timeline in terrain does not abruptly change the zoom before t
   let resource; page.on('request', request => { if (request.url().includes('/deps/mapbox-gl.js')) resource = request.url(); });
   await page.setViewportSize({width:390,height:640}); await page.goto('/custom/?train=18&day=holiday');
   await expect(page.locator('.current-marker')).toBeVisible();
-  await page.locator('#custom-seek').evaluate(node => { node.value=235; node.dispatchEvent(new Event('input',{bubbles:true})); });
+  // Preserve the terrain location 4.23 station intervals from Tarumi on the 11-stop timeline.
+  await page.locator('#custom-seek').evaluate(node => { node.value=423; node.dispatchEvent(new Event('input',{bubbles:true})); });
   await page.evaluate(async resource => {
     const lib=(await import(resource)).default, set=lib.Map.prototype.setFreeCameraOptions;
     lib.Map.prototype.setFreeCameraOptions=function(options) { window.transitionMap=this; return set.call(this,options); };

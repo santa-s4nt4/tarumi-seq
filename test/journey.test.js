@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { activeServices, services, servesExperienceSection, StationRange, customPlan, nearestRun } from '../src/journey.js';
+import { activeServices, services, servesExperienceSection, StationRange, customPlan, customTimetable, nearestRun } from '../src/journey.js';
 import { JourneyCamera, cameraRadius, cameraEye, terrainSafeRadius } from '../src/journey-camera.js';
 import { LiveTimetable } from '../src/live-timetable.js';
 import { createRailProfile } from '../src/rail-elevation.js';
-import { positionAlong } from '../src/simulation.js';
+import { positionAlong, serviceSeconds } from '../src/simulation.js';
 const read = name => JSON.parse(fs.readFileSync(`public/data/${name}.json`));
 const timetable=read('timetable-reference'), railway=read('railway-route'), stations=read('stations').stations;
 
@@ -36,10 +36,27 @@ test('only the 22 Motosu–Tarumi services can be selected, including through se
   }
 });
 
+test('CUSTOM uses the diagram’s Motosu–Tarumi times for all 22 trains without changing LIVE', () => {
+  const original = structuredClone(timetable), diagram = read('timetable');
+  assert.deepEqual(customTimetable(timetable).trains, diagram.trains);
+  for (const day of ['weekday', 'holiday']) for (const train of diagram.trains) {
+    const plan = customPlan(timetable, railway, stations, { trainId: train.id, day });
+    assert.deepEqual(plan.train.stops, train.stops);
+    assert.equal(plan.start, serviceSeconds(train.stops[0].departure));
+    assert.equal(plan.end, serviceSeconds(train.stops.at(-1).arrival));
+    assert.equal(plan.stops.length, 11);
+    assert.equal(plan.stops.at(-1).departureSeconds, null);
+    assert.equal(plan.tunnels.length, 9);
+  }
+  assert.deepEqual(timetable, original);
+});
+
 test('CUSTOM handles eligible trains and station ranges in both travel directions', () => {
   for(const train of timetable.trains.filter(servesExperienceSection)) {
     const plan=customPlan(timetable,railway,stations,{trainId:train.id,day:'holiday'});
     const range=new StationRange(plan.stops);
+    const oldRange = new StationRange(plan.stops, train.direction === 'front' ? 1 : 19, train.direction === 'front' ? 19 : 1);
+    assert.equal(oldRange.start, plan.start); assert.equal(oldRange.end, plan.end);
     assert.equal(range.start,plan.start); assert.equal(range.end,plan.end);
     range.set('in',999); assert.equal(range.first,range.last-1);
     range.set('out',-999); assert.equal(range.last,range.first+1);

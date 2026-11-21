@@ -37,33 +37,51 @@ test('off-hours LIVE confirmation is disabled while holiday CUSTOM remains avail
 });
 test('CUSTOM station handles clamp the range, survive reload, and stop on OUT',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');
-  await expect(page.locator('.custom-station')).toHaveCount(19);
-  await expect(page.locator('#journey-clock')).toHaveText('15:11:00');
+  await expect(page.locator('.custom-station')).toHaveCount(11);
+  await expect(page.locator('#journey-clock')).toHaveText('15:43:00');
   await page.getByRole('slider',{name:'再生開始駅 IN'}).focus();await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#section-name')).toHaveText('東大垣 → 樽見');
+  await expect(page.locator('#section-name')).toHaveText('織部 → 樽見');
   await page.getByRole('slider',{name:'再生終了駅 OUT'}).focus();await page.keyboard.press('Home');
-  await expect(page.locator('#section-name')).toHaveText('東大垣 → 横屋');
-  await expect(page).toHaveURL(/from=2&to=3/);
-  await page.reload();await expect(page.locator('#section-name')).toHaveText('東大垣 → 横屋');
-  await seekPercent(page,1000);await expect(page.locator('#journey-clock')).toHaveText('15:17:30');
+  await expect(page.locator('#section-name')).toHaveText('織部 → 木知原');
+  await expect(page).toHaveURL(/from=10&to=11/);
+  await page.reload();await expect(page.locator('#section-name')).toHaveText('織部 → 木知原');
+  await seekPercent(page,1000);await expect(page.locator('#journey-clock')).toHaveText('15:49:30');
   await expect(page.locator('#custom-play')).toHaveAttribute('aria-label','再生');
-  await page.locator('#custom-play').click();await expect(page.locator('#journey-clock')).toHaveText(/15:15:0\d/);
+  await page.locator('#custom-play').click();await expect(page.locator('#journey-clock')).toHaveText(/15:45:0\d/);
   await page.getByRole('button',{name:'メニューを開く'}).click();const paused=await page.locator('#journey-clock').textContent();
   await page.waitForTimeout(1100);expect(await page.locator('#journey-clock').textContent()).toBe(paused);
 });
 test('CUSTOM does not enter countdown mode before or on a station arrival',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');
-  // First leg 15:11:00 -> 15:14:30; one station interval is 1/18 of the seek range.
-  await seekPercent(page,(201/210)/18*1000);
-  await expect(page.locator('.cue-primary h2')).toHaveText('東大垣駅まで');
+  // First leg 15:43:00 -> 15:44:30; one station interval is 1/10 of the seek range.
+  await seekPercent(page,(81/90)/10*1000);
+  await expect(page.locator('.cue-primary h2')).toHaveText('織部駅まで');
   await expect(page.locator('.cue-primary strong')).toHaveText('9');
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
   await page.locator('#custom-play').click();await expect(page.locator('.cue-primary strong')).toHaveText('8');
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
-  await page.locator('#custom-play').click();await page.getByRole('button',{name:'東大垣駅へ移動',exact:true}).click();
+  await page.locator('#custom-play').click();await page.getByRole('button',{name:'織部駅へ移動',exact:true}).click();
   await expect(page.locator('.cue-primary strong')).toHaveText('0');
   await expect(page.locator('#cue-countdown-focus')).toBeHidden();
   await expect(page.locator('body')).not.toHaveClass(/countdown-mode/);
+});
+for (const [train, from, to, start, end, names] of [
+  ['23',9,19,'15:43:00','16:16:00',['本巣','織部','木知原','谷汲口','神海','高科','鍋原','日当','高尾','水鳥','樽見']],
+  ['18',19,9,'10:33:00','11:04:00',['樽見','水鳥','高尾','日当','鍋原','高科','神海','谷汲口','木知原','織部','本巣']],
+]) test(`old full-line CUSTOM links are confined to Motosu–Tarumi: train ${train}`,async({page})=>{
+  await open(page,`/custom/?train=${train}&day=holiday&from=${from===9?1:from}&to=${to===9?1:to}`);
+  await expect(page).toHaveURL(new RegExp(`from=${from}&to=${to}$`));
+  await expect(page.locator('.custom-station')).toHaveText(names);
+  await expect(page.locator('#journey-clock')).toHaveText(start);
+  await page.locator('.range-in').focus(); await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.range-in')).toHaveAttribute('aria-valuetext',names[0]);
+  await page.locator('.range-out').focus(); await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.range-out')).toHaveAttribute('aria-valuetext',names.at(-1));
+  await seekPercent(page,1000); await expect(page.locator('#journey-clock')).toHaveText(end);
+  await expect(page.locator('#custom-next')).toBeDisabled(); await expect(page.locator('#custom-forward')).toBeDisabled();
+  await seekPercent(page,0); await expect(page.locator('#journey-clock')).toHaveText(start);
+  await expect(page.locator('#custom-prev')).toBeDisabled(); await expect(page.locator('#custom-back')).toBeDisabled();
+  await page.reload(); await expect(page.locator('#journey-clock')).toHaveText(start);
 });
 test('legacy QUE links preserve station ranges and video is only a CUSTOM view',async({page})=>{
   await page.route('https://www.youtube.com/**',r=>r.abort());
@@ -86,11 +104,11 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024}]) test(`CU
 });
 test('station dwell freezes later cues while the CUSTOM clock continues',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');
-  await page.getByRole('button',{name:'東大垣駅へ移動',exact:true}).click();
-  await expect(page.locator('#journey-clock')).toHaveText('15:14:30');
+  await page.getByRole('button',{name:'織部駅へ移動',exact:true}).click();
+  await expect(page.locator('#journey-clock')).toHaveText('15:44:30');
   await expect(page.locator('.cue-primary strong')).toHaveText('0');
   const second=await page.locator('.cue-card strong').nth(1).textContent();
-  await page.locator('#custom-play').click();await expect(page.locator('#journey-clock')).toHaveText('15:14:31');
+  await page.locator('#custom-play').click();await expect(page.locator('#journey-clock')).toHaveText('15:44:31');
   await expect(page.locator('.cue-card strong').nth(1)).toHaveText(second);await expect(page.locator('#journey-speed')).toHaveText('0.0');
 });
 test('reverse CUSTOM retains its terminal and exposes only the selected station range',async({page})=>{

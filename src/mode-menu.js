@@ -1,9 +1,10 @@
-import { activeServices, services, directionName } from './journey.js';
+import { activeServices, services, customTimetable, directionName } from './journey.js';
 import { serviceTime } from './simulation.js';
 import { serviceDayAt, japanDate, serviceDayEpoch } from './timetable-reference.js';
 import { menuDuration } from './menu-motion.js';
 
 export function createModeMenu({ timetable, stations, onLive, onCustom, dismissible = true, beforeOpen = () => {}, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
+  const customSchedule = customTimetable(timetable);
   const dialog = document.createElement('dialog');
   dialog.id = 'mode-menu'; dialog.className = 'mode-menu'; dialog.setAttribute('aria-label', 'モードを選ぶ');
   dialog.innerHTML = `<button class="mode-close" aria-label="メニューを閉じる">×</button>
@@ -18,7 +19,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     </form>
     <form id="mode-custom" role="tabpanel" aria-labelledby="tab-custom" hidden>
       <fieldset><legend>運行日</legend><label><input type="radio" name="day" value="weekday" checked><span>平日</span></label><label><input type="radio" name="day" value="holiday"><span>土・休日</span></label></fieldset>
-      <fieldset><legend>方面</legend><label><input type="radio" name="direction" value="front" checked><span>樽見行き</span></label><label><input type="radio" name="direction" value="back"><span>大垣行き</span></label></fieldset>
+      <fieldset><legend>方面</legend><label><input type="radio" name="direction" value="front" checked><span>樽見行き</span></label><label><input type="radio" name="direction" value="back"><span>本巣行き</span></label></fieldset>
       <span class="service-select-label" id="custom-service-label">発車駅・ダイヤ</span>
       <div id="custom-service" class="service-list" role="listbox" aria-labelledby="custom-service-label"></div>
       <button class="mode-confirm" type="submit">OK</button>
@@ -56,7 +57,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     choose(list, selected);
   }
   function refreshCustom(selected = customId) {
-    customChoices = services(timetable, $('input[name="direction"]:checked').value, $('input[name="day"]:checked').value);
+    customChoices = services(customSchedule, $('input[name="direction"]:checked').value, $('input[name="day"]:checked').value);
     fill($('#custom-service'), customChoices, customChoices.some(train => train.id === selected) ? selected : customChoices[0]?.id ?? null);
   }
   function update() {
