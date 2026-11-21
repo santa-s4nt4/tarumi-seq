@@ -4,7 +4,7 @@ import { createIcons, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause } 
 
 export function createStationTimeline({ container, plan, from, to, onSeek, onRange, onPlay }) {
   const range = new StationRange(plan.stops, from, to), lastIndex = plan.stops.length - 1;
-  container.innerHTML = `<div class="section-summary"><strong id="section-name" hidden></strong><span class="timeline-tunnel-key"><i aria-hidden="true"></i>トンネル</span></div>
+  container.innerHTML = `<div class="section-summary"><strong id="section-name" hidden></strong></div>
     <div class="station-timeline-scroll"><div class="station-timeline">
       <div class="station-labels"></div><div class="station-tunnels" role="group" aria-label="トンネル区間"></div><div class="station-track"><div class="station-progress"></div></div>
       <div class="station-range" aria-hidden="true"><span class="station-range-label">再生区間</span></div>
@@ -51,7 +51,6 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
     $('.station-tunnels').append(marker);
     return { tunnel, marker };
   });
-  $('.timeline-tunnel-key').hidden = !tunnelMarkers.length;
   let current = range.start, playing = false, renderedPlaying = false;
   const labels = [...$('.station-labels').children];
   function layoutRangeLabels() {

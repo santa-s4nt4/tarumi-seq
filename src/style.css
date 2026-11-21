@@ -288,7 +288,7 @@ body { height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; o
 .map-button[aria-pressed="true"] { background: var(--green); color: var(--ink); }
 .river-line { background: var(--green); opacity: .35; }
 .station-marker-name { color: var(--text); text-shadow: 0 1px 3px var(--surface), 1px 0 3px var(--surface), -1px 0 3px var(--surface); }
-.station-marker:hover .station-marker-name { color: var(--text); text-decoration: underline; }
+.station-marker:hover .station-marker-name { color: var(--text); text-decoration: none; }
 .station-tick { box-shadow: 0 0 0 2px var(--panel); }
 .current-marker { background: var(--panel); }
 .current-marker span { background: var(--marker); border-color: var(--surface); box-shadow: 0 0 0 1px var(--text); }

@@ -1,6 +1,37 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { customPlan } from '../../src/journey.js';
+import { createRailProfile } from '../../src/rail-elevation.js';
+async function watchTerrain(page, railway, direction) {
+  const profile=createRailProfile(railway), endpoints=railway.tunnels.flatMap(tunnel=>[true,false].map(start=>{
+    const s=start?tunnel.start:tunnel.end;
+    return {id:tunnel.id,target:start===(direction==='front')?'entrance':'exit',coordinate:profile.coordinateAt(s),height:profile.elevationAt(s)+1};
+  }));
+  await page.evaluate(async endpoints=>{
+    const resource=performance.getEntriesByType('resource').map(e=>e.name).find(name=>name.includes('/deps/mapbox-gl.js'));
+    const lib=(await import(resource)).default, original=lib.Map.prototype.setFreeCameraOptions;
+    lib.Map.prototype.setFreeCameraOptions=function(free) {
+      window.terrainTestMap=this; window.requestedAltitude=free.position.toAltitude();
+      return original.call(this,free);
+    };
+    window.portalMeasurements=()=>{
+      const map=window.terrainTestMap, rect=map.getContainer().getBoundingClientRect();
+      return endpoints.flatMap(endpoint=>{
+        const element=document.querySelector(`.tunnel-marker[data-tunnel="${endpoint.id}"][data-target="${endpoint.target}"]`);
+        if (!element || element.hidden) return [];
+        const ground=map.queryTerrainElevation(endpoint.coordinate,{exaggerated:false});
+        if (ground===null) return [];
+        const point=map.project(endpoint.coordinate,endpoint.height-ground);
+        if (point.x<0 || point.x>rect.width || point.y<0 || point.y>rect.height) return [];
+        const icon=element.querySelector('.tunnel-portal').getBoundingClientRect();
+        const marker=map._markers.find(marker=>marker.getElement()===element);
+        return [{id:endpoint.id,target:endpoint.target,
+          pixels:Math.hypot(icon.x+icon.width/2-rect.x-point.x,icon.bottom-rect.y-point.y),
+          height:Math.abs(marker.getAltitude()+ground-endpoint.height)}];
+      });
+    };
+  },endpoints);
+}
 async function seek(page,value) {await page.locator('#custom-seek').evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},value);}
 async function centerError(page) {return page.evaluate(()=>{
   const panel=document.querySelector('.map-panel').getBoundingClientRect(), marker=document.querySelector('.current-marker').getBoundingClientRect();
@@ -10,6 +41,9 @@ test('real terrain map centers the train, fixes view zooms, and does not oscilla
   const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/expression|layer|source|elevation/i.test(m.text()))errors.push(m.text());});
   await page.goto('/custom/?train=23&day=weekday');await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('.current-marker')).toBeVisible();
+  expect(await page.locator('.station-tick').evaluateAll(nodes=>nodes.every(node=>node.textContent===''))).toBe(true);
+  const name=page.locator('.station-marker[data-station="1"] .station-marker-name');
+  await name.hover();expect(await name.evaluate(node=>getComputedStyle(node).textDecorationLine)).toBe('none');
   await page.getByRole('button',{name:'進行方向',exact:true}).click();await expect(page.locator('#map')).toHaveAttribute('data-zoom','20');
   await expect.poll(()=>centerError(page)).toBeLessThan(6);
   await seek(page,500);await expect.poll(()=>centerError(page)).toBeLessThan(6);
@@ -51,15 +85,7 @@ for (const trainId of ['18', '23']) test(`all nine tunnels clear real terrain in
   await page.setViewportSize({width:390,height:640});
   await page.goto(`/custom/?train=${trainId}&day=holiday`);
   await expect(page.locator('.current-marker')).toBeVisible();
-  await page.evaluate(async () => {
-    const resource=performance.getEntriesByType('resource').map(e=>e.name).find(name=>name.includes('/deps/mapbox-gl.js'));
-    const module=await import(resource), lib=module.default??module;
-    const original=lib.Map.prototype.setFreeCameraOptions;
-    lib.Map.prototype.setFreeCameraOptions=function(free) {
-      window.terrainTestMap=this; window.requestedAltitude=free.position.toAltitude();
-      return original.call(this,free);
-    };
-  });
+  await watchTerrain(page,read('railway-route'),plan.train.direction);
   const times=plan.stops.map((stop,i)=>i?stop.arrivalSeconds:stop.departureSeconds);
   const seekTime=async time=>{
     const i=times.findIndex((value,index)=>index>0&&time<=value);
@@ -81,6 +107,11 @@ for (const trainId of ['18', '23']) test(`all nine tunnels clear real terrain in
         expect(result.clearance,`${tunnel.name} ${mode}: camera above terrain`).toBeGreaterThan(19);
         expect(result.correction,`${tunnel.name} ${mode}: no Mapbox collision clamp`).toBeLessThan(1);
         expect(await centerError(page),`${tunnel.name} ${mode}: centered train`).toBeLessThan(6);
+        const pins=await page.evaluate(()=>window.portalMeasurements());
+        for (const pin of pins) {
+          expect(pin.pixels,`${pin.id} ${pin.target}: anchored portal`).toBeLessThan(1);
+          expect(pin.height,`${pin.id} ${pin.target}: same height as the tunnel`).toBeLessThan(.01);
+        }
       }
     }
     await expect(page.locator('#map')).toHaveAttribute('data-camera','bird');
@@ -91,4 +122,27 @@ for (const trainId of ['18', '23']) test(`all nine tunnels clear real terrain in
     await expect(portals.first()).toHaveAttribute('data-target',plan.train.direction==='front'?'entrance':'exit');
   }
   expect(errors).toEqual([]);
+});
+
+for (const trainId of ['18','23']) test(`tunnel labels remain attached through zooming and playback: train ${trainId}`,async({page})=>{
+  const read=name=>JSON.parse(fs.readFileSync(`public/data/${name}.json`)), railway=read('railway-route');
+  const plan=customPlan(read('timetable-reference'),railway,read('stations').stations,{trainId,day:'holiday'});
+  await page.setViewportSize({width:trainId==='18'?390:1440,height:1000});
+  await page.goto(`/custom/?train=${trainId}&day=holiday`);await expect(page.locator('.current-marker')).toBeVisible();
+  await watchTerrain(page,railway,plan.train.direction);
+  const time=Math.min(...plan.tunnels.map(tunnel=>tunnel.entryT))-2;
+  const times=plan.stops.map((stop,i)=>i?stop.arrivalSeconds:stop.departureSeconds), i=times.findIndex((value,index)=>index>0&&time<=value);
+  await seek(page,(i-1+(time-times[i-1])/(times[i]-times[i-1]))/(times.length-1)*1000);
+  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(1900);
+  await page.evaluate(()=>{
+    window.portalFrames=[];
+    window.terrainTestMap.on('render',()=>window.portalFrames.push(...window.portalMeasurements()));
+  });
+  await page.getByRole('button',{name:'メニューを閉じる'}).click();
+  await expect(page.locator('body')).not.toHaveClass(/menu-returning/);
+  await page.locator('#custom-play').click();await page.waitForTimeout(8000);await page.locator('#custom-play').click();
+  const pins=await page.evaluate(()=>window.portalFrames);
+  expect(pins.length).toBeGreaterThan(50);
+  expect(Math.max(...pins.map(pin=>pin.pixels))).toBeLessThan(1);
+  expect(Math.max(...pins.map(pin=>pin.height))).toBeLessThan(.01);
 });

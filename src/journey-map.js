@@ -117,6 +117,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         element.dataset.target = entrance ? 'entrance' : 'exit';
         element.setAttribute('aria-label', `${portal.name} ${entrance ? '入口' : '出口'}`);
         element.querySelector('.tunnel-marker-label').hidden = !entrance;
+        portal.marker.setOffset([entrance ? -14 : -10, 0]);
       }
       lastDirection = latest.direction;
     }
@@ -130,7 +131,6 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       for (const portal of tunnelMarkers) {
         const element = portal.marker.getElement(), hidden = Math.abs(portal.s - p.s) > 1600;
         if (element.hidden !== hidden) element.hidden = hidden;
-        if (!hidden) altitude(portal.marker, portal.s);
       }
       lastStations = now;
     }
@@ -217,7 +217,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         const element = document.createElement('div'); element.className = 'station-marker';
         element.dataset.station = station.order;
         element.classList.toggle('section-endpoint', station.order === 9 || station.order === 19);
-        const tick = document.createElement('span'); tick.className = 'station-tick'; tick.textContent = '駅';
+        const tick = document.createElement('span'); tick.className = 'station-tick'; tick.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span'); label.className = 'station-marker-name'; label.textContent = station.name;
         const roman = document.createElement('small'); roman.className = 'station-romaji'; roman.textContent = station.romaji;
         label.append(roman);
@@ -234,6 +234,12 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
           .setLngLat(profile.coordinateAt(s)).addTo(map) });
       }
       overviewLayers(); if (overview) fit(); showFleet();
+    });
+    // DEM detail changes during rendering, independently of the train clock.
+    // Keep each visible portal at the same sea-level height as its tunnel line.
+    map.on('render', () => {
+      if (!ready || overview) return;
+      for (const portal of tunnelMarkers) if (!portal.marker.getElement().hidden) altitude(portal.marker, portal.s);
     });
     map.on('error', () => { if (!ready) { fallback.hidden = false; onError(); } });
     new ResizeObserver(([entry]) => { labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(mapElement);

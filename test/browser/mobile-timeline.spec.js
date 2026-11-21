@@ -32,6 +32,8 @@ for (const width of [320, 390, 760, 844]) test(`mobile ${width}px fits all stati
   await expect.poll(() => names(page)).toEqual(['大垣', '樽見']);
   await checkFit(page, width);
   await expect(page.locator('.timeline-tunnel')).toHaveCount(9);
+  await expect(page.locator('.station-tunnels')).toBeHidden();
+  await expect(page.locator('.timeline-tunnel-key')).toHaveCount(0);
 
   const handle = page.locator('.range-in'), box = await handle.boundingBox();
   const track = await page.locator('.station-timeline').boundingBox();
@@ -54,6 +56,7 @@ for (const width of [320, 390, 760, 844]) test(`mobile ${width}px fits all stati
   // Switching out of the phone layout restores every desktop station name.
   await page.setViewportSize({ width: 1440, height: 1024 });
   await expect.poll(() => names(page)).toHaveLength(19);
+  await expect(page.locator('.timeline-tunnel:visible')).toHaveCount(9);
 });
 
 test('reverse range labels follow IN/OUT without horizontal scrolling', async ({ page }) => {

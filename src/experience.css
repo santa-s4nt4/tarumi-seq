@@ -67,8 +67,6 @@
 .station-labels { position:absolute; inset:0; }
 .station-tunnels { position:absolute; left:0; right:0; top:44px; height:5px; }
 .station-tunnels .timeline-tunnel { min-width:2px; }
-.timeline-tunnel-key { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
-.timeline-tunnel-key i { width:18px; height:5px; border-radius:2px; background:var(--green); }
 .custom-station { position:absolute; top:17px; transform:translateX(-50%); padding:6px 2px; white-space:nowrap; font-size:13px; color:var(--text); background:transparent; }
 .custom-station::after { content:''; position:absolute; left:50%; top:34px; height:10px; width:1px; background:currentColor; }
 .outside-section { opacity:.35; }
@@ -99,6 +97,11 @@
 .experience #line-map.positioned svg > g, .experience #line-map.positioned .line-train { transition:none; }
 .experience .line-train.is-followed { transform:translate(-50%,-50%); width:24px; height:24px; min-height:0; padding:0; border:4px solid white; border-radius:50%; background:var(--green); font-size:0; box-shadow:0 0 0 1px #000; }
 .experience .line-train.is-followed::after { display:none; }
+/* Anchor the portal itself; label width and wrapping must not move its base. */
+.experience .tunnel-marker { width:28px; height:28px; }
+.experience .tunnel-marker.exit { width:20px; height:20px; }
+.experience .tunnel-portal { flex-shrink:0; }
+.experience .tunnel-marker-label { position:absolute; left:calc(100% + 6px); top:50%; transform:translateY(-50%); white-space:nowrap; }
 @media(max-width:600px) {
   /* Keep the centre point unobstructed even on a narrow phone display. */
   .experience .cue-overlay { width:calc(50% - 24px); }
@@ -196,6 +199,7 @@
 /* On phones, keep the entire seek range in view and name only its endpoints. */
 @media(max-width:760px), (pointer:coarse) and (max-width:1024px) {
   .station-timeline-scroll { overflow-x:clip; overflow-y:visible; }
+  .station-tunnels { display:none; }
   .station-timeline { min-width:0; }
   .custom-station:not(.range-start):not(.range-end) { visibility:hidden; }
   .custom-station::after { visibility:visible; }
