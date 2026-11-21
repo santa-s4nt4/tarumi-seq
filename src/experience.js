@@ -11,7 +11,7 @@ import { LiveTimetable } from './live-timetable.js';
 import { LivePrediction } from './live-prediction.js';
 import { customPlan, nearestRun, directionName } from './journey.js';
 import { positionAlong, scheduledEventsAt, serviceTime } from './simulation.js';
-import { japanDate, serviceDayEpoch } from './timetable-reference.js';
+import { japanDate, serviceDayEpoch, serviceDayAt } from './timetable-reference.js';
 import './experience.css';
 
 const base = import.meta.env.BASE_URL, url = new URL(location.href);
@@ -39,6 +39,7 @@ const countdown = createCueCountdown(panel);
 const queue = new CueQueue();
 let profile, map, fleet, timetable, railway, stations, selected, plan, timeline, menu, phone, gps;
 let time = 0, playing = false, resumeAfterMenu = false, view = 'auto', lastFrame, lastMap = -Infinity, measured = null;
+let menuHasTrain = false, menuTransitionDuration = 0;
 document.addEventListener('visibilitychange', () => { if (document.hidden && isCustom) { playing = false; resumeAfterMenu = false; lastFrame = undefined; } });
 const cards = new Map();
 const text = (element, value) => { if (element.textContent !== value) element.textContent = value; };
@@ -89,7 +90,7 @@ function selectTrain(run, share = true) {
   if (isPerformance) $('performance-train').value = run.train.id;
   if (share) publishView();
 }
-function isMenuOpen() { return menu?.dialog.open || phone?.dialog.open; }
+function isMenuOpen() { return menu?.active || phone?.dialog.open; }
 function acceptFix(position) {
   measured = position;
   if (phone?.viewer) return;
@@ -130,8 +131,10 @@ function render(frame) {
   }
   const overview = isMenuOpen() || !prediction;
   const visibleEvents = queue.cards(prediction);
-  map.setOverview(overview);
-  for (const node of document.querySelectorAll('.journey-views,.cue-overlay,.journey-instruments')) if (node.hidden !== overview) node.hidden = overview;
+  map.setOverview(overview, menuTransitionDuration);
+  document.body.classList.toggle('overview-mode', overview);
+  for (const node of document.querySelectorAll('.journey-views,.cue-overlay')) if (node.hidden !== overview) node.hidden = overview;
+  document.querySelector('.journey-instruments').hidden = !prediction || (overview && !(menu?.active && menuHasTrain));
   text($('journey-status'), !overview || isMenuOpen() || route === 'home' ? '' : isPerformance ?
     selected ? '選択した列車は現在ダイヤ上の運行時間外です。' : 'スマホのGPSを待っています。列車を特定できない場合は、乗車列車を選んでください。' :
     'この列車の運行は終了しています。メニューから別の列車を選んでください。');
@@ -139,10 +142,10 @@ function render(frame) {
   const theme = dark ? 'dark' : 'light';
   if (document.documentElement.dataset.theme !== theme) document.documentElement.dataset.theme = theme;
   map.setDark(dark);
-  if (!overview) {
+  if (prediction) {
     const [longitude, latitude] = profile.coordinateAt(prediction.position.s);
     Object.assign(prediction.position, { longitude, latitude });
-    renderCards(visibleEvents);
+    if (!overview) renderCards(visibleEvents);
     text($('journey-speed'), prediction.position.speedKmh.toFixed(1)); text($('journey-clock'), serviceTime(seconds, true));
   }
   const countdownEvent = visibleEvents.find(event => event.type === 'tunnel');
@@ -154,12 +157,12 @@ function render(frame) {
   // can update less often without reducing the camera's motion cadence.
   map.setPrediction(prediction);
   if (frame - lastMap > 80) {
-    const runs = overview ? active : [selected ?? plan];
+    const runs = menu?.active && menuHasTrain ? [selected ?? plan] : overview ? active : [selected ?? plan];
     const trains = runs.map(run => {
       const p = run === plan ? prediction.position : run.snapshot(run.secondsAt(now)).position;
       const [longitude, latitude] = profile.coordinateAt(p.s); return { run, longitude, latitude };
     });
-    const point = measured && now - measured.timestamp < 3000 ? measured.coords : null;
+    const point = !overview && measured && now - measured.timestamp < 3000 ? measured.coords : null;
     map.update(prediction, trains, point); lastMap = frame;
   }
 }
@@ -174,11 +177,16 @@ try {
   gps = new LivePrediction(railway, stations);
   const mappedStations = railway.stations.map(station => ({ ...station, ...stations.find(item => item.order === station.order) }));
   map = createJourneyMap({ profile, stations: mappedStations, river: data[3].front.river,
-    onSelect(run) { if (!isPerformance) navigate('live', { train: run.train.id }); else if (!phone?.viewer) selectTrain(run); } });
+    onSelect(run) { if (!isPerformance) menu.open('live', { trainId:run.train.id,day:serviceDayAt(Date.now()) }); else if (!phone?.viewer) selectTrain(run); } });
   menu = createModeMenu({ timetable, stations,
     onLive(train) { navigate('live', { train: train.id }); }, onCustom(selection) { navigate('custom', { train: selection.trainId, day: selection.day }); },
-    onOpen() { resumeAfterMenu = playing; playing = false; document.body.classList.add('menu-open'); },
-    onClose() { playing = resumeAfterMenu; lastFrame = undefined; document.body.classList.remove('menu-open'); map.reset(); } });
+    onOpen(duration) {
+      resumeAfterMenu = playing; playing = false; menuHasTrain = Boolean(plan || selected?.activeAt(Date.now())); menuTransitionDuration = duration;
+      document.body.classList.remove('menu-returning'); document.body.classList.add('menu-open');
+      document.body.classList.toggle('menu-following', menuHasTrain);
+    },
+    onCloseStart(duration) { menuTransitionDuration = duration; document.body.classList.remove('menu-open'); document.body.classList.add('menu-returning'); },
+    onClose() { playing = resumeAfterMenu; lastFrame = undefined; menuTransitionDuration = 0; document.body.classList.remove('menu-open','menu-returning','menu-following'); } });
   const selection = { trainId: url.searchParams.get('train'), day: url.searchParams.get('day') === 'holiday' ? 'holiday' : 'weekday' };
   if (isCustom && selection.trainId) {
     try {
@@ -189,7 +197,7 @@ try {
     } catch { plan = null; menu.open('custom', selection); }
   } else if (!isCustom && selection.trainId) selected = fleet.runs.find(run => run.train.id === selection.trainId);
   for (const button of document.querySelectorAll('[data-view]')) button.onclick = () => setView(button.dataset.view);
-  $('journey-menu').onclick = () => isPerformance ? phone.open() : menu.open(isCustom ? 'custom' : 'live', plan ? selection : undefined);
+  $('journey-menu').onclick = () => isPerformance ? phone.open() : menu.open(isCustom ? 'custom' : 'live', plan ? selection : selected ? {trainId:selected.train.id,day:serviceDayAt(Date.now())} : undefined);
   if (isPerformance) {
     const { createPerformanceLink } = await import('./performance-link.js');
     phone = createPerformanceLink({ onFix: acceptFix, onState(message) { text($('performance-status'), message); },

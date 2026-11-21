@@ -10,8 +10,9 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   const requests=[];page.on('request',r=>{if(r.url().includes('/api/position'))requests.push(r.url())});
   await open(page);await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.locator('#menu-clock')).toHaveText('15:30:00');
-  await page.locator('[data-direction="front"]').click();
-  if(await page.locator('#menu-trains').isVisible()) await page.locator('#menu-trains button').first().click();
+  await page.locator('#menu-trains [role=option]').first().click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.locator('#mode-live').getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/live\/\?train=/);await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('.journey-views button')).toHaveText(['自動','進行方向','鳥瞰']);
   await expect(page.locator('#journey-clock')).toHaveText('15:30:00');
@@ -19,17 +20,17 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await page.getByRole('button',{name:'メニューを開く'}).click();
   await expect(page.locator('#mode-menu')).toBeVisible();
   await page.getByRole('tab',{name:'CUSTOM'}).click();
-  await page.locator('#custom-service').selectOption('23');
+  await page.locator('#custom-service [data-train="23"]').click();
   await page.getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/custom\/\?train=23&day=weekday/);
   await expect(page.locator('.journey-views button')).toHaveText(['自動','進行方向','鳥瞰','車窓']);
   expect(requests).toEqual([]);
 });
-test('off-hours LIVE buttons are disabled while holiday CUSTOM remains available',async({page})=>{
+test('off-hours LIVE confirmation is disabled while holiday CUSTOM remains available',async({page})=>{
   await page.clock.setFixedTime(new Date('2026-11-22T03:00:00+09:00')); await open(page);
-  await expect(page.locator('[data-direction="front"]')).toBeDisabled();await expect(page.locator('[data-direction="back"]')).toBeDisabled();
+  await expect(page.locator('#menu-trains [role=option]')).toHaveCount(0);await expect(page.locator('#mode-live .mode-confirm')).toBeDisabled();
   await page.getByRole('tab',{name:'CUSTOM'}).click();await expect(page.locator('input[value="holiday"]')).toBeChecked();
-  await page.locator('input[value="back"]').check();await expect(page.locator('#custom-service option').first()).toContainText('発');
+  await page.locator('input[value="back"]').check();await expect(page.locator('#custom-service [role=option]').first()).toContainText('発');
 });
 test('CUSTOM station handles clamp the range, survive reload, and stop on OUT',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');

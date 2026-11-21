@@ -4,13 +4,13 @@ import { createIcons, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause } 
 
 export function createStationTimeline({ container, plan, from, to, onSeek, onRange, onPlay }) {
   const range = new StationRange(plan.stops, from, to), lastIndex = plan.stops.length - 1;
-  container.innerHTML = `<div class="section-summary"><span>再生区間</span><strong id="section-name"></strong><span class="timeline-tunnel-key"><i aria-hidden="true"></i>トンネル</span><span class="range-help">IN / OUT を駅に合わせて移動</span></div>
+  container.innerHTML = `<div class="section-summary"><strong id="section-name" hidden></strong><span class="timeline-tunnel-key"><i aria-hidden="true"></i>トンネル</span></div>
     <div class="station-timeline-scroll"><div class="station-timeline">
       <div class="station-labels"></div><div class="station-tunnels" role="group" aria-label="トンネル区間"></div><div class="station-track"><div class="station-progress"></div></div>
-      <div class="station-range" aria-hidden="true"></div>
+      <div class="station-range" aria-hidden="true"><span class="station-range-label">再生区間</span></div>
       <input id="custom-seek" type="range" min="0" max="1000" step="0.1" value="0" aria-label="ダイヤの再生位置">
-      <button class="range-marker range-in" role="slider" aria-label="再生開始駅 IN" aria-valuemin="0">IN 開始</button>
-      <button class="range-marker range-out" role="slider" aria-label="再生終了駅 OUT">OUT 終了</button>
+      <button class="range-marker range-in" role="slider" aria-label="再生開始駅 IN" aria-valuemin="0" title="開始駅を移動（IN）"></button>
+      <button class="range-marker range-out" role="slider" aria-label="再生終了駅 OUT" title="終了駅を移動（OUT）"></button>
     </div></div>
     <div class="transport-row"><div class="transport">
       <button id="custom-prev" class="icon-button" aria-label="前の駅へ"><i data-lucide="skip-back"></i></button>
@@ -24,7 +24,7 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   const icons = { SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause };
   const paintIcons = () => createIcons({ icons, attrs: { 'stroke-width': 1.7 } });
   paintIcons();
-  track.style.minWidth = `${Math.max(500, plan.stops.length * 72)}px`;
+  track.style.minWidth = `${Math.max(500, lastIndex * 72)}px`;
   const times = plan.stops.map((stop, i) => i === 0 ? stop.departureSeconds : stop.arrivalSeconds);
   function percentage(time) {
     if (time <= times[0]) return 0;
@@ -71,11 +71,17 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   function change(which, index) { range.set(which, index); paintRange(); onRange(range); }
   for (const which of ['in', 'out']) {
     const handle = $(`.range-${which}`);
+    let grabOffset = 0;
     const move = event => {
       const rect = track.getBoundingClientRect();
-      change(which, Math.round((event.clientX - rect.left) / rect.width * lastIndex));
+      change(which, Math.round((event.clientX - grabOffset - rect.left) / rect.width * lastIndex));
     };
-    handle.addEventListener('pointerdown', event => { event.preventDefault(); handle.setPointerCapture(event.pointerId); handle.focus(); });
+    handle.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      const rect = track.getBoundingClientRect(), index = which === 'in' ? range.first : range.last;
+      grabOffset = event.clientX - (rect.left + index / lastIndex * rect.width);
+      handle.setPointerCapture(event.pointerId); handle.focus();
+    });
     handle.addEventListener('pointermove', event => { if (handle.hasPointerCapture(event.pointerId)) move(event); });
     handle.addEventListener('pointerup', event => { if (handle.hasPointerCapture(event.pointerId)) { move(event); handle.releasePointerCapture(event.pointerId); } });
     handle.addEventListener('keydown', event => {

@@ -2,8 +2,10 @@ import * as mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { elevatedLineFeature, railLineZOffsetWithClearance, createLineProgress } from './rail-elevation.js';
 import { JourneyCamera, cameraEye } from './journey-camera.js';
-import { createLineMap } from './line-map.js';
+import { createLineMap, trainMarkerButton } from './line-map.js';
 import { fadeMapTheme } from './theme.js';
+import { overviewPadding } from './menu-motion.js';
+import { turnTowards } from './camera.js';
 
 const collection = features => ({ type: 'FeatureCollection', features: features.filter(Boolean) });
 export function createJourneyMap({ profile, stations, river, onSelect, onError = () => {} }) {
@@ -11,17 +13,19 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
   const line = createLineMap(fallback, profile, stations, river, onSelect);
   const camera = new JourneyCamera();
   const progressAt = createLineProgress(profile), mapElement = document.getElementById('map');
+  const first = stations.find(station => station.order === 9), last = stations.find(station => station.order === 19);
+  const section = profile.section(first.s, last.s);
   let map, ready = false, overview = true, latest, dark = false, previousTime, marker, lastS, lastTheme;
   let lastProgress, lastStations = -Infinity, mapHeight = 1, lastDirection;
   const heights = new WeakMap();
   const stationMarkers = [], tunnelMarkers = [], trainMarkers = new Map();
-  let fleet = [], gpsMarker;
-  function fit() {
+  let fleet = [], gpsMarker, layoutKey, returning;
+  function fit(duration = 0) {
     if (!ready) return;
-    map.stop(); map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+    map.stop();
     const bounds = new mapboxgl.LngLatBounds();
-    for (const point of profile.railway.coordinates) bounds.extend(point);
-    map.fitBounds(bounds, { padding: { top: 55, bottom: 45, left: 55, right: 85 }, pitch: 0, bearing: 0, duration: 0 });
+    for (const point of section) bounds.extend(point);
+    map.fitBounds(bounds, { padding: overviewPadding(), pitch: 0, bearing: 0, duration, easing: t => t });
   }
   function theme() {
     if (!ready) return;
@@ -29,7 +33,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     for (const key of ['colorLand', 'colorGreenspace', 'colorCommercial', 'colorEducation', 'colorMedical', 'colorIndustrial']) {
       map.setConfigProperty('basemap', key, dark ? '#18231b' : '#c4c1b0');
     }
-    map.setConfigProperty('basemap', 'colorWater', '#0a84ff');
+    map.setConfigProperty('basemap', 'colorWater', overview ? '#c4c1b0' : '#0a84ff');
     map.setPaintProperty('contours', 'line-color', dark ? '#bfffcc' : '#56655b');
   }
   function terrainHeight(lon, lat) { return map.queryTerrainElevation([lon, lat], { exaggerated: false }); }
@@ -39,6 +43,18 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     if (Number.isFinite(ground) && Math.abs(value - (heights.get(m) ?? Infinity)) > 0.001) {
       m.setAltitude(value); heights.set(m, value);
     }
+  }
+  function overviewLayers() {
+    mapElement.dataset.overview = String(overview);
+    if (!ready) return;
+    for (const id of ['route', 'travelled', 'river', 'bridges', 'tunnels', 'tunnel-halo']) map.setLayoutProperty(id, 'visibility', overview ? 'none' : 'visible');
+    map.setLayoutProperty('overview-route', 'visibility', overview ? 'visible' : 'none');
+    for (const station of stationMarkers) {
+      station.marker.getElement().hidden = overview && station.order < 9;
+      if (overview) { station.marker.setAltitude(0); heights.delete(station.marker); }
+    }
+    if (overview) for (const portal of tunnelMarkers) portal.marker.getElement().hidden = true;
+    theme();
   }
   function animate(now) {
     requestAnimationFrame(animate);
@@ -51,8 +67,15 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       sampleElevation: terrainHeight, now, elapsed });
     const eye = cameraEye(view, view.radius);
     const free = map.getFreeCameraOptions();
-    free.position = mapboxgl.MercatorCoordinate.fromLngLat([eye.longitude, eye.latitude], eye.altitude);
-    free.setPitchBearing(view.pitch, view.bearing);
+    const target = mapboxgl.MercatorCoordinate.fromLngLat([eye.longitude, eye.latitude], eye.altitude);
+    if (returning && now < returning.end) {
+      const t = Math.max(0, 1 - (returning.end - now) / returning.duration), from = returning.position;
+      const position = new mapboxgl.MercatorCoordinate(from.x + (target.x - from.x) * t, from.y + (target.y - from.y) * t,
+        Math.exp(Math.log(from.z) + (Math.log(target.z) - Math.log(from.z)) * t));
+      const ll = position.toLngLat(), ground = terrainHeight(ll.lng, ll.lat);
+      if (Number.isFinite(ground) && position.toAltitude() < ground + 20) position.z = mapboxgl.MercatorCoordinate.fromLngLat(ll, ground + 20).z;
+      free.position = position; free.setPitchBearing(returning.pitch + (view.pitch - returning.pitch) * t, turnTowards(returning.bearing, view.bearing, t));
+    } else { returning = null; free.position = target; free.setPitchBearing(view.pitch, view.bearing); }
     // Terrain tile loading can adjust Mapbox's camera even while paused.
     // Reapply the intended pose to keep the rail position at the centre.
     map.setFreeCameraOptions(free);
@@ -100,15 +123,20 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     if (!ready) return;
     for (const [run, item] of trainMarkers) if (!overview || !fleet.some(item => item.run === run)) { item.remove(); trainMarkers.delete(run); }
     if (!overview) return;
+    const trainScreens = [];
     for (const { run, longitude, latitude } of fleet) {
+      const s = profile.project(longitude, latitude).s;
+      if (s < first.s - 1 || s > last.s + 1) { trainMarkers.get(run)?.remove(); trainMarkers.delete(run); continue; }
       let item = trainMarkers.get(run);
       if (!item) {
-        const button = document.createElement('button'); button.className = `overview-train ${run.train.direction}`;
-        button.textContent = `${run.train.id} ${run.train.direction === 'front' ? '樽見方面' : '大垣方面'}`;
-        button.onclick = () => onSelect(run);
-        item = new mapboxgl.Marker({ element: button }).setLngLat([longitude, latitude]).addTo(map); trainMarkers.set(run, item);
+        const button = trainMarkerButton(run, onSelect); button.className = `overview-train ${run.train.direction}`;
+        item = new mapboxgl.Marker({ element: button, anchor: 'left', offset: [16, run.train.direction === 'front' ? 18 : -18] })
+          .setLngLat([longitude, latitude]).addTo(map); trainMarkers.set(run, item);
       } else item.setLngLat([longitude, latitude]);
+      trainScreens.push(map.project([longitude, latitude]).y + (run.train.direction === 'front' ? 18 : -18));
     }
+    for (const station of stationMarkers) station.marker.getElement().classList.toggle('near-overview-train',
+      trainScreens.some(y => Math.abs(map.project(profile.coordinateAt(station.s)).y - y) < 28));
   }
   try {
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -142,6 +170,8 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
           ...(id === 'travelled' ? { 'line-trim-offset': [0, 1] } : {}),
           ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
+      map.addSource('overview-route', { type: 'geojson', data: collection([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:section}}]) });
+      map.addLayer({ id:'overview-route',type:'line',slot:'top',source:'overview-route',paint:{'line-color':'#00ff36','line-width':3,'line-emissive-strength':1} });
       const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>';
       element.setAttribute('aria-label', '列車の現在地'); element.hidden = true;
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.25 }).setLngLat(profile.coordinateAt(0)).addTo(map);
@@ -161,10 +191,10 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         tunnelMarkers.push({ s, start, name: tunnel.name, marker: new mapboxgl.Marker({ element, anchor: 'bottom-left', offset: [-14, 0], occludedOpacity: 0.2 })
           .setLngLat(profile.coordinateAt(s)).addTo(map) });
       }
-      theme(); if (overview) fit(); showFleet();
+      overviewLayers(); if (overview) fit(); showFleet();
     });
     map.on('error', () => { if (!ready) { fallback.hidden = false; onError(); } });
-    new ResizeObserver(([entry]) => { mapHeight = entry.contentRect.height; map.resize(); if (overview) fit(); }).observe(document.querySelector('.map-panel'));
+    new ResizeObserver(([entry]) => { mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(document.querySelector('.map-panel'));
   } catch { fallback.hidden = false; onError(); }
   requestAnimationFrame(animate);
   return {
@@ -182,18 +212,28 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         } else { gpsMarker?.remove(); gpsMarker = null; }
       }
     },
-    setOverview(value) {
-      if (overview === value) return; overview = value; camera.reset(); lastS = undefined; lastStations = -Infinity;
+    setOverview(value, duration = 0) {
+      if (!value && !overview) return;
+      const nextLayout = JSON.stringify(overviewPadding());
+      if (overview === value && (!value || layoutKey === nextLayout)) return;
+      const changed = overview !== value; overview = value; layoutKey = nextLayout; lastS = undefined; lastStations = -Infinity;
+      line.setOverview(value, duration); mapElement.dataset.overview = String(value);
+      if (!ready) line.update(fleet, !value && latest ? {...latest.position,run:fleet[0]?.run} : null, camera.mode, null);
       if (ready) {
+        map.stop(); map.resize(); mapHeight = map.getCanvas().clientHeight;
         marker.getElement().hidden = value;
-        if (value) { fit(); map.setPaintProperty('travelled', 'line-trim-offset', [0, 1]); lastProgress = undefined; }
-        for (const station of stationMarkers) station.marker.getElement().hidden = value && ![1, 9, 19].includes(station.order);
-        if (value) for (const portal of tunnelMarkers) portal.marker.getElement().hidden = true;
+        if (value) { returning = null; fit(duration); lastProgress = undefined; }
+        else if (changed) {
+          const free = map.getFreeCameraOptions(), pitch = map.getPitch(), bearing = map.getBearing();
+          map.setPadding({top:0,bottom:0,left:0,right:0});
+          returning = duration ? {position:free.position,pitch,bearing,end:performance.now()+duration,duration} : null;
+        }
+        overviewLayers();
         showFleet();
       }
     },
     setMode(mode) { camera.setMode(mode); },
     reset() { camera.reset(); lastS = undefined; lastStations = -Infinity; },
-    setDark(value) { dark = value; if (lastTheme === value) return; lastTheme = value; if (ready) fadeMapTheme(map, theme); },
+    setDark(value) { dark = value; if (lastTheme === value) return; lastTheme = value; if (ready) { if (overview || returning) theme(); else fadeMapTheme(map, theme); } },
   };
 }
