@@ -74,8 +74,10 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024}]) test(`CU
   await page.setViewportSize(viewport);await open(page,'/custom/?train=23&day=weekday');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
   const footer=await page.locator('#custom-timeline').boundingBox();expect(footer.y+footer.height).toBeLessThanOrEqual(viewport.height);
+  const track=await page.locator('.station-timeline').boundingBox();
+  const stationCount=await page.locator('.custom-station').count();
   const marker=page.locator('.range-in'), box=await marker.boundingBox();
-  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+150,box.y+box.height/2);await page.mouse.up();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+track.width/(stationCount-1)*2,box.y+box.height/2);await page.mouse.up();
   await expect(marker).toHaveAttribute('aria-valuenow','2');
   await page.screenshot({path:`test-results/custom-${viewport.width}.png`});
 });

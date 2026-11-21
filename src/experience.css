@@ -58,7 +58,7 @@
 #custom-timeline { padding:12px 24px 10px; border-top:1px solid var(--green); background:var(--surface); z-index:5; min-width:0; }
 .section-summary { display:flex; align-items:center; gap:12px; font-size:12px; }.section-summary strong { font-size:16px; }.range-help { margin-left:auto; font-size:11px; }
 .station-timeline-scroll { overflow-x:auto; overscroll-behavior:contain; padding:0 28px; margin:0 -10px; scrollbar-width:thin; }
-.station-timeline { position:relative; height:110px; margin:0 6px; }
+.station-timeline { position:relative; min-width:var(--timeline-min-width); height:110px; margin:0 6px; }
 .station-labels { position:absolute; inset:0; }
 .station-tunnels { position:absolute; left:0; right:0; top:44px; height:5px; }
 .station-tunnels .timeline-tunnel { min-width:2px; }
@@ -172,3 +172,17 @@
   #map[data-overview=true] .station-marker-name { font-size:12px; }
 }
 @media(prefers-reduced-motion:reduce) { .experience :is(.journey-views,.cue-overlay,.journey-instruments p,.journey-legend,#custom-timeline) { transition:none; } }
+
+/* On phones, keep the entire seek range in view and name only its endpoints. */
+@media(max-width:760px), (pointer:coarse) and (max-width:1024px) {
+  .station-timeline-scroll { overflow-x:clip; overflow-y:visible; }
+  .station-timeline { min-width:0; }
+  .custom-station:not(.range-start):not(.range-end) { visibility:hidden; }
+  .custom-station::after { visibility:visible; }
+  .custom-station:is(.range-start,.range-end) { transform:translateX(calc(-50% + var(--label-shift,0px))); }
+  .custom-station:is(.range-start,.range-end)::after { left:calc(50% - var(--label-shift,0px)); }
+  .close-range-labels .range-start { top:0; }
+  .close-range-labels .range-start::after { top:51px; }
+  .range-marker { width:min(32px,var(--range-width)); }
+  .narrow-range .station-range-label { font-size:0; }
+}

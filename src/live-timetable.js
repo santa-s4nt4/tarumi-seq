@@ -1,5 +1,6 @@
 import { buildScheduledRun, positionAlong, scheduledEventsAt, timeAtDistance } from './simulation.js';
 import { japanDate, serviceDayAt, serviceDayEpoch } from './timetable-reference.js';
+import { servesExperienceSection } from './journey.js';
 
 export class LiveTimetable {
   constructor(timetable, railway, stations) {
@@ -15,7 +16,7 @@ export class LiveTimetable {
       this.epoch = epoch;
       const day = serviceDayAt(now);
       this.runs = this.timetable.trains
-        .filter(train => train.operatingDays === 'daily' || day === 'holiday')
+        .filter(train => servesExperienceSection(train) && (train.operatingDays === 'daily' || day === 'holiday'))
         .map(train => new TrainRun(buildScheduledRun(this.timetable, this.railway, this.stations, {
           trainId: train.id, stationOrder: train.stops[0].station, day,
         }), this.epoch));

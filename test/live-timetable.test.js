@@ -12,10 +12,10 @@ const saturday = '2026-11-21';
 test('all active runs are independent, follow their own termini and respect the Japanese service day', () => {
   const model = fleet();
   const ids = (day, time) => model.at(at(day, time)).active.map(run => run.train.id);
-  assert.deepEqual(ids(saturday, '07:25:00'), ['5', '8', '10']);
+  assert.deepEqual(ids(saturday, '07:25:00'), ['5', '10']);
   assert.deepEqual(ids(saturday, '03:00:00'), []);
-  assert.ok(ids(saturday, '11:25:00').includes('1001'));
-  assert.ok(ids('2026-11-23', '11:25:00').includes('1001')); // Monday, Labour Thanksgiving Day
+  assert.ok(!ids(saturday, '11:25:00').includes('1001'));
+  assert.ok(!ids('2026-11-23', '11:25:00').includes('1001')); // Outside Motosu–Tarumi, even on a holiday.
   assert.ok(!ids('2026-11-24', '11:25:00').includes('1001'));
   const { active, seconds } = model.at(at(saturday, '07:40:00'));
   const down = active.find(run => run.train.id === '5');
@@ -67,11 +67,11 @@ test('station arrivals no longer lock GPS correction for a countdown', () => {
 
 test('a train already being followed can finish after midnight without delaying the next service day', () => {
   const model = fleet();
-  const run = model.at(at(saturday, '23:10:00')).active.find(item => item.train.id === '41');
-  run.delay = 2400;
+  const run = model.at(at(saturday, '22:50:00')).active.find(item => item.train.id === '42');
+  run.delay = 4200;
   const afterMidnight = model.at(at('2026-11-22', '00:01:00'));
   assert.deepEqual(afterMidnight.active, [run]);
-  assert.equal(afterMidnight.next.start, 5 * 3600 + 37 * 60);
+  assert.equal(afterMidnight.next.start, 5 * 3600 + 55 * 60);
   assert.deepEqual(model.at(at('2026-11-22', '00:10:00')).active, []);
-  assert.equal(model.at(at('2026-11-22', '23:10:00')).active[0].delay, 0);
+  assert.equal(model.at(at('2026-11-22', '22:50:00')).active[0].delay, 0);
 });

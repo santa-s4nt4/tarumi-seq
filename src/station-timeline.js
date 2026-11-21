@@ -24,7 +24,7 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   const icons = { SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause };
   const paintIcons = () => createIcons({ icons, attrs: { 'stroke-width': 1.7 } });
   paintIcons();
-  track.style.minWidth = `${Math.max(500, lastIndex * 72)}px`;
+  track.style.setProperty('--timeline-min-width', `${Math.max(500, lastIndex * 72)}px`);
   const times = plan.stops.map((stop, i) => i === 0 ? stop.departureSeconds : stop.arrivalSeconds);
   function percentage(time) {
     if (time <= times[0]) return 0;
@@ -53,6 +53,23 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   });
   $('.timeline-tunnel-key').hidden = !tunnelMarkers.length;
   let current = range.start, playing = false, renderedPlaying = false;
+  const labels = [...$('.station-labels').children];
+  function layoutRangeLabels() {
+    const width = track.clientWidth;
+    if (!width) return;
+    const selected = [range.first, range.last].map(index => {
+      const label = labels[index], labelWidth = label.offsetWidth;
+      const centered = index / lastIndex * width - labelWidth / 2;
+      // Reserve the existing gutter for edge names without moving their ticks.
+      const left = Math.max(-16, Math.min(width + 16 - labelWidth, centered));
+      label.style.setProperty('--label-shift', `${left - centered}px`);
+      return { left, right: left + labelWidth };
+    });
+    track.classList.toggle('close-range-labels', selected[0].right + 8 > selected[1].left);
+    const rangeWidth = (range.last - range.first) / lastIndex * width;
+    track.style.setProperty('--range-width', `${rangeWidth}px`);
+    track.classList.toggle('narrow-range', rangeWidth < 100);
+  }
   function paintRange() {
     const start = range.first / lastIndex * 100, end = range.last / lastIndex * 100;
     $('.station-range').style.left = `${start}%`; $('.station-range').style.width = `${end - start}%`;
@@ -63,7 +80,12 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
       handle.setAttribute('aria-valuemin', which === 'in' ? 0 : range.first + 1);
       handle.setAttribute('aria-valuemax', which === 'in' ? range.last - 1 : lastIndex);
     }
-    for (const [i, label] of [...$('.station-labels').children].entries()) label.classList.toggle('outside-section', i < range.first || i > range.last);
+    for (const [i, label] of labels.entries()) {
+      label.classList.toggle('outside-section', i < range.first || i > range.last);
+      label.classList.toggle('range-start', i === range.first);
+      label.classList.toggle('range-end', i === range.last);
+    }
+    layoutRangeLabels();
     for (const { tunnel, marker } of tunnelMarkers) marker.classList.toggle('outside-section', tunnel.exitT <= range.start || tunnel.entryT >= range.end);
     $('#section-name').textContent = `${plan.stops[range.first].name} → ${plan.stops[range.last].name}`;
     $('.transport-end').textContent = serviceTime(range.end, true);
@@ -98,6 +120,8 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   $('#custom-prev').onclick = () => onSeek(range.clamp([...times].reverse().find(time => time < current - 1) ?? range.start));
   $('#custom-next').onclick = () => onSeek(range.clamp(times.find(time => time > current + 1) ?? range.end));
   paintRange();
+  new ResizeObserver(layoutRangeLabels).observe(track);
+  document.fonts.ready.then(layoutRangeLabels);
   return { range, update(time, active) {
     current = time; playing = active;
     const percent = percentage(time);

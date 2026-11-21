@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { activeServices, services, StationRange, customPlan, nearestRun } from '../src/journey.js';
+import { activeServices, services, servesExperienceSection, StationRange, customPlan, nearestRun } from '../src/journey.js';
 import { JourneyCamera, cameraRadius, cameraEye, terrainSafeRadius } from '../src/journey-camera.js';
 import { LiveTimetable } from '../src/live-timetable.js';
 import { createRailProfile } from '../src/rail-elevation.js';
@@ -22,8 +22,22 @@ test('LIVE availability includes service boundaries and respects holidays', () =
   assert(activeServices(timetable,now).some(t=>t.id===train.id));
 });
 
-test('CUSTOM handles all trains and station ranges in both travel directions', () => {
-  for(const train of timetable.trains) {
+test('only the 22 Motosu–Tarumi services can be selected, including through services from Ogaki', () => {
+  const expected = read('timetable').trains.map(train => train.id).sort();
+  for (const day of ['weekday', 'holiday']) {
+    assert.deepEqual(['front', 'back'].flatMap(direction => services(timetable, direction, day).map(train => train.id)).sort(), expected);
+  }
+  for (const date of ['2026-11-20', '2026-11-21']) for (let minute = 0; minute < 1440; minute++) {
+    const now = Date.parse(`${date}T00:00:00+09:00`) + minute * 60000;
+    assert(activeServices(timetable, now).every(train => expected.includes(train.id)));
+  }
+  for (const train of timetable.trains.filter(train => !expected.includes(train.id))) {
+    assert.throws(() => customPlan(timetable, railway, stations, { trainId: train.id, day: 'holiday' }));
+  }
+});
+
+test('CUSTOM handles eligible trains and station ranges in both travel directions', () => {
+  for(const train of timetable.trains.filter(servesExperienceSection)) {
     const plan=customPlan(timetable,railway,stations,{trainId:train.id,day:'holiday'});
     const range=new StationRange(plan.stops);
     assert.equal(range.start,plan.start); assert.equal(range.end,plan.end);

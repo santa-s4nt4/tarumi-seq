@@ -6,6 +6,24 @@ const timetable=JSON.parse(fs.readFileSync('public/data/timetable-reference.json
 const custom='/custom/?train=18&day=holiday&from=19&to=10';
 async function load(page,path='/') { await page.goto(path);await expect(page.locator('#loading')).toBeHidden(); }
 
+test('both menus exclude trains that only run between Ogaki and Motosu, including old direct links',async({page})=>{
+  await page.route('https://*.mapbox.com/**',route=>route.abort());
+  await page.clock.setFixedTime(new Date('2026-11-21T07:25:00+09:00'));
+  await load(page,'/live/?train=8');
+  await expect(page.locator('#mode-menu')).toBeVisible();
+  expect(await page.locator('#menu-trains [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train))).toEqual(['5','10']);
+  await load(page,'/custom/?train=1001&day=holiday');
+  await expect(page.locator('#mode-menu')).toBeVisible();
+  await expect(page.locator('#custom-timeline')).toBeHidden();
+  const section=JSON.parse(fs.readFileSync('public/data/timetable.json'));
+  for(const day of ['weekday','holiday']) for(const direction of ['front','back']) {
+    await page.locator(`input[name=day][value=${day}]`).check();
+    await page.locator(`input[name=direction][value=${direction}]`).check();
+    const ids=await page.locator('#custom-service [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train));
+    expect(ids).toEqual(section.trains.filter(train=>train.direction===direction).map(train=>train.id));
+  }
+});
+
 test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrollable keyboard-selectable list',async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);
   await page.setViewportSize({width:390,height:844});await load(page);

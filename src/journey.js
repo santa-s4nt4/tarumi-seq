@@ -2,13 +2,16 @@ import { scheduleStops, buildScheduledRun, positionAlong, serviceSeconds } from 
 import { serviceDayAt, serviceDayEpoch, japanDate } from './timetable-reference.js';
 
 export const directionName = direction => direction === 'front' ? '樽見行き' : '大垣行き';
+// Services terminating at Motosu from Ogaki never enter the experience section.
+export const servesExperienceSection = train => [9, 19].every(station => train.stops.some(stop => stop.station === station));
 export function services(timetable, direction, day) {
-  return timetable.trains.filter(train => train.direction === direction && (train.operatingDays === 'daily' || day === 'holiday'))
+  return timetable.trains.filter(train => servesExperienceSection(train) && train.direction === direction && (train.operatingDays === 'daily' || day === 'holiday'))
     .sort((a, b) => serviceSeconds(a.stops[0].departure) - serviceSeconds(b.stops[0].departure));
 }
 export function activeServices(timetable, now) {
   const seconds = (now - serviceDayEpoch(japanDate(now))) / 1000;
   return timetable.trains.filter(train => {
+    if (!servesExperienceSection(train)) return false;
     if (train.operatingDays === 'holiday' && serviceDayAt(now) !== 'holiday') return false;
     const plan = scheduleStops(timetable, train.id, train.stops[0].station, serviceDayAt(now));
     return seconds >= plan.start && seconds <= plan.end;
@@ -27,7 +30,7 @@ export function nearestRun(runs, profile, position, now) {
   return choices[0].run;
 }
 export function customPlan(timetable, railway, stations, selection) {
-  const train = timetable.trains.find(train => train.id === selection.trainId);
+  const train = timetable.trains.find(train => train.id === selection.trainId && servesExperienceSection(train));
   if (!train) throw new Error('列車を選んでください。');
   return buildScheduledRun(timetable, railway, stations, { trainId: train.id, day: selection.day,
     stationOrder: train.stops[0].station });
