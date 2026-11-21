@@ -16,5 +16,6 @@ test('production artifacts contain no Console markup or QR relay implementation'
   expect(fs.existsSync('dist/performance')).toBe(false);
   const built=fs.readdirSync('dist/assets').filter(n=>n.endsWith('.js')).map(n=>fs.readFileSync('dist/assets/'+n,'utf8')).join('');
   expect(built).not.toContain('performance-qr');expect(built).not.toContain('gps-links');expect(built).not.toContain('request-json');
+  expect(built).not.toContain('tarumi-api.santanaruse.workers.dev');
   expect(fs.readFileSync('dist/index.html','utf8')).not.toContain('request-json');
 });

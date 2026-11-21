@@ -55,7 +55,9 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     map.setLayoutProperty('overview-route', 'visibility', overview ? 'visible' : 'none');
     map.setLayoutProperty('overview-river', 'visibility', overview ? 'visible' : 'none');
     for (const station of stationMarkers) {
-      station.marker.getElement().hidden = overview && station.order < 9;
+      const element = station.marker.getElement();
+      element.hidden = overview && station.order < 9;
+      station.marker.setOffset(overview ? [-element.querySelector('.station-tick').offsetWidth / 2, 0] : [-14, 0]);
       if (overview) { station.marker.setAltitude(0); heights.delete(station.marker); }
     }
     if (overview) for (const portal of tunnelMarkers) portal.marker.getElement().hidden = true;
@@ -149,7 +151,8 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         const name = element.querySelector('.station-marker-name');
         labelSizes.set(station, { width: name.offsetWidth, height: name.offsetHeight });
       }
-      return { element, ...point, ...labelSizes.get(station), leftGap: 20 };
+      const gap = element.querySelector('.station-tick').offsetWidth / 2 + 6;
+      return { element, ...point, ...labelSizes.get(station), leftGap: gap, rightGap: gap };
     }), trainScreens, rightEdge);
     for (const label of labels) label.element.classList.toggle('overview-label-left', label.left);
     for (const train of trainScreens) {
@@ -193,7 +196,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
           ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
       map.addSource('overview-route', { type: 'geojson', data: collection([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:section}}]) });
-      map.addLayer({ id:'overview-route',type:'line',slot:'top',source:'overview-route',paint:{'line-color':'#00ff36','line-width':3,'line-emissive-strength':1} });
+      map.addLayer({ id:'overview-route',type:'line',slot:'top',source:'overview-route',paint:{'line-color':'#00ff36','line-width':6,'line-emissive-strength':1} });
       const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>';
       element.setAttribute('aria-label', '列車の現在地'); element.hidden = true;
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.25 }).setLngLat(profile.coordinateAt(0)).addTo(map);

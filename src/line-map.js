@@ -46,11 +46,13 @@ export function createLineMap(container, profile, stations, river, onSelect) {
   const labels = stations.map(station => {
     const group = svgElement('g', { 'data-station': station.order, class: station.order === 9 || station.order === 19 ? 'section-endpoint' : '' }, svg);
     svgElement('circle', { r: 3 }, group);
+    const tickHalf = station.order === 9 || station.order === 19 ? 22 : 14;
+    svgElement('line', { class: 'line-station-tick', x1: -tickHalf, x2: tickHalf, y1: 0, y2: 0 }, group);
     const label = svgElement('text', { x: 8, y: 4 }, group);
     svgElement('tspan', { class: 'station-name-jp' }, label).textContent = station.name;
     svgElement('tspan', { class: 'station-romaji', dx: 8 }, label).textContent = station.romaji;
     const [lon, lat] = profile.coordinateAt(station.s);
-    return { group, label, order: station.order, point: xy(lat, lon) };
+    return { group, label, tickHalf, order: station.order, point: xy(lat, lon) };
   });
   const labelSizes = new Map();
   document.fonts.ready.then(() => { labelSizes.clear(); draw(); });
@@ -96,15 +98,15 @@ export function createLineMap(container, profile, stations, river, onSelect) {
       }
       const size = labelSizes.get(station);
       return { order: station.order, x: left + station.point[0] * scale, y: top - station.point[1] * scale + size.centerY,
-        ...size, leftGap: 14 };
+        ...size, leftGap: station.tickHalf + 6, rightGap: station.tickHalf + 6 };
     }), trainScreens, rightEdge) : [];
     let previousY = Infinity;
-    for (const { group, label, order, point: [x, y] } of labels) {
+    for (const { group, label, tickHalf, order, point: [x, y] } of labels) {
       group.style.display = overview && order < 9 ? 'none' : '';
       const py = top - y * scale;
       group.style.transform = `translate(${left + x * scale}px, ${py}px)`;
       const labelLeft = placements.find(label => label.order === order)?.left;
-      label.setAttribute('x', labelLeft ? -14 : 8); label.setAttribute('text-anchor', labelLeft ? 'end' : 'start');
+      label.setAttribute('x', overview ? (labelLeft ? -1 : 1) * (tickHalf + 6) : 8); label.setAttribute('text-anchor', labelLeft ? 'end' : 'start');
       const show = overview || [1, 9, 19].includes(order) || Math.abs(py - previousY) > 20;
       label.style.display = show ? '' : 'none';
       if (show) previousY = py;

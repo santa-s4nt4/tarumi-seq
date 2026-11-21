@@ -3,11 +3,11 @@ import { serviceTime } from './simulation.js';
 import { serviceDayAt, japanDate, serviceDayEpoch } from './timetable-reference.js';
 import { menuDuration } from './menu-motion.js';
 
-export function createModeMenu({ timetable, stations, onLive, onCustom, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
+export function createModeMenu({ timetable, stations, onLive, onCustom, dismissible = true, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'mode-menu'; dialog.className = 'mode-menu'; dialog.setAttribute('aria-label', 'モードを選ぶ');
   dialog.innerHTML = `<button class="mode-close" aria-label="メニューを閉じる">×</button>
-    <div class="mode-tabs" role="tablist" aria-label="モード">
+    <div class="mode-tabs" role="tablist" aria-label="モード" tabindex="-1">
       <button id="tab-live" role="tab" aria-selected="true" aria-controls="mode-live">LIVE</button>
       <button id="tab-custom" role="tab" aria-selected="false" aria-controls="mode-custom">CUSTOM</button>
     </div>
@@ -25,6 +25,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onOpen =
     </form>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector), name = order => stations.find(station => station.order === order)?.name ?? '';
+  $('.mode-close').hidden = !dismissible;
   const label = train => `${name(train.stops[0].station)}発　${train.stops[0].departure}–${train.stops.at(-1).arrival ?? train.stops.at(-1).departure}`;
   let currentTab = 'live', timer, closeTimer, active = false, liveId = null, customId = null, liveChoices = [], customChoices = [], liveSignature;
   function tab(value) {
@@ -86,7 +87,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onOpen =
     event.preventDefault(); update(); const train = liveChoices.find(train => train.id === liveId); if (train) onLive(train);
   });
   function close() {
-    if (!active) return;
+    if (!active || !dismissible) return;
     active = false; clearInterval(timer); dialog.dataset.state = 'closing'; onCloseStart(menuDuration());
     closeTimer = setTimeout(() => dialog.close(), menuDuration());
   }
@@ -106,7 +107,10 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onOpen =
     }
     tab(mode); liveSignature = undefined; update(); active = true;
     dialog.dataset.state = 'opening'; dialog.style.setProperty('--menu-duration', `${menuDuration()}ms`);
-    if (!dialog.open) dialog.showModal();
+    if (!dialog.open) {
+      dialog.showModal();
+      if (!dismissible) $('.mode-tabs').focus({ preventScroll: true });
+    }
     void dialog.offsetWidth;
     dialog.dataset.state = 'open'; onOpen(menuDuration());
     clearInterval(timer); timer = setInterval(update, 1000);

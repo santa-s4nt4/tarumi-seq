@@ -178,7 +178,7 @@ try {
   const mappedStations = railway.stations.map(station => ({ ...station, ...stations.find(item => item.order === station.order) }));
   map = createJourneyMap({ profile, stations: mappedStations, river: data[3].front.river,
     onSelect(run) { if (!isPerformance) menu.open('live', { trainId:run.train.id,day:serviceDayAt(Date.now()) }); else if (!phone?.viewer) selectTrain(run); } });
-  menu = createModeMenu({ timetable, stations,
+  menu = createModeMenu({ timetable, stations, dismissible: route !== 'home',
     onLive(train) { navigate('live', { train: train.id }); }, onCustom(selection) { navigate('custom', { train: selection.trainId, day: selection.day }); },
     onOpen(duration) {
       resumeAfterMenu = playing; playing = false; menuHasTrain = Boolean(plan || selected?.activeAt(Date.now())); menuTransitionDuration = duration;

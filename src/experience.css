@@ -40,9 +40,9 @@
 .mode-menu,.performance-dialog { width:min(520px,calc(100% - 32px)); padding:42px 40px 36px; border:1px solid var(--green); border-radius:0; background:var(--surface); box-shadow:0 20px 80px #0003; max-height:90dvh; }
 .mode-menu::backdrop,.performance-dialog::backdrop { background:#ffffff38; backdrop-filter:blur(2px); }
 .mode-close { position:absolute; top:5px; right:10px; background:transparent; font:26px var(--font); padding:2px 8px; }
-.mode-tabs { display:grid; grid-template-columns:1fr 1fr; margin-bottom:30px; border:1px solid var(--green); }
-.mode-tabs button { background:var(--surface); color:var(--text); padding:16px 8px; font-size:26px; }
-.mode-tabs button[aria-selected=true] { background:var(--green); color:#000; }
+.mode-tabs { display:grid; grid-template-columns:1fr 1fr; margin-bottom:30px; border:0; border-bottom:1px solid var(--track); }
+.mode-tabs button { background:transparent; color:var(--text); padding:16px 8px; font-size:26px; border-bottom:3px solid transparent; margin-bottom:-1px; }
+.mode-tabs button[aria-selected=true] { border-bottom-color:var(--green); }
 #menu-clock { display:block; text-align:center; font-size:70px; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:38px 0; }
 #menu-service-status { min-height:2.8em; font-size:13px; margin:22px 0 0; line-height:1.6; text-align:center; }
 #menu-trains { border-top:1px solid var(--green); margin-top:20px; font-size:14px; }
@@ -141,7 +141,11 @@
 .overview-train svg circle,.experience .line-train:not(.is-followed) svg circle { fill:currentColor; stroke:none; }
 .experience .line-train.is-followed :is(svg,span) { display:none; }
 .experience #line-map[data-overview=true] :is(.line-river,.line-track), .experience #line-map[data-overview=false] :is(.line-overview-track,.line-overview-river) { display:none; }
-.experience #line-map .line-overview-track { stroke:var(--green); stroke-width:3px; }
+.experience #line-map .line-overview-track { stroke:var(--green); stroke-width:6px; }
+.experience #line-map .line-station-tick { display:none; }
+.experience #line-map[data-overview=true] [data-station] circle { display:none; }
+.experience #line-map[data-overview=true] .line-station-tick { display:block; stroke:var(--green); stroke-width:6px; }
+.experience #line-map[data-overview=true] .section-endpoint .line-station-tick { stroke-width:10px; }
 .experience #line-map .line-overview-river { stroke:#75bee5; stroke-width:6px; stroke-opacity:.55; stroke-linecap:round; stroke-linejoin:round; }
 .experience #line-map .station-romaji { display:none; }
 .experience #line-map[data-overview=true] text { font-size:26px; }
@@ -149,12 +153,13 @@
 .experience #line-map[data-overview=true] .station-romaji { display:inline; font-size:.7em; }
 .experience #line-map.positioned.menu-moving > svg > g { transition:transform var(--line-menu-duration) linear; }
 .experience #line-map.positioned.menu-moving .line-train { transition:left var(--line-menu-duration) linear,top var(--line-menu-duration) linear; }
-#map[data-overview=true] .station-tick { width:12px; height:3px; border:0; border-radius:0; background:var(--green); font-size:0; box-shadow:none; }
-#map[data-overview=true] .station-marker-name { padding:2px 5px; border:0; background:transparent; font-size:26px; color:#000; text-shadow:0 0 3px #fff,0 0 3px #fff; }
+#map[data-overview=true] .station-tick { width:28px; height:6px; flex-shrink:0; border:0; border-radius:0; background:var(--green); font-size:0; box-shadow:none; }
+#map[data-overview=true] .section-endpoint .station-tick { width:44px; height:10px; }
+#map[data-overview=true] .station-marker-name { margin-left:0; padding:2px 5px; border:0; background:transparent; font-size:26px; color:#000; text-shadow:0 0 3px #fff,0 0 3px #fff; }
 #map[data-overview=true] .section-endpoint .station-marker-name { font-size:38px; }
 #map[data-overview=true] .station-marker-name .station-romaji { display:inline; margin:0 0 0 8px; font-size:.7em; color:inherit; }
-#map[data-overview=true] .station-marker { gap:4px; }
-#map[data-overview=true] .overview-label-left .station-marker-name { position:absolute; right:18px; white-space:nowrap; }
+#map[data-overview=true] .station-marker { gap:6px; }
+#map[data-overview=true] .overview-label-left .station-marker-name { position:absolute; right:calc(100% + 6px); white-space:nowrap; }
 .experience #line-map[data-overview=true] .line-train.front { transform:translate(var(--overview-train-offset,16px),calc(-50% + 18px)); }
 .experience #line-map[data-overview=true] .line-train.back { transform:translate(var(--overview-train-offset,16px),calc(-50% - 18px)); }
 .experience #line-map[data-overview=true] .line-train::after { left:-4px; right:auto; }

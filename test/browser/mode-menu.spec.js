@@ -48,11 +48,18 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
 test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrollable keyboard-selectable list',async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);
   await page.setViewportSize({width:390,height:844});await load(page);
+  await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeHidden();
+  await page.keyboard.press('Escape');await expect(page.locator('#mode-menu')).toBeVisible();
   const choices=page.locator('#menu-trains [role=option]');
   await expect(choices).toHaveCount(activeServices(timetable,+fixed).length);
   await expect(page.locator('#mode-live .mode-confirm')).toBeDisabled();
   await choices.last().click();await expect(choices.last()).toHaveAttribute('aria-selected','true');await expect(page).toHaveURL(/\/$/);
   await page.getByRole('tab',{name:'CUSTOM'}).click();await expect(page.locator('#mode-live')).toBeHidden();
+  const tabs=await page.locator('[role=tab]').evaluateAll(nodes=>nodes.map(node=>({
+    selected:node.getAttribute('aria-selected'),border:getComputedStyle(node).borderBottomColor,background:getComputedStyle(node).backgroundColor,
+  })));
+  expect(tabs[0].border).toBe('rgba(0, 0, 0, 0)');expect(tabs[1].border).toBe('rgb(0, 255, 54)');
+  expect(tabs.every(tab=>tab.background==='rgba(0, 0, 0, 0)')).toBe(true);
   await expect(page.locator('#custom-service select')).toHaveCount(0);
   const list=page.locator('#custom-service');expect(await list.evaluate(e=>e.scrollHeight>e.clientHeight)).toBe(true);
   await list.locator('[role=option]').first().focus();await page.keyboard.press('End');
@@ -106,6 +113,19 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   await page.waitForTimeout(700);
   const scene=await page.evaluate(()=>({zoom:window.menuMap.getZoom(),river:window.menuMap.getLayoutProperty('river','visibility'),tunnels:window.menuMap.getLayoutProperty('tunnels','visibility'),route:window.menuMap.getLayoutProperty('overview-route','visibility')}));
   expect(scene.zoom).toBeLessThan(14);expect(scene.river).toBe('none');expect(scene.tunnels).toBe('none');expect(scene.route).toBe('visible');
+  expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-route','line-width'))).toBe(6);
+  const tickErrors=await page.evaluate(async()=>{
+    const {createRailProfile}=await import('/src/rail-elevation.js');
+    const rail=await (await fetch('/data/railway-route.json')).json(),profile=createRailProfile(rail);
+    return [...document.querySelectorAll('#map .station-marker:not([hidden])')].map(element=>{
+      const station=rail.stations.find(station=>station.order===Number(element.dataset.station));
+      const point=window.menuMap.project(profile.coordinateAt(station.s)),tick=element.querySelector('.station-tick').getBoundingClientRect();
+      return Math.hypot(tick.x+tick.width/2-point.x,tick.y+tick.height/2-point.y);
+    });
+  });
+  expect(Math.max(...tickErrors)).toBeLessThan(1);
+  const widths=await page.locator('#map .station-marker:not([hidden]) .station-tick').evaluateAll(nodes=>nodes.map(node=>({endpoint:node.parentNode.classList.contains('section-endpoint'),width:node.offsetWidth,height:node.offsetHeight})));
+  expect(widths.every(tick=>tick.width===(tick.endpoint?44:28)&&tick.height===(tick.endpoint?10:6))).toBe(true);
   await expect(page.locator('.station-marker:not([hidden])')).toHaveCount(11);await expect(page.locator('.overview-train')).toHaveCount(1);
   await checkOverviewNames(page,'#map .station-marker:not([hidden]) .station-marker-name',viewport.width<=760);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('visible');

@@ -7,8 +7,10 @@ test.beforeEach(async ({page}) => {
 async function open(page,path='/') { await page.goto(path); await expect(page.locator('#loading')).toBeHidden(); }
 async function seekPercent(page,value) { await page.locator('#custom-seek').evaluate((el,value)=>{el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));},value); }
 test('top modal chooses LIVE and each screen returns to the same menu',async({page})=>{
-  const requests=[];page.on('request',r=>{if(r.url().includes('/api/position'))requests.push(r.url())});
+  const requests=[];page.on('request',r=>{if(/\/api\/|\/local-api|tarumi-api\./.test(r.url()))requests.push(r.url())});
   await open(page);await expect(page.locator('#mode-menu')).toBeVisible();
+  await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeHidden();
+  await page.keyboard.press('Escape');await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.locator('#menu-clock')).toHaveText('15:30:00');
   await page.locator('#menu-trains [role=option]').first().click();
   await expect(page).toHaveURL(/\/$/);
@@ -19,6 +21,7 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await expect(page.locator('footer')).toHaveCount(0);
   await page.getByRole('button',{name:'メニューを開く'}).click();
   await expect(page.locator('#mode-menu')).toBeVisible();
+  await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeVisible();
   await page.getByRole('tab',{name:'CUSTOM'}).click();
   await page.locator('#custom-service [data-train="23"]').click();
   await page.getByRole('button',{name:'OK',exact:true}).click();

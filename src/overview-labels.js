@@ -7,7 +7,7 @@ export function placeOverviewLabels(labels, trains, rightEdge) {
   const placed = [];
   for (const label of [...labels].sort((a, b) => b.y - a.y)) {
     const candidates = [false, true].map(left => ({ ...label, left,
-      x: left ? label.x - label.leftGap - label.width : label.x + 8, y: label.y - label.height / 2 }));
+      x: left ? label.x - label.leftGap - label.width : label.x + (label.rightGap ?? 8), y: label.y - label.height / 2 }));
     const score = rect => overflow(rect, rightEdge) * 1000000 + placed.filter(other => overlaps(rect, other)).length * 10000 +
       trains.filter(train => overlaps(rect, train)).length * 1000 + Number(rect.left);
     placed.push(candidates.sort((a, b) => score(a) - score(b))[0]);
