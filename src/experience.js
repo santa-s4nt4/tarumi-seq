@@ -145,11 +145,11 @@ function render(frame) {
     renderCards(visibleEvents);
     text($('journey-speed'), prediction.position.speedKmh.toFixed(1)); text($('journey-clock'), serviceTime(seconds, true));
   }
-  const first = visibleEvents[0];
-  if (!overview && !isCustom && first?.etaSeconds > 0 && first.etaSeconds <= 10) {
-    selected.lastCountdownTime = Math.max(selected.lastCountdownTime, first.t);
+  const countdownEvent = visibleEvents.find(event => event.type === 'tunnel');
+  if (!overview && !isCustom && countdownEvent?.etaSeconds > 0 && countdownEvent.etaSeconds <= 10) {
+    selected.lastCountdownTime = Math.max(selected.lastCountdownTime, countdownEvent.t);
   }
-  countdown.update(!overview && first ? { ...first, key: first.id } : null);
+  countdown.update(!overview && countdownEvent ? { ...countdownEvent, key: countdownEvent.id } : null);
   // Current position follows the display clock; fleet/GPS annotations below
   // can update less often without reducing the camera's motion cadence.
   map.setPrediction(prediction);

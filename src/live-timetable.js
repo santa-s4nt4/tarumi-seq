@@ -59,7 +59,7 @@ class TrainRun {
 
   protectedAt(seconds) {
     const { position, upcoming } = this.snapshot(seconds);
-    const event = upcoming[0];
+    const event = upcoming.find(event => event.type === 'tunnel');
     return position.inTunnel || (event?.etaSeconds > 0 && event.etaSeconds <= 10);
   }
 

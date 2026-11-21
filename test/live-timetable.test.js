@@ -56,6 +56,15 @@ test('no correction during the last ten seconds or inside a tunnel, even from a 
   assert.equal(run.snapshot(tunnel.exitT + 1).position.inTunnel, false);
 });
 
+test('station arrivals no longer lock GPS correction for a countdown', () => {
+  const model = fleet();
+  const run = model.at(at(saturday, '07:25:00')).active.find(run => run.train.id === '5');
+  const station = run.stops[1];
+  assert.equal(run.snapshot(station.arrivalSeconds - 9).upcoming[0].type, 'station');
+  assert.equal(run.protectedAt(station.arrivalSeconds - 9), false);
+  assert.equal(run.protectedAt(station.arrivalSeconds), false);
+});
+
 test('a train already being followed can finish after midnight without delaying the next service day', () => {
   const model = fleet();
   const run = model.at(at(saturday, '23:10:00')).active.find(item => item.train.id === '41');

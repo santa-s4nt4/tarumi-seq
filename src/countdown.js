@@ -1,6 +1,6 @@
 import './countdown.css';
 
-// Use the same first checkpoint as UP NEXT. Playback time drives the dial, so
+// Only tunnel portals use the focus countdown. Playback time drives the dial, so
 // pausing, seeking and changing speed keep the number and motion together.
 export function createCueCountdown(parent) {
   const element = document.createElement('section');
@@ -52,7 +52,7 @@ export function createCueCountdown(parent) {
     update(event) {
       const eta = event?.etaSeconds;
       const key = event ? `${event.key}:${event.target}` : null;
-      const visible = (event?.type === 'station' || event?.type === 'tunnel') && Number.isFinite(eta) && eta > 0 && eta <= 10;
+      const visible = event?.type === 'tunnel' && Number.isFinite(eta) && eta > 0 && eta <= 10;
       if (!visible) {
         if (!element.hidden && key === previousKey && Number.isFinite(eta) && eta <= 0) {
           if (finishTimer === null) {
@@ -73,8 +73,8 @@ export function createCueCountdown(parent) {
         document.body.classList.add('countdown-mode');
       }
       if (key !== previousKey) {
-        target.textContent = event.type === 'station' ? `${event.name}駅まで` : `${event.name}${event.target === 'exit' ? '終了' : '開始'}まで`;
-        kind.textContent = event.type === 'station' ? '次の駅' : event.target === 'exit' ? 'トンネル終了' : 'トンネル開始';
+        target.textContent = `${event.name}${event.target === 'exit' ? '終了' : '開始'}まで`;
+        kind.textContent = event.target === 'exit' ? 'トンネル終了' : 'トンネル開始';
         element.dataset.type = event.type;
         element.dataset.target = event.target;
         previousKey = key;

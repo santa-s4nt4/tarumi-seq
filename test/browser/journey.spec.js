@@ -47,14 +47,19 @@ test('CUSTOM station handles clamp the range, survive reload, and stop on OUT',a
   await page.getByRole('button',{name:'メニューを開く'}).click();const paused=await page.locator('#journey-clock').textContent();
   await page.waitForTimeout(1100);expect(await page.locator('#journey-clock').textContent()).toBe(paused);
 });
-test('CUSTOM countdown uses playback time, pauses, and clears after seeking',async({page})=>{
+test('CUSTOM does not enter countdown mode before or on a station arrival',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');
   // First leg 15:11:00 -> 15:14:30; one station interval is 1/18 of the seek range.
   await seekPercent(page,(201/210)/18*1000);
-  await expect(page.locator('#cue-countdown-focus')).toBeVisible();await expect(page.locator('#countdown-seconds')).toHaveText('9');
-  await page.waitForTimeout(300);await expect(page.locator('#countdown-seconds')).toHaveText('9');
-  await page.locator('#custom-play').click();await expect(page.locator('#countdown-seconds')).toHaveText('8');
-  await page.locator('#custom-play').click();await seekPercent(page,0);await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+  await expect(page.locator('.cue-primary h2')).toHaveText('東大垣駅まで');
+  await expect(page.locator('.cue-primary strong')).toHaveText('9');
+  await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+  await page.locator('#custom-play').click();await expect(page.locator('.cue-primary strong')).toHaveText('8');
+  await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+  await page.locator('#custom-play').click();await page.getByRole('button',{name:'東大垣駅へ移動',exact:true}).click();
+  await expect(page.locator('.cue-primary strong')).toHaveText('0');
+  await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/countdown-mode/);
 });
 test('legacy QUE links preserve station ranges and video is only a CUSTOM view',async({page})=>{
   await page.route('https://www.youtube.com/**',r=>r.abort());
@@ -88,7 +93,7 @@ test('reverse CUSTOM retains its terminal and exposes only the selected station 
   await seekPercent(page,1000);await expect(page.locator('.cue-primary h2')).toHaveText('本巣駅まで');
   await expect(page.locator('.cue-primary strong')).toHaveText('0');await expect(page.locator('#custom-play')).toHaveAttribute('aria-label','再生');
 });
-test('tunnel cue changes to exit, switches theme and clears on seeking outside',async({page})=>{
+test('tunnel countdown runs at entry and exit, pauses and clears on seeking outside',async({page})=>{
   await open(page,'/custom/?train=23&day=weekday');
   const times=await page.evaluate(async()=>{
     const {customPlan}=await import('/src/journey.js');
@@ -96,10 +101,40 @@ test('tunnel cue changes to exit, switches theme and clears on seeking outside',
     const plan=customPlan(tt,rail,stations.stations,{trainId:'23',day:'weekday'}), tunnel=plan.tunnels[0];
     const stopTimes=plan.stops.map((s,i)=>i===0?s.departureSeconds:s.arrivalSeconds);
     function percent(t){for(let i=1;i<stopTimes.length;i++)if(t<=stopTimes[i])return (i-1+(t-stopTimes[i-1])/(stopTimes[i]-stopTimes[i-1]))/(stopTimes.length-1)*1000;}
-    return {before:percent(tunnel.entryT-8),inside:percent(tunnel.entryT+2),clear:percent(tunnel.entryT-30)};
+    return {before:percent(tunnel.entryT-8.5),inside:percent(tunnel.exitT-8.5),clear:percent(tunnel.entryT-30)};
   });
-  await seekPercent(page,times.before);await expect(page.locator('#countdown-target')).toContainText('開始まで');
-  await seekPercent(page,times.inside);await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  for (const [position,target] of [[times.before,'開始まで'],[times.inside,'終了まで']]) {
+    await seekPercent(page,position);await expect(page.locator('#countdown-target')).toContainText(target);
+    await expect(page.locator('#cue-countdown-focus')).toBeVisible();
+    await expect(page.locator('#countdown-seconds')).toHaveText('9');
+    await page.waitForTimeout(300);await expect(page.locator('#countdown-seconds')).toHaveText('9');
+    await page.locator('#custom-play').click();await expect(page.locator('#countdown-seconds')).toHaveText('8');
+    await page.locator('#custom-play').click();
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
   await expect(page.locator('#cue-list')).toContainText('終了まで');
   await seekPercent(page,times.clear);await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+});
+
+for (const trainId of ['18','23']) test(`LIVE only shows a focus countdown at tunnel entry and exit: train ${trainId}`,async({page})=>{
+  await open(page,`/live/?train=${trainId}`);
+  const times=await page.evaluate(async trainId=>{
+    const {customPlan}=await import('/src/journey.js');
+    const [tt,rail,stations]=await Promise.all(['timetable-reference','railway-route','stations'].map(async n=>(await fetch('/data/'+n+'.json')).json()));
+    const plan=customPlan(tt,rail,stations.stations,{trainId,day:'weekday'}), tunnel=plan.tunnels.at(-1);
+    return {station:plan.stops[1].arrivalSeconds,entry:tunnel.entryT,exit:tunnel.exitT};
+  },trainId);
+  const epoch=Date.parse('2026-11-20T00:00:00+09:00');
+  for (const seconds of [times.station-9,times.station]) {
+    await page.clock.setFixedTime(new Date(epoch+seconds*1000));
+    await expect(page.locator('.cue-primary .cue-category')).toHaveText('駅');
+    await expect(page.locator('.cue-primary strong')).toHaveText(seconds===times.station?'0':'9');
+    await expect(page.locator('#cue-countdown-focus')).toBeHidden();
+  }
+  for (const [seconds,target] of [[times.entry-8.5,'開始まで'],[times.exit-8.5,'終了まで']]) {
+    await page.clock.setFixedTime(new Date(epoch+seconds*1000));
+    await expect(page.locator('#cue-countdown-focus')).toBeVisible();
+    await expect(page.locator('#countdown-target')).toContainText(target);
+    await expect(page.locator('#countdown-seconds')).toHaveText('9');
+  }
 });
