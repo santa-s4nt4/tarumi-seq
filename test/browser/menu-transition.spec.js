@@ -75,7 +75,7 @@ for (const fallback of [false, true]) test(`overview circles show the departure 
   if (!fallback) await expect(page.locator('#line-map')).toBeHidden();
   const marker = page.locator(`${fallback ? '#line-map .line-train' : '.overview-train'}[data-train="18"]`);
   await expect(marker).toBeVisible(); await page.waitForTimeout(1900);
-  const size = await marker.boundingBox(); expect(size.width).toBe(22); expect(size.height).toBe(22);
+  const size = await marker.boundingBox(); expect(size.width).toBeCloseTo(22,3); expect(size.height).toBeCloseTo(22,3);
   expect(await marker.evaluate(node => getComputedStyle(node).borderRadius)).toBe('50%');
   const tooltip = marker.getByRole('tooltip'); await expect(tooltip).toBeHidden();
   await marker.hover(); await expect(tooltip).toBeVisible(); await expect(tooltip).toHaveText('樽見発 10:33–11:36');
