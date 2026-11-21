@@ -16,18 +16,17 @@
 .experience .cue-primary strong { font-size:100px; }
 .experience .cue-card-label { margin-bottom:14px; }
 .experience .journey-cue-note { font-size:11px; line-height:1.5; margin-top:12px; padding-top:8px; border-top:1px solid currentColor; }
-.journey-instruments { position:absolute; left:24px; bottom:24px; color:var(--text); z-index:2; text-shadow:0 1px 3px var(--surface),1px 0 3px var(--surface); }
-.journey-instruments p { margin:0 0 8px; display:flex; align-items:baseline; gap:7px; }
+.journey-instruments { position:absolute; left:24px; bottom:56px; color:var(--text); z-index:2; text-shadow:0 1px 3px var(--surface),1px 0 3px var(--surface); }
+.journey-instruments p { margin:0 0 20px; display:flex; align-items:baseline; gap:7px; }
 .journey-instruments strong { font-size:70px; line-height:1; }
 .journey-instruments p span { font-size:14px; }
-#journey-clock { font:48px/1 var(--font); font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
+#journey-clock { display:block; font:48px/1 var(--font); font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
 .journey-legend { position:absolute; bottom:28px; right:24px; display:flex; gap:10px; font-size:10px; padding:6px 8px; background:var(--surface); z-index:2; }
 .journey-legend span { display:flex; align-items:center; gap:4px; }
 .journey-legend i { width:16px; border-top:3px solid; }
 .journey-legend .river { color:#0a84ff; }.journey-legend .bridge { color:#6e3f22; }.journey-legend .tunnel { color:#00b72b; border-top-style:dashed; }
 #journey-status { position:absolute; top:85px; left:24px; max-width:calc(100% - 48px); background:var(--surface); padding:12px; font-size:14px; }
 #journey-status:empty { display:none; }
-.experience .current-marker { background:var(--surface); width:24px; height:24px; z-index:2; }.experience .current-marker span { width:16px; height:16px; background:var(--green); border:1px solid #000; box-shadow:none; }
 .overview-train { background:var(--green); color:#000; padding:8px; border:1px solid #000; white-space:nowrap; }
 .experience .line-train { background:var(--green); color:#000; border:1px solid #000; }
 .experience #line-map .line-track { stroke:var(--green); }.experience #line-map .line-river { stroke:#0a84ff; }
@@ -63,7 +62,7 @@
 .menu-custom-note { font-size:12px; margin:12px 0 24px; }
 .mode-confirm { background:var(--green); color:#000; width:100%; padding:14px; font-size:24px; }
 #custom-timeline { padding:12px 24px 10px; border-top:1px solid var(--green); background:var(--surface); z-index:5; min-width:0; }
-.section-summary { display:flex; align-items:baseline; gap:12px; font-size:12px; }.section-summary strong { font-size:16px; }.range-help { margin-left:auto; font-size:11px; }
+.section-summary { display:flex; align-items:center; gap:12px; font-size:12px; }.section-summary strong { font-size:16px; }.range-help { margin-left:auto; font-size:11px; }
 .station-timeline-scroll { overflow-x:auto; overscroll-behavior:contain; padding:0 28px; margin:0 -10px; scrollbar-width:thin; }
 .station-timeline { position:relative; height:110px; margin:0 6px; }
 .station-labels { position:absolute; inset:0; }
@@ -74,18 +73,25 @@
 .custom-station { position:absolute; top:17px; transform:translateX(-50%); padding:6px 2px; white-space:nowrap; font-size:13px; color:var(--text); background:transparent; }
 .custom-station::after { content:''; position:absolute; left:50%; top:34px; height:10px; width:1px; background:currentColor; }
 .outside-section { opacity:.35; }
-.station-track { position:absolute; left:0; right:0; top:62px; height:8px; background:var(--track); }
-.station-selected { position:absolute; top:0; height:100%; background:var(--green); }
-.station-playhead { position:absolute; width:2px; height:30px; top:-11px; background:var(--text); pointer-events:none; }
-#custom-seek { position:absolute; left:-6px; top:49px; width:calc(100% + 12px); height:32px; margin:0; appearance:none; background:transparent; cursor:pointer; }
-#custom-seek::-webkit-slider-thumb { appearance:none; width:12px; height:20px; border:1px solid var(--text); background:var(--surface); }
-#custom-seek::-moz-range-thumb { width:12px; height:20px; border:1px solid var(--text); border-radius:0; background:var(--surface); }
-.range-marker { position:absolute; top:77px; transform:translateX(-50%); background:var(--green); color:#000; padding:5px 8px; font-size:12px; min-width:38px; min-height:30px; touch-action:none; border:1px solid #000; z-index:1; }
+.station-track { position:absolute; left:0; right:0; top:62px; height:4px; border-radius:3px; background:var(--track); }
+.station-progress { position:absolute; top:0; height:100%; border-radius:3px; background:var(--green); pointer-events:none; }
+.station-range { position:absolute; top:64px; height:29px; border:solid var(--green); border-width:0 2px 2px; pointer-events:none; }
+#custom-seek { position:absolute; left:-6px; top:48px; width:calc(100% + 12px); height:32px; margin:0; appearance:none; background:transparent; cursor:pointer; }
+#custom-seek::-webkit-slider-thumb { appearance:none; width:12px; height:12px; border:0; border-radius:50%; background:var(--green); box-shadow:none; }
+#custom-seek::-moz-range-thumb { width:12px; height:12px; border:0; border-radius:50%; background:var(--green); box-shadow:none; }
+.range-marker { position:absolute; top:77px; transform:translateX(-50%); background:var(--green); color:#000; padding:5px 6px; font-size:12px; white-space:nowrap; min-width:64px; min-height:30px; touch-action:none; border:1px solid #000; z-index:1; }
+#custom-timeline .transport { --transport-control-size:41px; }
+#custom-timeline .transport > button { height:var(--transport-control-size); padding:0; flex-shrink:0; }
+#custom-timeline .play-button { width:var(--transport-control-size); }
+#custom-timeline .transport svg { display:block; }
+#custom-timeline .skip-button svg { left:50%; top:50%; transform:translate(-50%,-50%); }
+#custom-timeline .skip-button span { top:50%; transform:translateY(-50%); line-height:1; }
+@media(max-width:760px) { #custom-timeline .transport { --transport-control-size:37px; } }
 .performance-controls { position:absolute; bottom:24px; left:270px; right:240px; z-index:3; padding:8px 10px; font-size:12px; background:var(--surface); }
 .performance-controls select { max-width:250px; margin:0 8px; font-size:12px; background:var(--surface); color:var(--text); }
 .performance-dialog { text-align:center; }.performance-dialog h2 { font-size:26px; margin:0 0 16px; }.performance-dialog p { font-size:14px; line-height:1.7; }.performance-dialog img { display:block; width:240px; max-width:100%; margin:20px auto; image-rendering:pixelated; }.performance-dialog a { color:var(--text); }.performance-dialog button { padding:10px 14px; background:var(--green); color:#000; margin:4px; }.performance-dialog input { width:100%; font:12px system-ui,sans-serif; padding:8px; margin:8px 0; }.performance-dialog details { text-align:left; margin:20px 0 0; font-size:13px; }
 @media(max-width:900px) { .experience .cue-overlay { width:270px; }.experience .cue-primary { padding:16px; }.experience .cue-primary strong { font-size:80px; }.experience .cue-primary h2 { font-size:24px; }.performance-controls { left:210px; right:20px; bottom:65px; }.range-help { display:none; } }
-@media(max-width:600px) { .experience { --que-gutter:12px; }.experience #journey-menu { top:12px; right:12px; }.journey-views { left:12px; top:12px; padding:2px; }.journey-views button { padding:8px; font-size:13px; }.experience .cue-overlay { width:200px; right:12px; top:66px; max-height:calc(100% - 170px); }.experience .cue-primary { padding:12px; }.experience .cue-card { padding:10px; }.experience .cue-primary h2 { font-size:20px; margin-bottom:8px; }.experience .cue-card h2 { font-size:14px; }.experience .cue-primary strong { font-size:64px; }.experience .cue-card:not(.cue-primary) strong { font-size:32px; }.experience .cue-card-label { font-size:10px; margin-bottom:9px; }.experience .cue-unit { font-size:12px; }.experience .cue-kind-icon svg { width:18px; height:18px; }.experience .cue-primary .cue-kind-icon svg { width:40px; height:40px; }.experience .journey-cue-note { font-size:10px; margin-top:8px; }.journey-instruments { left:12px; bottom:30px; }.journey-instruments strong { font-size:52px; }#journey-clock { font-size:32px; }.journey-instruments p { margin-bottom:5px; }.journey-legend { right:12px; bottom:30px; gap:6px; padding:4px; font-size:8px; }.journey-legend i { width:10px; }.mode-menu,.performance-dialog { padding:38px 24px 24px; }.mode-tabs { margin-bottom:24px; }.mode-tabs button { font-size:23px; }#menu-clock { font-size:60px; }.live-directions button { font-size:22px; }#mode-custom fieldset { font-size:23px; }#custom-service { font-size:16px; }#custom-timeline { padding:10px 14px 8px; }.station-timeline { height:105px; }.section-summary { gap:8px; }.performance-controls { left:12px; right:12px; bottom:135px; }.performance-controls span { display:block; margin-top:5px; }.experience .countdown-focus { padding-top:70px; } }
+@media(max-width:600px) { .experience { --que-gutter:12px; }.experience #journey-menu { top:12px; right:12px; }.journey-views { left:12px; top:12px; padding:2px; }.journey-views button { padding:8px; font-size:13px; }.experience .cue-overlay { width:200px; right:12px; top:66px; max-height:calc(100% - 170px); }.experience .cue-primary { padding:12px; }.experience .cue-card { padding:10px; }.experience .cue-primary h2 { font-size:20px; margin-bottom:8px; }.experience .cue-card h2 { font-size:14px; }.experience .cue-primary strong { font-size:64px; }.experience .cue-card:not(.cue-primary) strong { font-size:32px; }.experience .cue-card-label { font-size:10px; margin-bottom:9px; }.experience .cue-unit { font-size:12px; }.experience .cue-kind-icon svg { width:18px; height:18px; }.experience .cue-primary .cue-kind-icon svg { width:40px; height:40px; }.experience .journey-cue-note { font-size:10px; margin-top:8px; }.journey-instruments { left:12px; }.journey-instruments strong { font-size:52px; }#journey-clock { font-size:32px; }.journey-instruments p { margin-bottom:16px; }.journey-legend { right:12px; bottom:30px; gap:6px; padding:4px; font-size:8px; }.journey-legend i { width:10px; }.mode-menu,.performance-dialog { padding:38px 24px 24px; }.mode-tabs { margin-bottom:24px; }.mode-tabs button { font-size:23px; }#menu-clock { font-size:60px; }.live-directions button { font-size:22px; }#mode-custom fieldset { font-size:23px; }#custom-service { font-size:16px; }#custom-timeline { padding:10px 14px 8px; }.station-timeline { height:105px; }.section-summary { gap:8px; }.performance-controls { left:12px; right:12px; bottom:135px; }.performance-controls span { display:block; margin-top:5px; }.experience .countdown-focus { padding-top:70px; } }
 @media(max-height:650px) and (min-width:601px) { .experience .cue-overlay { width:260px; top:67px; }.experience .cue-card { padding:10px; }.experience .cue-primary strong { font-size:72px; }.experience .cue-primary h2 { font-size:22px; }.journey-instruments strong { font-size:52px; }#custom-timeline { padding-top:8px; }.station-timeline { height:100px; } }
 /* The fallback track and its train must move together after seeking. */
 .experience #line-map.positioned svg > g, .experience #line-map.positioned .line-train { transition:none; }

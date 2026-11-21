@@ -6,10 +6,11 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   const range = new StationRange(plan.stops, from, to), lastIndex = plan.stops.length - 1;
   container.innerHTML = `<div class="section-summary"><span>再生区間</span><strong id="section-name"></strong><span class="timeline-tunnel-key"><i aria-hidden="true"></i>トンネル</span><span class="range-help">IN / OUT を駅に合わせて移動</span></div>
     <div class="station-timeline-scroll"><div class="station-timeline">
-      <div class="station-labels"></div><div class="station-tunnels" role="group" aria-label="トンネル区間"></div><div class="station-track"><div class="station-selected"></div><span class="station-playhead"></span></div>
+      <div class="station-labels"></div><div class="station-tunnels" role="group" aria-label="トンネル区間"></div><div class="station-track"><div class="station-progress"></div></div>
+      <div class="station-range" aria-hidden="true"></div>
       <input id="custom-seek" type="range" min="0" max="1000" step="0.1" value="0" aria-label="ダイヤの再生位置">
-      <button class="range-marker range-in" role="slider" aria-label="再生開始駅 IN" aria-valuemin="0">IN</button>
-      <button class="range-marker range-out" role="slider" aria-label="再生終了駅 OUT">OUT</button>
+      <button class="range-marker range-in" role="slider" aria-label="再生開始駅 IN" aria-valuemin="0">IN 開始</button>
+      <button class="range-marker range-out" role="slider" aria-label="再生終了駅 OUT">OUT 終了</button>
     </div></div>
     <div class="transport-row"><div class="transport">
       <button id="custom-prev" class="icon-button" aria-label="前の駅へ"><i data-lucide="skip-back"></i></button>
@@ -54,7 +55,8 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   let current = range.start, playing = false, renderedPlaying = false;
   function paintRange() {
     const start = range.first / lastIndex * 100, end = range.last / lastIndex * 100;
-    $('.station-selected').style.left = `${start}%`; $('.station-selected').style.width = `${end - start}%`;
+    $('.station-range').style.left = `${start}%`; $('.station-range').style.width = `${end - start}%`;
+    $('.station-progress').style.left = `${start}%`;
     for (const [which, index] of [['in', range.first], ['out', range.last]]) {
       const handle = $(`.range-${which}`); handle.style.left = `${index / lastIndex * 100}%`;
       handle.setAttribute('aria-valuenow', index); handle.setAttribute('aria-valuetext', plan.stops[index].name);
@@ -93,7 +95,8 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   return { range, update(time, active) {
     current = time; playing = active;
     const percent = percentage(time);
-    $('.station-playhead').style.left = `${percent}%`; $('#custom-seek').value = percent * 10;
+    $('.station-progress').style.width = `${Math.max(0, percent - range.first / lastIndex * 100)}%`;
+    $('#custom-seek').value = percent * 10;
     $('#custom-seek').setAttribute('aria-valuetext', serviceTime(time, true));
     $('#custom-time').textContent = serviceTime(time, true);
     if (playing !== renderedPlaying) {

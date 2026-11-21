@@ -115,8 +115,8 @@
 :is(.que-view, .experience) .station-marker-name { margin-left: 6px; padding: 7px 10px; background: var(--panel); color: var(--text); border: 1px solid var(--green); border-radius: 0; font: 18px/1.2 var(--font); opacity: 1; text-shadow: none; box-shadow: none; }
 :is(.que-view, .experience) .station-marker-name small { display: none; }
 :is(.que-view, .experience) .station-marker.next-station .station-marker-name { background: var(--green); color: var(--ink); }
-.que-view .current-marker { width: 52px; height: 52px; border-radius: 50%; background: #00ff3626; box-shadow: none; z-index: 2; }
-.que-view .current-marker span { width: 30px; height: 30px; border: 2px solid var(--ink); background: var(--green); box-shadow: 0 0 0 5px #ffffff80; }
+:is(.que-view, .experience) .current-marker { width: 52px; height: 52px; border-radius: 50%; background: #00ff3626; box-shadow: none; z-index: 2; }
+:is(.que-view, .experience) .current-marker span { width: 30px; height: 30px; border: 2px solid var(--ink); background: var(--green); box-shadow: 0 0 0 5px #ffffff80; }
 .que-view .mapboxgl-marker.terrain-buried { opacity: .2 !important; }
 .tunnel-marker { display: flex; align-items: center; gap: 6px; pointer-events: none; z-index: 1; }
 .tunnel-portal { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 12px 12px 0 0; border: 2px solid var(--green); background: var(--empty); color: var(--green); font: 26px/1 sans-serif; box-shadow: none; }
