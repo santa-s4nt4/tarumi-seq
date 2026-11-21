@@ -75,12 +75,12 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:32
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);await page.setViewportSize(viewport);await load(page,custom);
   await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await page.locator('#custom-play').click();
   await expect(page.locator('#journey-clock')).toHaveText('10:33:01');await page.getByRole('button',{name:'メニューを開く'}).click();
-  const time=await page.locator('#journey-clock').textContent();await page.waitForTimeout(700);
+  const time=await page.locator('#journey-clock').textContent();await page.waitForTimeout(2200);
   await expect(page.locator('#journey-clock')).toHaveText(time);await expect(page.locator('#journey-clock')).toBeVisible();
   await expect(page.locator('#journey-speed')).toBeHidden();await expect(page.locator('#custom-timeline')).toBeHidden();await expect(page.locator('.cue-overlay')).toBeHidden();
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveCount(1);
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveAttribute('data-train','18');
-  await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveText('大垣行き');
+  await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveText('樽見発 10:33–11:36');
   await expect(page.locator('#line-map .line-river')).toBeHidden();await expect(page.locator('#line-map .line-track')).toBeHidden();
   await expect(page.locator('#line-map .line-overview-river')).toBeVisible();
   await checkOverviewNames(page,'#line-map [data-station] text',viewport.width<=760);
@@ -97,7 +97,7 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:32
   await expect(page.locator('#line-map .station-romaji:visible')).toHaveCount(0);
 });
 
-for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`terrain overview and menu animate together and restore centered tracking at ${viewport.width}px`,async({page})=>{
+for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`terrain overview moves more slowly than the menu and restores centered tracking at ${viewport.width}px`,async({page})=>{
   let mapboxModule;page.on('request',request=>{if(request.url().includes('/deps/mapbox-gl.js'))mapboxModule=request.url();});
   await page.setViewportSize(viewport);await page.clock.setFixedTime(fixed);await load(page,custom);
   await expect(page.locator('.current-marker')).toBeVisible();await page.waitForTimeout(1200);
@@ -106,12 +106,19 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
     const lib=(await import(resource)).default;
     const fit=lib.Map.prototype.fitBounds;
     lib.Map.prototype.fitBounds=function(bounds,options){window.menuMap=this;window.flight={duration:options.duration,padding:options.padding};return fit.call(this,bounds,options);};
+    const setFree=lib.Map.prototype.setFreeCameraOptions;
+    lib.Map.prototype.setFreeCameraOptions=function(options){
+      const before=this.getFreeCameraOptions().position, requested=options.position.toAltitude();
+      const result=setFree.call(this,options), after=this.getFreeCameraOptions().position;
+      window.returnFrames?.push({jump:Math.hypot(after.x-before.x,after.y-before.y,after.z-before.z)/before.z,correction:Math.abs(after.toAltitude()-requested)});
+      return result;
+    };
   },mapboxModule);
-  await page.getByRole('button',{name:'メニューを開く'}).click();await page.waitForTimeout(100);
+  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(100);
   expect(await page.evaluate(()=>window.menuMap.isMoving())).toBe(true);
-  expect(await page.evaluate(()=>window.flight.duration)).toBe(600);
-  expect(await page.locator('#mode-menu').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0.6s');
-  await page.waitForTimeout(700);
+  expect(await page.evaluate(()=>window.flight.duration)).toBe(1800);
+  expect(await page.locator('#mode-menu').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0.42s');
+  await expect.poll(()=>page.evaluate(()=>window.menuMap.isMoving())).toBe(false);
   const scene=await page.evaluate(()=>({zoom:window.menuMap.getZoom(),river:window.menuMap.getLayoutProperty('river','visibility'),tunnels:window.menuMap.getLayoutProperty('tunnels','visibility'),route:window.menuMap.getLayoutProperty('overview-route','visibility')}));
   expect(scene.zoom).toBeLessThan(14);expect(scene.river).toBe('none');expect(scene.tunnels).toBe('none');expect(scene.route).toBe('visible');
   expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-route','line-width'))).toBe(6);
@@ -131,12 +138,17 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   await checkOverviewNames(page,'#map .station-marker:not([hidden]) .station-marker-name',viewport.width<=760);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('visible');
   expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-river','line-opacity'))).toBe(.55);
-  await expect(page.locator('.overview-train')).toHaveText('大垣行き');
+  await expect(page.locator('.overview-train')).toHaveText('樽見発 10:33–11:36');
+  await page.evaluate(()=>{window.returnFrames=[];});
   await page.getByRole('button',{name:'メニューを閉じる'}).click();await expect(page.locator('#mode-menu')).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/menu-returning/);
   await expect.poll(()=>page.evaluate(()=>{
     const p=document.querySelector('.map-panel').getBoundingClientRect(),m=document.querySelector('.current-marker').getBoundingClientRect();
     return Math.hypot(m.x+m.width/2-p.x-p.width/2,m.y+m.height/2-p.y-p.height/2);
   })).toBeLessThan(6);
+  const frames=await page.evaluate(()=>window.returnFrames);
+  expect(frames.length).toBeGreaterThan(20);expect(frames[0].jump).toBeLessThan(.02);
+  expect(Math.max(...frames.map(frame=>frame.correction))).toBeLessThan(1);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('tunnels','visibility'))).toBe('visible');
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('none');
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('river','visibility'))).toBe('visible');

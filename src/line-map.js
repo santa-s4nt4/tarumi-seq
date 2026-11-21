@@ -1,8 +1,9 @@
 import { xy } from './geometry.js';
-import { overviewPadding, overviewRightEdge } from './menu-motion.js';
-import { placeOverviewLabels, placeOverviewTrain } from './overview-labels.js';
+import { overviewPadding, overviewRightEdge, easeCamera } from './menu-motion.js';
+import { placeOverviewLabels } from './overview-labels.js';
 
 const NS = 'http://www.w3.org/2000/svg';
+let tooltipId = 0;
 
 function svgElement(tag, attributes, parent) {
   const element = document.createElementNS(NS, tag);
@@ -14,13 +15,18 @@ function svgElement(tag, attributes, parent) {
 export function trainMarkerButton(run, onSelect) {
   const button = document.createElement('button');
   button.type = 'button';
-  const down = run.train.direction === 'front';
   button.className = `line-train ${run.train.direction}`;
-  const destination = down ? '樽見行き' : '大垣行き';
-  button.innerHTML = '<svg viewBox="0 0 42 24" aria-hidden="true"><rect x="2" y="2" width="38" height="17" rx="3"/><path d="M8 6h7v6H8zm12 0h7v6h-7zm12 0h4v6h-4"/><circle cx="10" cy="21" r="2"/><circle cx="32" cy="21" r="2"/></svg><span></span>';
-  button.querySelector('span').textContent = destination;
+  const calls = run.train.stops, label = `${run.stops[0].name}発 ${calls[0].departure}–${calls.at(-1).arrival ?? calls.at(-1).departure}`;
+  const tooltip = document.createElement('span'); tooltip.className = 'train-tooltip'; tooltip.id = `train-tooltip-${++tooltipId}`;
+  tooltip.setAttribute('role', 'tooltip'); tooltip.textContent = label; button.append(tooltip);
   button.dataset.train = run.train.id;
-  button.setAttribute('aria-label', `${destination}の列車を選択`);
+  button.setAttribute('aria-label', `${label}の列車を選択`); button.setAttribute('aria-describedby', tooltip.id);
+  const positionTooltip = () => {
+    const rect = button.getBoundingClientRect(), width = tooltip.offsetWidth;
+    const left = Math.max(8, Math.min(overviewRightEdge(innerWidth) - width, rect.x + rect.width / 2 - width / 2));
+    tooltip.style.left = `${left - rect.x}px`;
+  };
+  button.addEventListener('pointerenter', positionTooltip); button.addEventListener('focus', positionTooltip);
   button.addEventListener('click', () => onSelect(run));
   return button;
 }
@@ -63,16 +69,25 @@ export function createLineMap(container, profile, stations, river, onSelect) {
   gpsMarker.setAttribute('role', 'img'); gpsMarker.hidden = true; container.append(gpsMarker);
   let gpsPoint = null;
   const markers = new Map();
-  let latest = [], focus = null, mode = 'overview', overview = true, moveTimer;
+  let latest = [], focus = null, mode = 'overview', overview = true, motion, lastView, frame;
 
   function draw() {
     const w = container.clientWidth, h = container.clientHeight;
     if (!w || !h) return;
     const padding = overview ? overviewPadding() : { left:0, right:0, top:0, bottom:0 };
-    const center = focus ? xy(focus.latitude, focus.longitude) : [(west + east) / 2, (north + south) / 2];
-    const scale = focus ? Math.min(w, h) / (mode === 'bird' ? 7500 : 3500) : Math.min(Math.max(40,w-padding.left-padding.right)/(east-west),Math.max(40,h-padding.top-padding.bottom)/(north-south));
-    const left = (w + padding.left - padding.right) / 2 - center[0] * scale;
-    const top = (h + padding.top - padding.bottom) / 2 + center[1] * scale;
+    let center = focus ? xy(focus.latitude, focus.longitude) : [(west + east) / 2, (north + south) / 2];
+    let scale = focus ? Math.min(w, h) / (mode === 'bird' ? 7500 : 3500) : Math.min(Math.max(40,w-padding.left-padding.right)/(east-west),Math.max(40,h-padding.top-padding.bottom)/(north-south));
+    let screenX = (w + padding.left - padding.right) / 2, screenY = (h + padding.top - padding.bottom) / 2;
+    if (motion) {
+      const progress = Math.min(1, (performance.now() - motion.start) / motion.duration), t = easeCamera(progress), from = motion.from;
+      scale = Math.exp(Math.log(from.scale) + (Math.log(scale) - Math.log(from.scale)) * t);
+      const centerT = overview ? t : 1 - Math.min(1, from.scale / scale) * (1 - t);
+      center = center.map((value, index) => from.center[index] + (value - from.center[index]) * centerT);
+      screenX = from.screenX + (screenX - from.screenX) * t; screenY = from.screenY + (screenY - from.screenY) * t;
+      if (progress === 1) motion = null;
+    }
+    lastView = { center, scale, screenX, screenY };
+    const left = screenX - center[0] * scale, top = screenY + center[1] * scale;
     paths.style.transform = `translate(${left}px, ${top}px) scale(${scale})`;
     gpsMarker.hidden = !gpsPoint;
     if (gpsPoint) {
@@ -88,7 +103,7 @@ export function createLineMap(container, profile, stations, river, onSelect) {
       const button = markers.get(train.run), [x, y] = xy(train.latitude, train.longitude);
       button.classList.remove('is-followed');
       const pointX = left + x * scale, pointY = top - y * scale;
-      return { run: train.run, pointX, x: pointX + 16, y: pointY + (train.run.train.direction === 'front' ? 18 : -18) - button.offsetHeight / 2,
+      return { x: pointX - button.offsetWidth / 2, y: pointY - button.offsetHeight / 2,
         width: button.offsetWidth, height: button.offsetHeight };
     }) : [];
     const placements = overview ? placeOverviewLabels(labels.filter(station => station.order >= 9).map(station => {
@@ -119,19 +134,21 @@ export function createLineMap(container, profile, stations, river, onSelect) {
       marker.classList.toggle('is-followed', focus?.run === run);
       marker.style.left = `${left + x * scale}px`;
       marker.style.top = `${top - y * scale}px`;
-      const train = trainScreens.find(train => train.run === run);
-      if (train) marker.style.setProperty('--overview-train-offset', `${placeOverviewTrain(train, placements, rightEdge).x - train.pointX}px`);
     }
   }
 
   new ResizeObserver(() => { labelSizes.clear(); draw(); }).observe(container);
+  function animate() {
+    frame = null;
+    if (container.hidden) motion = null;
+    if (motion) { draw(); if (motion) frame = requestAnimationFrame(animate); }
+  }
   return {
     setOverview(value, duration = 0) {
       overview = value; container.dataset.overview = String(value);
       labelSizes.clear();
-      clearTimeout(moveTimer); container.classList.toggle('menu-moving', duration > 0);
-      container.style.setProperty('--line-menu-duration', `${duration}ms`);
-      moveTimer = setTimeout(() => container.classList.remove('menu-moving'), duration);
+      motion = duration && lastView ? { from: lastView, start: performance.now(), duration } : null;
+      if (motion && !frame) frame = requestAnimationFrame(animate);
     },
     update(trains, selected, view, point) {
       gpsPoint = point;

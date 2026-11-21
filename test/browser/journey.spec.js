@@ -16,7 +16,7 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await expect(page).toHaveURL(/\/$/);
   await page.locator('#mode-live').getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/live\/\?train=/);await expect(page.locator('#loading')).toBeHidden();
-  await expect(page.locator('.journey-views button')).toHaveText(['自動','進行方向','鳥瞰']);
+  await expect(page.locator('.journey-views button:visible')).toHaveText(['自動','進行方向','鳥瞰']);
   await expect(page.locator('#journey-clock')).toHaveText('15:30:00');
   await expect(page.locator('footer')).toHaveCount(0);
   await page.getByRole('button',{name:'メニューを開く'}).click();

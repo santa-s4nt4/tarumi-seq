@@ -1,6 +1,9 @@
-export const MENU_DURATION = 600;
+export const MENU_DURATION = 420, MAP_DURATION = 1800, TIMELINE_DURATION = 280;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)'), mobileLayout = matchMedia('(max-width: 760px)');
 export const menuDuration = () => reducedMotion.matches ? 0 : MENU_DURATION;
+export const mapDuration = () => reducedMotion.matches ? 0 : MAP_DURATION;
+export const timelineDuration = () => reducedMotion.matches ? 0 : TIMELINE_DURATION;
+export const easeCamera = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
 
 export function overviewRightEdge(width) {
   const menu = document.getElementById('mode-menu');

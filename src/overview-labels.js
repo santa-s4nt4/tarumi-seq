@@ -14,11 +14,3 @@ export function placeOverviewLabels(labels, trains, rightEdge) {
   }
   return placed;
 }
-
-export function placeOverviewTrain(train, labels, rightEdge) {
-  const candidates = [train, ...labels.flatMap(label => [
-    { ...train, x: label.x + label.width + 8 }, { ...train, x: label.x - train.width - 8 },
-  ])];
-  const score = rect => overflow(rect, rightEdge) * 1000000 + labels.filter(label => overlaps(rect, label)).length * 10000 + Math.abs(rect.x - train.x);
-  return candidates.sort((a, b) => score(a) - score(b))[0];
-}

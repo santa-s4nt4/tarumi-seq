@@ -120,9 +120,9 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   $('#custom-prev').onclick = () => onSeek(range.clamp([...times].reverse().find(time => time < current - 1) ?? range.start));
   $('#custom-next').onclick = () => onSeek(range.clamp(times.find(time => time > current + 1) ?? range.end));
   paintRange();
-  new ResizeObserver(layoutRangeLabels).observe(track);
+  const observer = new ResizeObserver(layoutRangeLabels); observer.observe(track);
   document.fonts.ready.then(layoutRangeLabels);
-  return { range, update(time, active) {
+  return { range, destroy() { observer.disconnect(); }, update(time, active) {
     current = time; playing = active;
     const percent = percentage(time);
     $('.station-progress').style.width = `${Math.max(0, percent - range.first / lastIndex * 100)}%`;

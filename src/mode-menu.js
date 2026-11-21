@@ -3,7 +3,7 @@ import { serviceTime } from './simulation.js';
 import { serviceDayAt, japanDate, serviceDayEpoch } from './timetable-reference.js';
 import { menuDuration } from './menu-motion.js';
 
-export function createModeMenu({ timetable, stations, onLive, onCustom, dismissible = true, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
+export function createModeMenu({ timetable, stations, onLive, onCustom, dismissible = true, beforeOpen = () => {}, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'mode-menu'; dialog.className = 'mode-menu'; dialog.setAttribute('aria-label', 'モードを選ぶ');
   dialog.innerHTML = `<button class="mode-close" aria-label="メニューを閉じる">×</button>
@@ -27,7 +27,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   const $ = selector => dialog.querySelector(selector), name = order => stations.find(station => station.order === order)?.name ?? '';
   $('.mode-close').hidden = !dismissible;
   const label = train => `${name(train.stops[0].station)}発　${train.stops[0].departure}–${train.stops.at(-1).arrival ?? train.stops.at(-1).departure}`;
-  let currentTab = 'live', timer, closeTimer, active = false, liveId = null, customId = null, liveChoices = [], customChoices = [], liveSignature;
+  let currentTab = 'live', timer, closeTimer, active = false, opening = false, liveId = null, customId = null, liveChoices = [], customChoices = [], liveSignature;
   function tab(value) {
     currentTab = value;
     for (const mode of ['live', 'custom']) {
@@ -93,9 +93,12 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   }
   $('.mode-close').addEventListener('click', close);
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && active) { event.preventDefault(); close(); } });
   dialog.addEventListener('close', () => { active = false; clearInterval(timer); clearTimeout(closeTimer); onClose(); });
   refreshCustom();
-  return { dialog, get active() { return active; }, open(mode = currentTab, selection) {
+  return { dialog, close, get active() { return active; }, setDismissible(value) { dismissible = value; $('.mode-close').hidden = !value; }, async open(mode = currentTab, selection) {
+    if (opening) return;
+    if (!active) { opening = true; await beforeOpen(); opening = false; }
     clearTimeout(closeTimer);
     if (selection) {
       const train = timetable.trains.find(train => train.id === selection.trainId);
@@ -108,7 +111,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     tab(mode); liveSignature = undefined; update(); active = true;
     dialog.dataset.state = 'opening'; dialog.style.setProperty('--menu-duration', `${menuDuration()}ms`);
     if (!dialog.open) {
-      dialog.showModal();
+      dialog.show();
       if (!dismissible) $('.mode-tabs').focus({ preventScroll: true });
     }
     void dialog.offsetWidth;

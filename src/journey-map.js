@@ -4,8 +4,8 @@ import { elevatedLineFeature, railLineZOffsetWithClearance, createLineProgress }
 import { JourneyCamera, cameraEye } from './journey-camera.js';
 import { createLineMap, trainMarkerButton } from './line-map.js';
 import { fadeMapTheme } from './theme.js';
-import { overviewPadding, overviewRightEdge } from './menu-motion.js';
-import { placeOverviewLabels, placeOverviewTrain } from './overview-labels.js';
+import { overviewPadding, overviewRightEdge, easeCamera } from './menu-motion.js';
+import { placeOverviewLabels } from './overview-labels.js';
 import { turnTowards } from './camera.js';
 
 const collection = features => ({ type: 'FeatureCollection', features: features.filter(Boolean) });
@@ -17,9 +17,9 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
   const first = stations.find(station => station.order === 9), last = stations.find(station => station.order === 19);
   const section = profile.section(first.s, last.s);
   let map, ready = false, overview = true, latest, dark = false, previousTime, marker, lastS, lastTheme;
-  let lastProgress, lastStations = -Infinity, mapHeight = 1, lastDirection;
+  let lastProgress, lastStations = -Infinity, mapHeight = 1, visibleHeight = 1, lastDirection;
   const heights = new WeakMap();
-  const labelSizes = new Map(), trainOffsets = new WeakMap();
+  const labelSizes = new Map();
   document.fonts.ready.then(() => labelSizes.clear());
   const stationMarkers = [], tunnelMarkers = [], trainMarkers = new Map();
   let fleet = [], gpsMarker, layoutKey, returning;
@@ -28,7 +28,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     map.stop();
     const bounds = new mapboxgl.LngLatBounds();
     for (const point of section) bounds.extend(point);
-    map.fitBounds(bounds, { padding: overviewPadding(), pitch: 0, bearing: 0, duration, easing: t => t });
+    map.fitBounds(bounds, { padding: overviewPadding(), pitch: 0, bearing: 0, duration, easing: easeCamera });
   }
   function theme() {
     if (!ready) return;
@@ -70,19 +70,36 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     const p = latest.position;
     if (lastS !== undefined && Math.abs(p.s - lastS) > 200) camera.reset();
     const moved = p.s !== lastS;
-    const view = camera.at({ profile, s: p.s, direction: latest.direction, height: mapHeight,
+    const view = camera.at({ profile, s: p.s, direction: latest.direction, height: visibleHeight,
       sampleElevation: terrainHeight, now, elapsed });
+    // A temporarily taller drawing buffer is clipped around the visible map.
+    // Preserve its apparent zoom while the timeline changes the visible height.
+    view.radius *= mapHeight / visibleHeight;
     const eye = cameraEye(view, view.radius);
     const free = map.getFreeCameraOptions();
     const target = mapboxgl.MercatorCoordinate.fromLngLat([eye.longitude, eye.latitude], eye.altitude);
     if (returning && now < returning.end) {
-      const t = Math.max(0, 1 - (returning.end - now) / returning.duration), from = returning.position;
-      const position = new mapboxgl.MercatorCoordinate(from.x + (target.x - from.x) * t, from.y + (target.y - from.y) * t,
-        Math.exp(Math.log(from.z) + (Math.log(target.z) - Math.log(from.z)) * t));
+      const t = easeCamera(1 - (returning.end - now) / returning.duration);
+      const focus = mapboxgl.MercatorCoordinate.fromLngLat(view.center, view.elevation + 1), from = returning.focus;
+      const targetRadius = view.radius * focus.meterInMercatorCoordinateUnits() / mapHeight;
+      const radiusPerPixel = Math.exp(Math.log(returning.radiusPerPixel) + (Math.log(targetRadius) - Math.log(returning.radiusPerPixel)) * t);
+      const radius = radiusPerPixel * mapHeight;
+      // Reduce the remaining offset with the viewing distance, keeping the
+      // train in frame instead of sweeping sideways at the end of the zoom.
+      const centerT = 1 - Math.min(1, radiusPerPixel / returning.radiusPerPixel) * (1 - t);
+      const pitch = returning.pitch + (view.pitch - returning.pitch) * t, bearing = turnTowards(returning.bearing, view.bearing, t);
+      const horizontal = radius * Math.sin(pitch * Math.PI / 180);
+      const position = new mapboxgl.MercatorCoordinate(from.x + (focus.x - from.x) * centerT - Math.sin(bearing * Math.PI / 180) * horizontal,
+        from.y + (focus.y - from.y) * centerT + Math.cos(bearing * Math.PI / 180) * horizontal,
+        from.z + (focus.z - from.z) * centerT + radius * Math.cos(pitch * Math.PI / 180));
       const ll = position.toLngLat(), ground = terrainHeight(ll.lng, ll.lat);
       if (Number.isFinite(ground) && position.toAltitude() < ground + 20) position.z = mapboxgl.MercatorCoordinate.fromLngLat(ll, ground + 20).z;
-      free.position = position; free.setPitchBearing(returning.pitch + (view.pitch - returning.pitch) * t, turnTowards(returning.bearing, view.bearing, t));
-    } else { returning = null; free.position = target; free.setPitchBearing(view.pitch, view.bearing); }
+      map.setPadding(Object.fromEntries(Object.entries(returning.padding).map(([key, value]) => [key, value * (1 - t)])));
+      free.position = position; free.setPitchBearing(pitch, bearing);
+    } else {
+      if (returning) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+      returning = null; free.position = target; free.setPitchBearing(view.pitch, view.bearing);
+    }
     // Terrain tile loading can adjust Mapbox's camera even while paused.
     // Reapply the intended pose to keep the rail position at the centre.
     map.setFreeCameraOptions(free);
@@ -137,12 +154,12 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       let item = trainMarkers.get(run);
       if (!item) {
         const button = trainMarkerButton(run, onSelect); button.className = `overview-train ${run.train.direction}`;
-        item = new mapboxgl.Marker({ element: button, anchor: 'left', offset: [16, run.train.direction === 'front' ? 18 : -18] })
+        item = new mapboxgl.Marker({ element: button, anchor: 'center' })
           .setLngLat([longitude, latitude]).addTo(map); trainMarkers.set(run, item);
       } else item.setLngLat([longitude, latitude]);
-      const point = map.project([longitude, latitude]), offsetY = run.train.direction === 'front' ? 18 : -18;
+      const point = map.project([longitude, latitude]);
       const button = item.getElement();
-      trainScreens.push({ item, point, offsetY, x: point.x + 16, y: point.y + offsetY - button.offsetHeight / 2, width: button.offsetWidth, height: button.offsetHeight });
+      trainScreens.push({ x: point.x - button.offsetWidth / 2, y: point.y - button.offsetHeight / 2, width: button.offsetWidth, height: button.offsetHeight });
     }
     const rightEdge = overviewRightEdge(mapElement.clientWidth);
     const labels = placeOverviewLabels(stationMarkers.filter(station => station.order >= 9).map(station => {
@@ -155,10 +172,6 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       return { element, ...point, ...labelSizes.get(station), leftGap: gap, rightGap: gap };
     }), trainScreens, rightEdge);
     for (const label of labels) label.element.classList.toggle('overview-label-left', label.left);
-    for (const train of trainScreens) {
-      const placed = placeOverviewTrain(train, labels, rightEdge), offset = placed.x - train.point.x;
-      if (trainOffsets.get(train.item) !== offset) { train.item.setOffset([offset, train.offsetY]); trainOffsets.set(train.item, offset); }
-    }
   }
   try {
     const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -223,7 +236,8 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       overviewLayers(); if (overview) fit(); showFleet();
     });
     map.on('error', () => { if (!ready) { fallback.hidden = false; onError(); } });
-    new ResizeObserver(([entry]) => { labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(document.querySelector('.map-panel'));
+    new ResizeObserver(([entry]) => { labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(mapElement);
+    new ResizeObserver(([entry]) => { visibleHeight = Math.max(1, entry.contentRect.height); }).observe(mapElement.parentElement);
   } catch { fallback.hidden = false; onError(); }
   requestAnimationFrame(animate);
   return {
@@ -250,12 +264,18 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       if (!ready) line.update(fleet, !value && latest ? {...latest.position,run:fleet[0]?.run} : null, camera.mode, null);
       if (ready) {
         map.stop(); map.resize(); mapHeight = map.getCanvas().clientHeight;
-        marker.getElement().hidden = value;
+        if (value) marker.getElement().hidden = true;
         if (value) { returning = null; fit(duration); lastProgress = undefined; }
         else if (changed) {
           const free = map.getFreeCameraOptions(), pitch = map.getPitch(), bearing = map.getBearing();
-          map.setPadding({top:0,bottom:0,left:0,right:0});
-          returning = duration ? {position:free.position,pitch,bearing,end:performance.now()+duration,duration} : null;
+          const elevation = terrainHeight(map.getCenter().lng, map.getCenter().lat) ?? 0;
+          const z = mapboxgl.MercatorCoordinate.fromLngLat(map.getCenter(), elevation + 1).z;
+          const radius = Math.max(1e-10, (free.position.z - z) / Math.cos(pitch * Math.PI / 180));
+          const horizontal = radius * Math.sin(pitch * Math.PI / 180);
+          const focus = { x: free.position.x + Math.sin(bearing * Math.PI / 180) * horizontal,
+            y: free.position.y - Math.cos(bearing * Math.PI / 180) * horizontal, z };
+          returning = duration ? { focus, radiusPerPixel: radius / mapHeight, padding: map.getPadding(), pitch, bearing, end: performance.now() + duration, duration } : null;
+          if (!duration) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
         }
         overviewLayers();
         showFleet();

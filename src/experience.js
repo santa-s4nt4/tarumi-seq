@@ -12,11 +12,13 @@ import { LivePrediction } from './live-prediction.js';
 import { customPlan, nearestRun, directionName } from './journey.js';
 import { positionAlong, scheduledEventsAt, serviceTime } from './simulation.js';
 import { japanDate, serviceDayEpoch, serviceDayAt } from './timetable-reference.js';
+import { mapDuration, timelineDuration } from './menu-motion.js';
 import './experience.css';
 
 const base = import.meta.env.BASE_URL, url = new URL(location.href);
-const route = url.pathname.slice(base.length).replace(/index\.html$/, '').split('/')[0] || 'home';
-const isCustom = route === 'custom', isPerformance = import.meta.env.DEV && route === 'performance';
+let route = url.pathname.slice(base.length).replace(/index\.html$/, '').split('/')[0] || 'home';
+let isCustom = route === 'custom';
+const isPerformance = import.meta.env.DEV && route === 'performance';
 document.title = `${route === 'home' ? '' : route.toUpperCase() + ' | '}樽見OTO鉄道`;
 document.body.className = `experience ${route}-experience`;
 document.documentElement.dataset.theme = 'light';
@@ -24,14 +26,14 @@ document.body.innerHTML = `<main class="journey-workspace"><section class="map-p
   <div id="map"></div><div id="line-map" aria-label="全線路線図"><a class="line-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a></div>
   <button id="journey-menu" aria-label="メニューを開く" aria-haspopup="dialog"><span></span><span></span><span></span></button>
   <div class="journey-views" role="group" aria-label="地図の視点" hidden>
-    <button data-view="auto" aria-pressed="true">自動</button><button data-view="normal" aria-pressed="false">進行方向</button><button data-view="bird" aria-pressed="false">鳥瞰</button>${isCustom ? '<button data-view="video" aria-pressed="false">車窓</button>' : ''}
+    <button data-view="auto" aria-pressed="true">自動</button><button data-view="normal" aria-pressed="false">進行方向</button><button data-view="bird" aria-pressed="false">鳥瞰</button><button data-view="video" aria-pressed="false" ${isCustom ? '' : 'hidden'}>車窓</button>
   </div>
   <aside class="cue-overlay" aria-label="次の合図" hidden><div id="cue-list"></div></aside>
   <div class="journey-instruments" hidden><p aria-label="ダイヤからの推定速度"><strong id="journey-speed">0.0</strong><span>km/h</span></p><time id="journey-clock" aria-label="${isCustom ? '再生時刻' : '現在時刻'}"></time></div>
   <div class="journey-legend" aria-label="地図の凡例"><span><i class="river"></i>河川</span><span><i class="bridge"></i>橋梁</span><span><i class="tunnel"></i>トンネル</span></div>
   <p id="journey-status" role="status"></p>
   ${isPerformance ? '<div class="performance-controls" hidden><label>乗車列車 <select id="performance-train" aria-label="乗車列車"><option value="">GPSから自動選択</option></select></label><span id="performance-status" role="status"></span></div>' : ''}
-  </section></main>${isCustom ? '<footer id="custom-timeline" hidden></footer>' : ''}
+  </section></main><div id="timeline-slot" hidden></div>
   <div id="loading" class="loading-overlay" role="status"><h2>路線と時刻表を読み込んでいます</h2><p></p><button id="reload-data" hidden>再読み込み</button></div>`;
 const $ = id => document.getElementById(id), panel = document.querySelector('.map-panel');
 $('reload-data').onclick = () => location.reload();
@@ -40,6 +42,7 @@ const queue = new CueQueue();
 let profile, map, fleet, timetable, railway, stations, selected, plan, timeline, menu, phone, gps;
 let time = 0, playing = false, resumeAfterMenu = false, view = 'auto', lastFrame, lastMap = -Infinity, measured = null;
 let menuHasTrain = false, menuTransitionDuration = 0;
+let selection, returnTimer, timelineMotion = 0, timelineAnimations = [];
 document.addEventListener('visibilitychange', () => { if (document.hidden && isCustom) { playing = false; resumeAfterMenu = false; lastFrame = undefined; } });
 const cards = new Map();
 const text = (element, value) => { if (element.textContent !== value) element.textContent = value; };
@@ -69,7 +72,71 @@ function renderCards(events) {
 function navigate(route, params) {
   const target = new URL(base + route + '/', location.origin);
   for (const [key, value] of Object.entries(params)) target.searchParams.set(key, value);
-  location.assign(target);
+  configureRoute(target);
+  history.pushState(null, '', target);
+  menu.close();
+}
+
+async function slideTimeline(show, immediate = false) {
+  const slot = $('timeline-slot'), footer = $('custom-timeline');
+  const token = ++timelineMotion, from = slot.hidden ? 0 : slot.getBoundingClientRect().height;
+  for (const animation of timelineAnimations) animation.cancel();
+  timelineAnimations = [];
+  document.body.classList.remove('timeline-moving');
+  if (!footer || !plan) { slot.hidden = true; return; }
+  const duration = immediate ? 0 : timelineDuration();
+  if (!duration || (!show && !from)) {
+    slot.hidden = !show; slot.style.height = ''; footer.style.transform = ''; slot.dataset.state = show ? 'visible' : 'hidden'; return;
+  }
+  slot.hidden = false; slot.dataset.state = show ? 'entering' : 'leaving';
+  document.body.classList.add('timeline-moving');
+  slot.style.height = `${from}px`;
+  const height = footer.offsetHeight;
+  const options = { duration, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' };
+  timelineAnimations = [slot.animate([{ height: `${from}px` }, { height: `${show ? height : 0}px` }], options)];
+  await Promise.all(timelineAnimations.map(animation => animation.finished.catch(() => {})));
+  if (token !== timelineMotion) return;
+  slot.hidden = !show; slot.style.height = ''; footer.style.transform = '';
+  slot.dataset.state = show ? 'visible' : 'hidden';
+  for (const animation of timelineAnimations) animation.cancel();
+  timelineAnimations = [];
+  document.body.classList.remove('timeline-moving');
+}
+
+function configureRoute(target) {
+  clearTimeout(returnTimer); resumeAfterMenu = playing = false;
+  ++timelineMotion; for (const animation of timelineAnimations) animation.cancel(); timelineAnimations = [];
+  timeline?.destroy(); timeline = plan = selected = null;
+  $('timeline-slot').replaceChildren(); $('timeline-slot').hidden = true; $('timeline-slot').style.height = '';
+  $('timeline-slot').dataset.state = 'hidden';
+  route = target.pathname.slice(base.length).replace(/index\.html$/, '').split('/')[0] || 'home'; isCustom = route === 'custom';
+  document.title = `${route === 'home' ? '' : route.toUpperCase() + ' | '}樽見OTO鉄道`;
+  document.body.classList.remove('home-experience', 'live-experience', 'custom-experience', 'menu-returning', 'timeline-moving');
+  document.body.classList.add(`${route}-experience`);
+  document.querySelector('[data-view=video]').hidden = !isCustom;
+  $('journey-clock').setAttribute('aria-label', isCustom ? '再生時刻' : '現在時刻');
+  menu?.setDismissible(route !== 'home');
+  selection = { trainId: target.searchParams.get('train'), day: target.searchParams.get('day') === 'holiday' ? 'holiday' : 'weekday' };
+  queue.reset(); countdown.update(null); map.reset(); setView('auto', false); lastMap = -Infinity;
+  if (isCustom && selection.trainId) {
+    try {
+      plan = customPlan(timetable, railway, stations, selection);
+      const footer = document.createElement('footer'); footer.id = 'custom-timeline'; $('timeline-slot').append(footer);
+      timeline = createStationTimeline({ container: footer, plan, from: target.searchParams.get('from'), to: target.searchParams.get('to'),
+        onSeek: seek, onRange: updateRange, onPlay(value) { if (value && time >= timeline.range.end) seek(timeline.range.start); resumeAfterMenu = playing = value; lastFrame = undefined; } });
+      time = timeline.range.start;
+    } catch { plan = null; }
+  } else if (selection.trainId) selected = fleet.runs.find(run => run.train.id === selection.trainId);
+}
+
+function startReturn() {
+  menuTransitionDuration = mapDuration();
+  document.body.classList.remove('menu-open', 'menu-preparing'); document.body.classList.add('menu-returning');
+  clearTimeout(returnTimer);
+  returnTimer = setTimeout(() => {
+    playing = isCustom && resumeAfterMenu; lastFrame = undefined;
+    document.body.classList.remove('menu-returning', 'menu-following');
+  }, mapDuration());
 }
 function setView(mode, share = true) {
   view = mode; map.setMode(mode === 'video' ? 'auto' : mode);
@@ -131,6 +198,11 @@ function render(frame) {
   }
   const overview = isMenuOpen() || !prediction;
   const visibleEvents = queue.cards(prediction);
+  if (prediction) {
+    const [longitude, latitude] = profile.coordinateAt(prediction.position.s);
+    Object.assign(prediction.position, { longitude, latitude });
+  }
+  map.setPrediction(prediction);
   map.setOverview(overview, menuTransitionDuration);
   document.body.classList.toggle('overview-mode', overview);
   for (const node of document.querySelectorAll('.journey-views,.cue-overlay')) if (node.hidden !== overview) node.hidden = overview;
@@ -143,8 +215,6 @@ function render(frame) {
   if (document.documentElement.dataset.theme !== theme) document.documentElement.dataset.theme = theme;
   map.setDark(dark);
   if (prediction) {
-    const [longitude, latitude] = profile.coordinateAt(prediction.position.s);
-    Object.assign(prediction.position, { longitude, latitude });
     if (!overview) renderCards(visibleEvents);
     text($('journey-speed'), prediction.position.speedKmh.toFixed(1)); text($('journey-clock'), serviceTime(seconds, true));
   }
@@ -152,10 +222,10 @@ function render(frame) {
   if (!overview && !isCustom && countdownEvent?.etaSeconds > 0 && countdownEvent.etaSeconds <= 10) {
     selected.lastCountdownTime = Math.max(selected.lastCountdownTime, countdownEvent.t);
   }
-  countdown.update(!overview && countdownEvent ? { ...countdownEvent, key: countdownEvent.id } : null);
+  const transitioning = document.body.classList.contains('menu-returning') || document.body.classList.contains('menu-preparing');
+  countdown.update(!overview && !transitioning && countdownEvent ? { ...countdownEvent, key: countdownEvent.id } : null);
   // Current position follows the display clock; fleet/GPS annotations below
   // can update less often without reducing the camera's motion cadence.
-  map.setPrediction(prediction);
   if (frame - lastMap > 80) {
     const runs = menu?.active && menuHasTrain ? [selected ?? plan] : overview ? active : [selected ?? plan];
     const trains = runs.map(run => {
@@ -180,22 +250,20 @@ try {
     onSelect(run) { if (!isPerformance) menu.open('live', { trainId:run.train.id,day:serviceDayAt(Date.now()) }); else if (!phone?.viewer) selectTrain(run); } });
   menu = createModeMenu({ timetable, stations, dismissible: route !== 'home',
     onLive(train) { navigate('live', { train: train.id }); }, onCustom(selection) { navigate('custom', { train: selection.trainId, day: selection.day }); },
-    onOpen(duration) {
-      resumeAfterMenu = playing; playing = false; menuHasTrain = Boolean(plan || selected?.activeAt(Date.now())); menuTransitionDuration = duration;
+    async beforeOpen() {
+      clearTimeout(returnTimer); resumeAfterMenu = playing; playing = false;
+      document.body.classList.remove('menu-returning'); document.body.classList.add('menu-preparing');
+      await slideTimeline(false); document.body.classList.remove('menu-preparing');
+    },
+    onOpen() {
+      menuHasTrain = Boolean(plan || selected?.activeAt(Date.now())); menuTransitionDuration = mapDuration();
       document.body.classList.remove('menu-returning'); document.body.classList.add('menu-open');
       document.body.classList.toggle('menu-following', menuHasTrain);
     },
-    onCloseStart(duration) { menuTransitionDuration = duration; document.body.classList.remove('menu-open'); document.body.classList.add('menu-returning'); },
-    onClose() { playing = resumeAfterMenu; lastFrame = undefined; menuTransitionDuration = 0; document.body.classList.remove('menu-open','menu-returning','menu-following'); } });
-  const selection = { trainId: url.searchParams.get('train'), day: url.searchParams.get('day') === 'holiday' ? 'holiday' : 'weekday' };
-  if (isCustom && selection.trainId) {
-    try {
-      plan = customPlan(timetable, railway, stations, selection);
-      timeline = createStationTimeline({ container: $('custom-timeline'), plan, from: url.searchParams.get('from'), to: url.searchParams.get('to'),
-        onSeek: seek, onRange: updateRange, onPlay(value) { if (value && time >= timeline.range.end) seek(timeline.range.start); playing = value; lastFrame = undefined; } });
-      time = timeline.range.start; $('custom-timeline').hidden = false;
-    } catch { plan = null; menu.open('custom', selection); }
-  } else if (!isCustom && selection.trainId) selected = fleet.runs.find(run => run.train.id === selection.trainId);
+    onCloseStart: startReturn,
+    onClose() { slideTimeline(Boolean(plan)); } });
+  configureRoute(url);
+  await slideTimeline(Boolean(plan), true);
   for (const button of document.querySelectorAll('[data-view]')) button.onclick = () => setView(button.dataset.view);
   $('journey-menu').onclick = () => isPerformance ? phone.open() : menu.open(isCustom ? 'custom' : 'live', plan ? selection : selected ? {trainId:selected.train.id,day:serviceDayAt(Date.now())} : undefined);
   if (isPerformance) {
@@ -214,7 +282,14 @@ try {
     document.querySelector('.performance-controls').hidden = false;
     if (phone.viewer) for (const button of document.querySelectorAll('[data-view]')) button.disabled = true;
     await phone.open();
-  } else if (route === 'home' || (isCustom && !plan) || (!isCustom && !selected)) menu.open(isCustom ? 'custom' : 'live');
+  } else if (route === 'home' || (isCustom && !plan) || (!isCustom && !selected)) await menu.open(isCustom ? 'custom' : 'live', selection.trainId ? selection : undefined);
+  window.addEventListener('popstate', async () => {
+    await slideTimeline(false);
+    configureRoute(new URL(location.href));
+    if (route === 'home' || (!plan && !selected)) await menu.open(isCustom ? 'custom' : 'live', selection.trainId ? selection : undefined);
+    else if (menu.active) menu.close();
+    else { startReturn(); slideTimeline(Boolean(plan)); }
+  });
   $('loading').hidden = true;
   requestAnimationFrame(render);
 } catch (error) {
