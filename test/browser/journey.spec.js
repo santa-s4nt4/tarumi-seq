@@ -78,9 +78,9 @@ for (const [train, from, to, start, end, names] of [
   await page.locator('.range-out').focus(); await page.keyboard.press('ArrowRight');
   await expect(page.locator('.range-out')).toHaveAttribute('aria-valuetext',names.at(-1));
   await seekPercent(page,1000); await expect(page.locator('#journey-clock')).toHaveText(end);
-  await expect(page.locator('#custom-next')).toBeDisabled(); await expect(page.locator('#custom-forward')).toBeDisabled();
+  await expect(page.locator('#custom-next')).toBeDisabled();
   await seekPercent(page,0); await expect(page.locator('#journey-clock')).toHaveText(start);
-  await expect(page.locator('#custom-prev')).toBeDisabled(); await expect(page.locator('#custom-back')).toBeDisabled();
+  await expect(page.locator('#custom-prev')).toBeDisabled();
   await page.reload(); await expect(page.locator('#journey-clock')).toHaveText(start);
 });
 test('legacy QUE links preserve station ranges and video is only a CUSTOM view',async({page})=>{
@@ -91,10 +91,21 @@ test('legacy QUE links preserve station ranges and video is only a CUSTOM view',
   await page.getByRole('button',{name:'車窓',exact:true}).click();await expect(page.locator('#journey-video')).toHaveAttribute('src',/m-jjJKsWI24/);
   await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await expect(page.locator('#journey-video')).toHaveCount(0);
 });
-for(const viewport of [{width:390,height:844},{width:768,height:1024}]) test(`CUSTOM fits ${viewport.width}px and range markers work with dragging`,async({page})=>{
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1440,height:1000}]) test(`CUSTOM fits ${viewport.width}px and range markers work with dragging`,async({page})=>{
   await page.setViewportSize(viewport);await open(page,'/custom/?train=23&day=weekday');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
   const footer=await page.locator('#custom-timeline').boundingBox();expect(footer.y+footer.height).toBeLessThanOrEqual(viewport.height);
+  await expect(page.locator('#custom-timeline .transport button')).toHaveCount(3);
+  await expect(page.locator('.station-range')).toHaveText('');
+  await expect(page.locator('#custom-timeline .time-display')).toHaveCount(0);
+  const play=await page.locator('#custom-play').boundingBox();
+  expect(play.x+play.width/2).toBeCloseTo(viewport.width/2,0);
+  expect(await page.locator('.station-timeline-scroll').evaluate(el=>el.scrollHeight-el.clientHeight)).toBe(0);
+  await expect(page.locator('.cue-card-label:visible')).toHaveCount(0);
+  const cards=await page.locator('.cue-card').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().toJSON()));
+  expect(cards).toHaveLength(3);
+  expect(cards[0].bottom).toBeLessThanOrEqual(cards[1].top);
+  expect(cards[1].bottom).toBeLessThanOrEqual(cards[2].top);
   const track=await page.locator('.station-timeline').boundingBox();
   const stationCount=await page.locator('.custom-station').count();
   const marker=page.locator('.range-in'), box=await marker.boundingBox();
@@ -127,7 +138,7 @@ test('tunnel countdown runs at entry and exit, pauses and clears on seeking outs
     function percent(t){for(let i=1;i<stopTimes.length;i++)if(t<=stopTimes[i])return (i-1+(t-stopTimes[i-1])/(stopTimes[i]-stopTimes[i-1]))/(stopTimes.length-1)*1000;}
     return {before:percent(tunnel.entryT-8.5),inside:percent(tunnel.exitT-8.5),clear:percent(tunnel.entryT-30)};
   });
-  for (const [position,target] of [[times.before,'開始まで'],[times.inside,'終了まで']]) {
+  for (const [position,target] of [[times.before,'入口まで'],[times.inside,'出口まで']]) {
     await seekPercent(page,position);await expect(page.locator('#countdown-target')).toContainText(target);
     await expect(page.locator('#cue-countdown-focus')).toBeVisible();
     await expect(page.locator('#countdown-seconds')).toHaveText('9');
@@ -136,7 +147,7 @@ test('tunnel countdown runs at entry and exit, pauses and clears on seeking outs
     await page.locator('#custom-play').click();
   }
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
-  await expect(page.locator('#cue-list')).toContainText('終了まで');
+  await expect(page.locator('#cue-list')).toContainText('出口まで');
   await seekPercent(page,times.clear);await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#cue-countdown-focus')).toBeHidden();
 });
 

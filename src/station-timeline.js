@@ -1,30 +1,26 @@
 import { serviceTime } from './simulation.js';
 import { StationRange } from './journey.js';
-import { createIcons, SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause } from 'lucide';
+import { createIcons, SkipBack, SkipForward, Play, Pause } from 'lucide';
 
 export function createStationTimeline({ container, plan, from, to, onSeek, onRange, onPlay }) {
   const range = new StationRange(plan.stops, from, to), lastIndex = plan.stops.length - 1;
-  container.innerHTML = `<div class="section-summary"><strong id="section-name" hidden></strong></div>
-    <div class="station-timeline-scroll"><div class="station-timeline">
+  container.innerHTML = `<span id="section-name" hidden></span>
+    <div class="station-timeline-scroll" role="group" aria-labelledby="section-name"><div class="station-timeline">
       <div class="station-labels"></div><div class="station-tunnels" role="group" aria-label="トンネル区間"></div><div class="station-track"><div class="station-progress"></div></div>
-      <div class="station-range" aria-hidden="true"><span class="station-range-label">再生区間</span></div>
+      <div class="station-range" aria-hidden="true"></div>
       <input id="custom-seek" type="range" min="0" max="1000" step="0.1" value="0" aria-label="ダイヤの再生位置">
       <button class="range-marker range-in" role="slider" aria-label="再生開始駅 IN" aria-valuemin="0" title="開始駅を移動（IN）"></button>
       <button class="range-marker range-out" role="slider" aria-label="再生終了駅 OUT" title="終了駅を移動（OUT）"></button>
     </div></div>
-    <div class="transport-row"><div class="transport">
+    <div class="transport">
       <button id="custom-prev" class="icon-button" aria-label="前の駅へ"><i data-lucide="skip-back"></i></button>
-      <button id="custom-back" class="skip-button" aria-label="10秒戻る"><i data-lucide="rotate-ccw"></i><span>10</span></button>
       <button id="custom-play" class="play-button" aria-label="再生" aria-pressed="false"><i data-lucide="play"></i></button>
-      <button id="custom-forward" class="skip-button" aria-label="10秒進む"><i data-lucide="rotate-cw"></i><span>10</span></button>
       <button id="custom-next" class="icon-button" aria-label="次の駅へ"><i data-lucide="skip-forward"></i></button>
-      <div class="time-display"><strong id="custom-time"></strong><span>/</span><span class="transport-end"></span></div>
-    </div></div>`;
+    </div>`;
   const $ = selector => container.querySelector(selector), track = $('.station-timeline');
-  const icons = { SkipBack, SkipForward, RotateCcw, RotateCw, Play, Pause };
+  const icons = { SkipBack, SkipForward, Play, Pause };
   const paintIcons = () => createIcons({ icons, attrs: { 'stroke-width': 1.7 } });
   paintIcons();
-  track.style.setProperty('--timeline-min-width', `${Math.max(500, lastIndex * 72)}px`);
   const times = plan.stops.map((stop, i) => i === 0 ? stop.departureSeconds : stop.arrivalSeconds);
   function percentage(time) {
     if (time <= times[0]) return 0;
@@ -67,7 +63,6 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
     track.classList.toggle('close-range-labels', selected[0].right + 8 > selected[1].left);
     const rangeWidth = (range.last - range.first) / lastIndex * width;
     track.style.setProperty('--range-width', `${rangeWidth}px`);
-    track.classList.toggle('narrow-range', rangeWidth < 100);
   }
   function paintRange() {
     const start = range.first / lastIndex * 100, end = range.last / lastIndex * 100;
@@ -87,7 +82,6 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
     layoutRangeLabels();
     for (const { tunnel, marker } of tunnelMarkers) marker.classList.toggle('outside-section', tunnel.exitT <= range.start || tunnel.entryT >= range.end);
     $('#section-name').textContent = `${plan.stops[range.first].name} → ${plan.stops[range.last].name}`;
-    $('.transport-end').textContent = serviceTime(range.end, true);
   }
   function change(which, index) { range.set(which, index); paintRange(); onRange(range); }
   for (const which of ['in', 'out']) {
@@ -114,8 +108,6 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   }
   $('#custom-seek').addEventListener('input', event => onSeek(range.clamp(atPercent(Number(event.target.value) / 10))));
   $('#custom-play').onclick = () => onPlay(!playing);
-  $('#custom-back').onclick = () => onSeek(range.clamp(current - 10));
-  $('#custom-forward').onclick = () => onSeek(range.clamp(current + 10));
   $('#custom-prev').onclick = () => onSeek(range.clamp([...times].reverse().find(time => time < current - 1) ?? range.start));
   $('#custom-next').onclick = () => onSeek(range.clamp(times.find(time => time > current + 1) ?? range.end));
   paintRange();
@@ -127,14 +119,13 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
     $('.station-progress').style.width = `${Math.max(0, percent - range.first / lastIndex * 100)}%`;
     $('#custom-seek').value = percent * 10;
     $('#custom-seek').setAttribute('aria-valuetext', serviceTime(time, true));
-    $('#custom-time').textContent = serviceTime(time, true);
     if (playing !== renderedPlaying) {
       $('#custom-play').innerHTML = `<i data-lucide="${playing ? 'pause' : 'play'}"></i>`;
       $('#custom-play').setAttribute('aria-label', playing ? '一時停止' : '再生');
       $('#custom-play').setAttribute('aria-pressed', String(playing));
       paintIcons(); renderedPlaying = playing;
     }
-    $('#custom-prev').disabled = $('#custom-back').disabled = time <= range.start;
-    $('#custom-next').disabled = $('#custom-forward').disabled = time >= range.end;
+    $('#custom-prev').disabled = time <= range.start;
+    $('#custom-next').disabled = time >= range.end;
   } };
 }

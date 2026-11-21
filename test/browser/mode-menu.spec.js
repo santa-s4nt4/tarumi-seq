@@ -14,8 +14,13 @@ async function checkOverviewNames(page, selector, mobile) {
   }));
   expect(labels).toHaveLength(11);
   const regular=labels.find(label=>label.station===10);
-  expect(labels.find(label=>label.station===9).font).toBeGreaterThan(regular.font);
-  expect(labels.find(label=>label.station===19).font).toBeGreaterThan(regular.font);
+  if (mobile) {
+    expect(regular.font).toBeLessThan(16);
+    expect(labels.every(label=>label.font===regular.font)).toBe(true);
+  } else {
+    expect(labels.find(label=>label.station===9).font).toBeGreaterThan(regular.font);
+    expect(labels.find(label=>label.station===19).font).toBeGreaterThan(regular.font);
+  }
   expect(labels.find(label=>label.station===18).romaji).toBe('Midori');
   for(const label of labels) {
     expect(label.roman).toBe(mobile?'none':'inline');
@@ -33,6 +38,9 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
   await load(page,'/live/?train=8');
   await expect(page.locator('#mode-menu')).toBeVisible();
   expect(await page.locator('#menu-trains [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train))).toEqual(['5','10']);
+  const spaceAfterLastOption = list => list.evaluate(node =>
+    node.getBoundingClientRect().bottom - node.lastElementChild.getBoundingClientRect().bottom);
+  expect(await spaceAfterLastOption(page.locator('#menu-trains'))).toBeLessThanOrEqual(1);
   await load(page,'/custom/?train=1001&day=holiday');
   await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.locator('#custom-timeline')).toBeHidden();
@@ -44,6 +52,7 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
     expect(ids).toEqual(section.trains.filter(train=>train.direction===direction).map(train=>train.id));
     await expect(page.locator('#custom-service [role=option]')).toHaveText(section.trains.filter(train=>train.direction===direction)
       .map(train=>`${direction==='front'?'本巣':'樽見'}発　${train.stops[0].departure}–${train.stops.at(-1).arrival}`));
+    expect(await spaceAfterLastOption(page.locator('#custom-service'))).toBeLessThanOrEqual(1);
   }
   await expect(page.getByRole('radio',{name:'本巣行き',exact:true})).toBeVisible();
 });
@@ -124,7 +133,10 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   await expect.poll(()=>page.evaluate(()=>window.menuMap.isMoving())).toBe(false);
   const scene=await page.evaluate(()=>({zoom:window.menuMap.getZoom(),river:window.menuMap.getLayoutProperty('river','visibility'),tunnels:window.menuMap.getLayoutProperty('tunnels','visibility'),route:window.menuMap.getLayoutProperty('overview-route','visibility')}));
   expect(scene.zoom).toBeLessThan(14);expect(scene.river).toBe('none');expect(scene.tunnels).toBe('none');expect(scene.route).toBe('visible');
-  expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-route','line-width'))).toBe(6);
+  const mobile=viewport.width<=760;
+  for (const layer of ['overview-route','overview-river']) {
+    expect(await page.evaluate(id=>window.menuMap.getPaintProperty(id,'line-width'),layer)).toBe(mobile?2.5:6);
+  }
   const tickErrors=await page.evaluate(async()=>{
     const {createRailProfile}=await import('/src/rail-elevation.js');
     const rail=await (await fetch('/data/railway-route.json')).json(),profile=createRailProfile(rail);
@@ -136,8 +148,9 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
   });
   expect(Math.max(...tickErrors)).toBeLessThan(1);
   const widths=await page.locator('#map .station-marker:not([hidden]) .station-tick').evaluateAll(nodes=>nodes.map(node=>({endpoint:node.parentNode.classList.contains('section-endpoint'),width:node.offsetWidth,height:node.offsetHeight})));
-  expect(widths.every(tick=>tick.width===(tick.endpoint?44:28)&&tick.height===(tick.endpoint?10:6))).toBe(true);
+  expect(widths.every(tick=>tick.width===(mobile?14:tick.endpoint?44:28)&&tick.height===(mobile?3:tick.endpoint?10:6))).toBe(true);
   await expect(page.locator('.station-marker:not([hidden])')).toHaveCount(11);await expect(page.locator('.overview-train')).toHaveCount(1);
+  await expect(page.locator('.overview-train')).toHaveCSS('width',mobile?'12px':'22px');
   await checkOverviewNames(page,'#map .station-marker:not([hidden]) .station-marker-name',viewport.width<=760);
   expect(await page.evaluate(()=>window.menuMap.getLayoutProperty('overview-river','visibility'))).toBe('visible');
   expect(await page.evaluate(()=>window.menuMap.getPaintProperty('overview-river','line-opacity'))).toBe(.55);

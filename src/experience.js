@@ -36,6 +36,29 @@ document.body.innerHTML = `<main class="journey-workspace"><section class="map-p
   </section></main><div id="timeline-slot" hidden></div>
   <div id="loading" class="loading-overlay" role="status"><h2>路線と時刻表を読み込んでいます</h2><p></p><button id="reload-data" hidden>再読み込み</button></div>`;
 const $ = id => document.getElementById(id), panel = document.querySelector('.map-panel');
+const cueOverlay = panel.querySelector('.cue-overlay');
+const legend = panel.querySelector('.journey-legend');
+const phoneLayout = matchMedia('(max-width:760px), (pointer:coarse) and (max-width:1024px)');
+let cueStation;
+function fitCustomCues() {
+  if (!isCustom || !phoneLayout.matches || cueOverlay.hidden) return;
+  const width = cueOverlay.offsetWidth, height = cueOverlay.offsetHeight;
+  if (!width || !height) return;
+  const marker = panel.querySelector('#line-map:not([hidden]) .is-followed, #map .current-marker:not([hidden])');
+  const clearance = (marker?.offsetWidth || 52) / 2 + 6;
+  const station = cueStation && panel.querySelector(`#map [data-station="${cueStation}"]`);
+  const stationWidth = station ? station.offsetWidth - station.querySelector('.station-tick').offsetWidth / 2 : 0;
+  const right = cueOverlay.offsetLeft + width, top = cueOverlay.offsetTop;
+  // With the top-right corner fixed, either axis can clear the centred train.
+  const horizontal = (right - panel.clientWidth / 2 - Math.max(clearance, stationWidth + 6)) / width;
+  const vertical = (panel.clientHeight / 2 - clearance - top) / height;
+  const clearTrain = top >= panel.clientHeight / 2 + clearance ? 1 : Math.max(horizontal, vertical);
+  const bottom = legend.offsetHeight ? legend.offsetTop - 6 : panel.clientHeight;
+  cueOverlay.style.setProperty('--cue-scale', Math.max(0, Math.min(1, clearTrain, (bottom - top) / height)));
+}
+const cueSizer = new ResizeObserver(fitCustomCues);
+for (const node of [panel, cueOverlay, $('line-map')]) cueSizer.observe(node);
+phoneLayout.addEventListener('change', fitCustomCues);
 $('reload-data').onclick = () => location.reload();
 const countdown = createCueCountdown(panel);
 const queue = new CueQueue();
@@ -48,6 +71,10 @@ const cards = new Map();
 const text = (element, value) => { if (element.textContent !== value) element.textContent = value; };
 const trainIcon = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="10" y="5" width="28" height="32" rx="12"/><path d="M16 37l-4 7m20-7 4 7M18 13h12M16 19v6m16-6v6"/><circle cx="18" cy="31" r="1"/><circle cx="30" cy="31" r="1"/></svg>';
 const tunnelIcon = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 41V22a17 17 0 0 1 34 0v19M14 41V22a10 10 0 0 1 20 0v19M19 28l-5 13m15-13 5 13M18 33h12m-14 5h16"/></svg>';
+function tunnelTarget(target) {
+  if (isCustom) return target === 'exit' ? '出口' : '入口';
+  return target === 'exit' ? '終了' : '開始';
+}
 function renderCards(events) {
   const active = events.slice(0, 3).map((event, index) => {
     let card = cards.get(event.id);
@@ -60,7 +87,7 @@ function renderCards(events) {
     if (card.className !== className) card.className = className;
     text(card.querySelector('.cue-index'), String(index + 1).padStart(2, '0'));
     text(card.querySelector('.cue-category'), event.type === 'station' ? '駅' : 'トンネル');
-    text(card.querySelector('h2'), `${event.name}${event.type === 'station' ? '駅' : event.target === 'exit' ? '終了' : '開始'}まで`);
+    text(card.querySelector('h2'), `${event.name}${event.type === 'station' ? '駅' : tunnelTarget(event.target)}まで`);
     text(card.querySelector('strong'), String(Math.ceil(event.etaSeconds)));
     text(card.querySelector('.journey-cue-note'), event.arrived ? '停車中' : `ダイヤ ${serviceTime(event.t, true)}${!isCustom && selected?.delay ? ` · ${selected.delay}秒遅れ` : ''}`);
     return card;
@@ -196,6 +223,10 @@ function render(frame) {
   if (plan) {
     seconds = time;
     const p = positionAlong(plan, time), events = scheduledEventsAt(plan, time, p.s);
+    if (phoneLayout.matches) {
+      const station = plan.stops.find(stop => Math.abs(stop.s - p.s) < 10)?.station;
+      if (cueStation !== station) { cueStation = station; fitCustomCues(); }
+    }
     const upcoming = events.upcoming.filter(event => timeline.range.contains(event) && (event.type === 'station' || event.target === (event.featureId === events.tunnel?.id ? 'exit' : 'entrance')));
     prediction = { direction: plan.train.direction, position: { s: p.s, speedKmh: p.speed, inTunnel: Boolean(events.tunnel), tunnelId: events.tunnel?.id }, upcoming, next: { station: upcoming.find(event => event.type === 'station') } };
     timeline.update(time, playing);
@@ -229,7 +260,7 @@ function render(frame) {
     selected.lastCountdownTime = Math.max(selected.lastCountdownTime, countdownEvent.t);
   }
   const transitioning = document.body.classList.contains('menu-returning') || document.body.classList.contains('menu-preparing');
-  countdown.update(!overview && !transitioning && countdownEvent ? { ...countdownEvent, key: countdownEvent.id } : null);
+  countdown.update(!overview && !transitioning && countdownEvent ? { ...countdownEvent, key: countdownEvent.id, portalLabel: tunnelTarget(countdownEvent.target) } : null);
   // Current position follows the display clock; fleet/GPS annotations below
   // can update less often without reducing the camera's motion cadence.
   if (frame - lastMap > 80) {

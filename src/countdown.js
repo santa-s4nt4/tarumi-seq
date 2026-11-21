@@ -73,8 +73,9 @@ export function createCueCountdown(parent) {
         document.body.classList.add('countdown-mode');
       }
       if (key !== previousKey) {
-        target.textContent = `${event.name}${event.target === 'exit' ? '終了' : '開始'}まで`;
-        kind.textContent = event.target === 'exit' ? 'トンネル終了' : 'トンネル開始';
+        const portal = event.portalLabel ?? (event.target === 'exit' ? '終了' : '開始');
+        target.textContent = `${event.name}${portal}まで`;
+        kind.textContent = `トンネル${portal}`;
         element.dataset.type = event.type;
         element.dataset.target = event.target;
         previousKey = key;

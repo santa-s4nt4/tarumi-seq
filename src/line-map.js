@@ -52,13 +52,12 @@ export function createLineMap(container, profile, stations, river, onSelect) {
   const labels = stations.map(station => {
     const group = svgElement('g', { 'data-station': station.order, class: station.order === 9 || station.order === 19 ? 'section-endpoint' : '' }, svg);
     svgElement('circle', { r: 3 }, group);
-    const tickHalf = station.order === 9 || station.order === 19 ? 22 : 14;
-    svgElement('line', { class: 'line-station-tick', x1: -tickHalf, x2: tickHalf, y1: 0, y2: 0 }, group);
+    const tick = svgElement('rect', { class: 'line-station-tick' }, group);
     const label = svgElement('text', { x: 8, y: 4 }, group);
     svgElement('tspan', { class: 'station-name-jp' }, label).textContent = station.name;
     svgElement('tspan', { class: 'station-romaji', dx: 8 }, label).textContent = station.romaji;
     const [lon, lat] = profile.coordinateAt(station.s);
-    return { group, label, tickHalf, order: station.order, point: xy(lat, lon) };
+    return { group, label, tick, order: station.order, point: xy(lat, lon) };
   });
   const labelSizes = new Map();
   document.fonts.ready.then(() => { labelSizes.clear(); draw(); });
@@ -109,19 +108,21 @@ export function createLineMap(container, profile, stations, river, onSelect) {
     const placements = overview ? placeOverviewLabels(labels.filter(station => station.order >= 9).map(station => {
       if (!labelSizes.has(station)) {
         const box = station.label.getBBox();
-        labelSizes.set(station, { width: box.width, height: box.height, centerY: box.y + box.height / 2 });
+        const gap = station.tick.getBBox().width / 2 + 6;
+        labelSizes.set(station, { width: box.width, height: box.height, centerY: box.y + box.height / 2, leftGap: gap, rightGap: gap });
       }
       const size = labelSizes.get(station);
       return { order: station.order, x: left + station.point[0] * scale, y: top - station.point[1] * scale + size.centerY,
-        ...size, leftGap: station.tickHalf + 6, rightGap: station.tickHalf + 6 };
+        ...size };
     }), trainScreens, rightEdge) : [];
     let previousY = Infinity;
-    for (const { group, label, tickHalf, order, point: [x, y] } of labels) {
+    for (const { group, label, order, point: [x, y] } of labels) {
       group.style.display = overview && order < 9 ? 'none' : '';
       const py = top - y * scale;
       group.style.transform = `translate(${left + x * scale}px, ${py}px)`;
-      const labelLeft = placements.find(label => label.order === order)?.left;
-      label.setAttribute('x', overview ? (labelLeft ? -1 : 1) * (tickHalf + 6) : 8); label.setAttribute('text-anchor', labelLeft ? 'end' : 'start');
+      const placement = placements.find(label => label.order === order);
+      label.setAttribute('x', placement ? (placement.left ? -placement.leftGap : placement.rightGap) : 8);
+      label.setAttribute('text-anchor', placement?.left ? 'end' : 'start');
       const show = overview || [1, 9, 19].includes(order) || Math.abs(py - previousY) > 20;
       label.style.display = show ? '' : 'none';
       if (show) previousY = py;

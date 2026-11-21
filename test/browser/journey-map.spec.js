@@ -37,6 +37,24 @@ async function centerError(page) {return page.evaluate(()=>{
   const panel=document.querySelector('.map-panel').getBoundingClientRect(), marker=document.querySelector('.current-marker').getBoundingClientRect();
   return Math.hypot(marker.x+marker.width/2-panel.x-panel.width/2,marker.y+marker.height/2-panel.y-panel.height/2);
 });}
+test('phone cue cards leave the stopped train and its station name visible after a resize', async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/custom/?train=23&day=weekday');
+  await expect(page.locator('.current-marker')).toBeVisible();
+  const layout=()=>page.locator('.cue-overlay').evaluate(node=>{
+    const box=node.getBoundingClientRect();
+    const clear=['.current-marker','#map [data-station="9"] .station-marker-name'].every(selector=>{
+      const train=document.querySelector(selector).getBoundingClientRect();
+      return box.left>=train.right || box.bottom<=train.top;
+    });
+    return {clear,scale:box.width/node.offsetWidth};
+  });
+  await expect.poll(layout).toEqual({clear:true,scale:1});
+  await page.setViewportSize({width:390,height:640});
+  await expect.poll(async()=>{const {clear,scale}=await layout();return clear && scale<1;}).toBe(true);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(layout).toEqual({clear:true,scale:1});
+});
 test('real terrain map centers the train, fixes view zooms, and does not oscillate in a tunnel',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/expression|layer|source|elevation/i.test(m.text()))errors.push(m.text());});
   await page.goto('/custom/?train=23&day=weekday');await expect(page.locator('#loading')).toBeHidden();
@@ -66,15 +84,31 @@ test('moving position follows display frames without per-frame terrain scans',as
   const result=await page.evaluate(async()=>{
     const resource=performance.getEntriesByType('resource').map(e=>e.name).find(name=>name.includes('/deps/mapbox-gl.js'));
     const module=await import(resource), lib=module.default??module;
-    const coordinates=new Set();let terrain=0,frames=0;
+    const coordinates=new Set(), marker=document.querySelector('.current-marker');
+    const panel=document.querySelector('.map-panel').getBoundingClientRect();
+    let terrain=0,frames=0,maxDrift=0,geographicMarker,maxRailError=0;
     const move=lib.Marker.prototype.setLngLat, sample=lib.Map.prototype.queryTerrainElevation;
-    lib.Marker.prototype.setLngLat=function(value){if(this.getElement().classList.contains('current-marker'))coordinates.add(String(value));return move.call(this,value);};
+    lib.Marker.prototype.setLngLat=function(value){
+      if(this.getElement()===marker){geographicMarker=this;coordinates.add(String(value));}
+      return move.call(this,value);
+    };
     lib.Map.prototype.queryTerrainElevation=function(...args){terrain++;return sample.apply(this,args);};
-    await new Promise(resolve=>{let start;function tick(now){start??=now;frames++;if(now-start<2000)requestAnimationFrame(tick);else resolve();}requestAnimationFrame(tick);});
+    await new Promise(resolve=>{let start;function tick(now){
+      start??=now;frames++;
+      const rect=marker.getBoundingClientRect();
+      maxDrift=Math.max(maxDrift,Math.hypot(rect.x+rect.width/2-panel.x-panel.width/2,rect.y+rect.height/2-panel.y-panel.height/2));
+      if(geographicMarker){
+        const point=geographicMarker._map.project(geographicMarker.getLngLat(),geographicMarker.getAltitude());
+        maxRailError=Math.max(maxRailError,Math.hypot(point.x-panel.width/2,point.y-panel.height/2));
+      }
+      if(now-start<2000)requestAnimationFrame(tick);else resolve();
+    }requestAnimationFrame(tick);});
     lib.Marker.prototype.setLngLat=move;lib.Map.prototype.queryTerrainElevation=sample;
-    return {positions:coordinates.size,frames,terrain};
+    return {positions:coordinates.size,frames,terrain,maxDrift,maxRailError};
   });
   expect(result.positions).toBeGreaterThan(result.frames*.8);
+  expect(result.maxDrift).toBeLessThan(.1);
+  expect(result.maxRailError).toBeLessThan(6);
   expect(result.terrain).toBeLessThan(3000);
 });
 

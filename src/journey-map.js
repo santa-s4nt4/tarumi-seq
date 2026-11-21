@@ -47,6 +47,16 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       m.setAltitude(value); heights.set(m, value);
     }
   }
+  function sizeOverview() {
+    const width = parseFloat(getComputedStyle(mapElement).getPropertyValue('--overview-line-width'));
+    for (const id of ['overview-route', 'overview-river']) {
+      if (map.getPaintProperty(id, 'line-width') !== width) map.setPaintProperty(id, 'line-width', width);
+    }
+    for (const station of stationMarkers) {
+      const element = station.marker.getElement();
+      if (!element.hidden) station.marker.setOffset([-element.querySelector('.station-tick').offsetWidth / 2, 0]);
+    }
+  }
   function overviewLayers() {
     labelSizes.clear();
     mapElement.dataset.overview = String(overview);
@@ -55,11 +65,11 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     map.setLayoutProperty('overview-route', 'visibility', overview ? 'visible' : 'none');
     map.setLayoutProperty('overview-river', 'visibility', overview ? 'visible' : 'none');
     for (const station of stationMarkers) {
-      const element = station.marker.getElement();
-      element.hidden = overview && station.order < 9;
-      station.marker.setOffset(overview ? [-element.querySelector('.station-tick').offsetWidth / 2, 0] : [-14, 0]);
+      station.marker.getElement().hidden = overview && station.order < 9;
       if (overview) { station.marker.setAltitude(0); heights.delete(station.marker); }
+      else station.marker.setOffset([-14, 0]);
     }
+    if (overview) sizeOverview();
     if (overview) for (const portal of tunnelMarkers) portal.marker.getElement().hidden = true;
     theme();
   }
@@ -103,6 +113,7 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     // Terrain tile loading can adjust Mapbox's camera even while paused.
     // Reapply the intended pose to keep the rail position at the centre.
     map.setFreeCameraOptions(free);
+    marker.getElement().classList.toggle('tracking-center', !returning);
     // Both the camera and marker target the track altitude, not the mountain's
     // surface. This prevents the train drifting upward as ground height changes.
     if (moved) marker.setLngLat(view.center);
@@ -242,7 +253,10 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       for (const portal of tunnelMarkers) if (!portal.marker.getElement().hidden) altitude(portal.marker, portal.s);
     });
     map.on('error', () => { if (!ready) { fallback.hidden = false; onError(); } });
-    new ResizeObserver(([entry]) => { labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize(); if (overview && !map.isMoving()) fit(); }).observe(mapElement);
+    new ResizeObserver(([entry]) => {
+      labelSizes.clear(); mapHeight = entry.contentRect.height; map.resize();
+      if (ready && overview) { sizeOverview(); if (!map.isMoving()) fit(); }
+    }).observe(mapElement);
     new ResizeObserver(([entry]) => { visibleHeight = Math.max(1, entry.contentRect.height); }).observe(mapElement.parentElement);
   } catch { fallback.hidden = false; onError(); }
   requestAnimationFrame(animate);
