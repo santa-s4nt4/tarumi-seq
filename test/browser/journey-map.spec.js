@@ -21,7 +21,13 @@ async function watchTerrain(page, railway, direction) {
         if (!element || element.hidden) return [];
         const ground=map.queryTerrainElevation(endpoint.coordinate,{exaggerated:false});
         if (ground===null) return [];
-        const point=map.project(endpoint.coordinate,endpoint.height-ground);
+        // map.project uses perspective even when the line renderer uses
+        // orthographic projection. Project in the renderer's world space.
+        const {x,y}=lib.MercatorCoordinate.fromLngLat(endpoint.coordinate);
+        const clip=new DOMMatrix(map.transform.projMatrix).transformPoint(
+          new DOMPoint(x*map.transform.worldSize,y*map.transform.worldSize,endpoint.height,1));
+        if(clip.w<=0) return [];
+        const point={x:(1+clip.x/clip.w)*rect.width/2,y:(1-clip.y/clip.w)*rect.height/2};
         if (point.x<0 || point.x>rect.width || point.y<0 || point.y>rect.height) return [];
         const icon=element.querySelector('.tunnel-portal').getBoundingClientRect();
         const marker=map._markers.find(marker=>marker.getElement()===element);
@@ -182,3 +188,67 @@ for (const trainId of ['18','23']) test(`tunnel labels remain attached through z
   expect(Math.max(...pins.map(pin=>pin.pixels))).toBeLessThan(1);
   expect(Math.max(...pins.map(pin=>pin.height))).toBeLessThan(.01);
 });
+
+for (const [trainId,width,height] of [['18',1024,850],['18',390,844],['23',1024,850]]) {
+  test(`bird view pins the entrance to the painted end of tunnel 9: train ${trainId}, ${width}px`,async({page})=>{
+    const read=name=>JSON.parse(fs.readFileSync(`public/data/${name}.json`)), rail=read('railway-route');
+    const plan=customPlan(read('timetable-reference'),rail,read('stations').stations,{trainId,day:'holiday'});
+    const tunnel=plan.tunnels.find(item=>item.name==='トンネル9');
+    const times=plan.stops.map((stop,i)=>i?stop.arrivalSeconds:stop.departureSeconds);
+    const seekValue=time=>{
+      const i=times.findIndex((value,i)=>i>0 && value>=time);
+      return (i-1+(time-times[i-1])/(times[i]-times[i-1]))/(times.length-1)*1000;
+    };
+    await page.setViewportSize({width,height});
+    await page.goto(`/custom/?train=${trainId}&day=holiday`);
+    await expect(page.locator('.current-marker')).toBeVisible();
+    await watchTerrain(page,rail,plan.train.direction);
+    await page.getByRole('button',{name:'鳥瞰',exact:true}).click();
+    await seek(page,seekValue(tunnel.entryT-1.2));
+    await page.waitForFunction(()=>window.terrainTestMap?.getPitch()<0.01);
+    await page.evaluate(id=>{
+      const map=window.terrainTestMap;
+      // Give the existing tunnel line a measurable end without changing its
+      // source, altitude, camera or projection. Include any theme fade on top.
+      map.setLayoutProperty('tunnels','visibility','none');
+      map.setLayoutProperty('tunnel-halo','line-cap','butt');
+      map.setPaintProperty('tunnel-halo','line-color','#ff00ff');
+      map.setPaintProperty('tunnel-halo','line-occlusion-opacity',1);
+      const probe=document.createElement('canvas'); probe.width=3;probe.height=25;
+      const ctx=probe.getContext('2d',{willReadFrequently:true});
+      const icon=document.querySelector(`[data-tunnel="${id}"].entrance .tunnel-portal`);
+      const seek=document.querySelector('#custom-seek');
+      window.rasterSamples=[];
+      window.measurePortal=()=>{
+        const canvas=map.getCanvas(), box=canvas.getBoundingClientRect(), pin=icon.getBoundingClientRect();
+        const x=pin.left+pin.width/2-box.left, y=pin.bottom-box.top;
+        if (y<13 || y>box.height-13 || x<2 || x>box.width-2) return;
+        const left=Math.floor(x)-1, top=Math.floor(y)-12;
+        const sample=source=>ctx.drawImage(source,left*source.width/box.width,top*source.height/box.height,
+          3*source.width/box.width,25*source.height/box.height,0,0,3,25);
+        ctx.globalAlpha=1;sample(canvas);
+        const fade=map.getCanvasContainer().querySelector('.map-theme-fade');
+        if(fade){ctx.globalAlpha=Number(getComputedStyle(fade).opacity);sample(fade);}
+        const pixels=ctx.getImageData(0,0,3,25).data;
+        const edges=[0,1,2].map(col=>{
+          for(let row=24;row>=0;row--){
+            const i=4*(row*3+col);
+            if(pixels[i]>170 && pixels[i+1]<70 && pixels[i+2]>170) return top+row+1;
+          }
+          return top;
+        });
+        window.rasterSamples.push({at:Number(seek.value),error:Math.abs(edges.sort((a,b)=>a-b)[1]-y)});
+      };
+    },tunnel.id);
+    // Let the diagnostic paint transition settle before recording.
+    await page.waitForTimeout(600);
+    await page.evaluate(()=>window.terrainTestMap.on('render',window.measurePortal));
+    await page.locator('#custom-play').click();await page.waitForTimeout(4300);await page.locator('#custom-play').click();
+    const samples=await page.evaluate(()=>{
+      window.terrainTestMap.off('render',window.measurePortal);return window.rasterSamples;
+    });
+    expect(samples.some(sample=>sample.at<seekValue(tunnel.entryT))).toBe(true);
+    expect(samples.some(sample=>sample.at>seekValue(tunnel.entryT+2))).toBe(true);
+    expect(Math.max(...samples.map(sample=>sample.error))).toBeLessThan(2);
+  });
+}

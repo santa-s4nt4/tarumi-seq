@@ -5,11 +5,12 @@ const duration = 900;
 
 // Copy the previous WebGL frame during Mapbox's render event, while its drawing
 // buffer is valid. This avoids enabling preserveDrawingBuffer for every frame.
-export function fadeMapTheme(map, applyTheme) {
+export function fadeMapTheme(map, applyTheme, { stationaryOnly = false } = {}) {
   let state = transitions.get(map);
   if (!state) { state = { revision: 0, layer: null, animation: null }; transitions.set(map, state); }
   const revision = ++state.revision;
   const clear = () => {
+    if (state.onMove) { map.off('move', state.onMove); state.onMove = null; }
     state.animation?.cancel();
     state.layer?.remove();
     state.animation = state.layer = null;
@@ -39,13 +40,22 @@ export function fadeMapTheme(map, applyTheme) {
     clear();
     state.layer = layer;
     map.getCanvasContainer().append(layer);
+    if (stationaryOnly) {
+      // A captured frame can only be blended while its landmarks still
+      // coincide with the live map and its labels.
+      const origin = map.getCenter(), zoom = map.getZoom(), pitch = map.getPitch(), bearing = map.getBearing();
+      state.onMove = () => {
+        if (origin.distanceTo(map.getCenter()) > 0.01 || Math.abs(map.getZoom() - zoom) > 0.0001 ||
+            Math.abs(map.getPitch() - pitch) > 0.001 || Math.abs(map.getBearing() - bearing) > 0.001) clear();
+      };
+      map.on('move', state.onMove);
+    }
     map.once('render', () => {
       if (revision !== state.revision || state.layer !== layer) return;
       const animation = layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration, easing: 'ease-in-out', fill: 'forwards' });
       state.animation = animation;
       animation.finished.then(() => {
-        layer.remove();
-        if (state.layer === layer) state.layer = state.animation = null;
+        if (state.layer === layer) clear();
       }, () => { /* A newer theme transition owns the visible frame. */ });
     });
     applyTheme();

@@ -128,7 +128,6 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
         element.dataset.target = entrance ? 'entrance' : 'exit';
         element.setAttribute('aria-label', `${portal.name} ${entrance ? '入口' : '出口'}`);
         element.querySelector('.tunnel-marker-label').hidden = !entrance;
-        portal.marker.setOffset([entrance ? -14 : -10, 0]);
       }
       lastDirection = latest.direction;
     }
@@ -238,12 +237,32 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
       }
       for (const tunnel of profile.railway.tunnels) for (const start of [true, false]) {
         const s = start ? tunnel.start : tunnel.end, element = document.createElement('div');
+        const location = profile.coordinateAt(s);
+        const world = mapboxgl.MercatorCoordinate.fromLngLat(location, profile.elevationAt(s) + 1);
         element.className = 'tunnel-marker'; element.hidden = true; element.dataset.tunnel = tunnel.id;
         element.innerHTML = '<span class="tunnel-portal">∩</span><span class="tunnel-marker-label"></span>';
         element.querySelector('.tunnel-marker-label').textContent = tunnel.name;
-        tunnelMarkers.push({ s, start, name: tunnel.name, marker: new mapboxgl.Marker({ element, anchor: 'bottom-left', offset: [-14, 0], occludedOpacity: 0.2 })
-          .setLngLat(profile.coordinateAt(s)).addTo(map) });
+        tunnelMarkers.push({ s, start, world, name: tunnel.name, marker: new mapboxgl.Marker({ element, anchor: 'bottom', occludedOpacity: 0.2 })
+          .setLngLat(location).addTo(map) });
       }
+      // Standard draws low pitches with an orthographic camera. DOM Marker
+      // uses perspective even there. Use the drawn frame for portal positions
+      // and keep Marker for its terrain occlusion and opacity.
+      map.addLayer({ id: 'tunnel-label-anchors', type: 'custom', renderingMode: '3d', slot: 'top',
+        render(_gl, matrix) {
+          if (overview) return;
+          const width = mapElement.clientWidth, height = mapElement.clientHeight;
+          for (const { marker, world: { x, y, z } } of tunnelMarkers) {
+            const element = marker.getElement();
+            if (element.hidden) continue;
+            const w = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15];
+            if (w <= 0) { element.style.removeProperty('--portal-screen'); continue; }
+            const clipX = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12];
+            const clipY = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13];
+            const left = (1 + clipX / w) * width / 2, top = (1 - clipY / w) * height / 2;
+            element.style.setProperty('--portal-screen', `translate(${left}px,${top}px)`);
+          }
+        } });
       overviewLayers(); if (overview) fit(); showFleet();
     });
     // DEM detail changes during rendering, independently of the train clock.
@@ -303,6 +322,6 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
     },
     setMode(mode) { camera.setMode(mode); },
     reset() { camera.reset(); lastS = undefined; lastStations = -Infinity; },
-    setDark(value) { dark = value; if (lastTheme === value) return; lastTheme = value; if (ready) { if (overview || returning) theme(); else fadeMapTheme(map, theme); } },
+    setDark(value) { dark = value; if (lastTheme === value) return; lastTheme = value; if (ready) { if (overview || returning) theme(); else fadeMapTheme(map, theme, { stationaryOnly: true }); } },
   };
 }

@@ -95,7 +95,7 @@
 .experience .line-train.is-followed { transform:translate(-50%,-50%); width:24px; height:24px; min-height:0; padding:0; border:4px solid white; border-radius:50%; background:var(--green); font-size:0; box-shadow:0 0 0 1px #000; }
 .experience .line-train.is-followed::after { display:none; }
 /* Anchor the portal itself; label width and wrapping must not move its base. */
-.experience .tunnel-marker { width:28px; height:28px; }
+.experience .tunnel-marker { width:28px; height:28px; transform:var(--portal-screen,translate(-200vw,-200vh)) translate(-50%,-100%) !important; }
 .experience .tunnel-marker.exit { width:20px; height:20px; }
 .experience .tunnel-portal { flex-shrink:0; }
 .experience .tunnel-marker-label { position:absolute; left:calc(100% + 6px); top:50%; transform:translateY(-50%); white-space:nowrap; }
