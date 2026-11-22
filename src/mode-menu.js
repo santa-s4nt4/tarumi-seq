@@ -26,6 +26,15 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     </form>`;
   document.body.append(dialog);
   const $ = selector => dialog.querySelector(selector), name = order => stations.find(station => station.order === order)?.name ?? '';
+  const customList = $('#custom-service');
+  new ResizeObserver(([entry]) => {
+    const option = customList.firstElementChild;
+    const height = entry.contentRect.height;
+    if (!option || !height) return;
+    const minRowHeight = parseFloat(getComputedStyle(option).minHeight);
+    const visibleRows = Math.max(1, Math.floor(height / minRowHeight));
+    customList.style.setProperty('--row-height', `${height / visibleRows}px`);
+  }).observe(customList);
   $('.mode-close').hidden = !dismissible;
   const label = train => `${name(train.stops[0].station)}発　${train.stops[0].departure}–${train.stops.at(-1).arrival ?? train.stops.at(-1).departure}`;
   let currentTab = 'live', timer, closeTimer, active = false, opening = false, liveId = null, customId = null, liveChoices = [], customChoices = [], liveSignature;
@@ -58,7 +67,8 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   }
   function refreshCustom(selected = customId) {
     customChoices = services(customSchedule, $('input[name="direction"]:checked').value, $('input[name="day"]:checked').value);
-    fill($('#custom-service'), customChoices, customChoices.some(train => train.id === selected) ? selected : customChoices[0]?.id ?? null);
+    customList.style.setProperty('--service-count', customChoices.length);
+    fill(customList, customChoices, customChoices.some(train => train.id === selected) ? selected : customChoices[0]?.id ?? null);
   }
   function update() {
     const now = Date.now(); liveChoices = activeServices(timetable, now);

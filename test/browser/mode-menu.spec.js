@@ -57,6 +57,41 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
   await expect(page.getByRole('radio',{name:'本巣行き',exact:true})).toBeVisible();
 });
 
+test('CUSTOM fits whole timetable rows at rest, after scrolling and after resizing', async ({page}) => {
+  await page.route('https://*.mapbox.com/**', route => route.abort());
+  await page.setViewportSize({width:375, height:667});
+  await load(page, '/custom/');
+  await page.getByRole('radio', {name:'平日', exact:true}).check();
+  const list = page.locator('#custom-service');
+  async function expectWholeRows() {
+    await expect.poll(() => list.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const top = rect.top + node.clientTop;
+      const bottom = rect.bottom - parseFloat(getComputedStyle(node).borderBottomWidth);
+      const visible = Array.from(node.children, child => child.getBoundingClientRect())
+        .filter(row => row.bottom > top + 1 && row.top < bottom - 1);
+      return visible.length > 0 && Math.abs(visible[0].top - top) <= 1
+        && Math.abs(visible.at(-1).bottom - bottom) <= 1;
+    })).toBe(true);
+  }
+  await expectWholeRows();
+  await list.hover();
+  await page.mouse.wheel(0, 52);
+  await expect.poll(() => list.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await expectWholeRows();
+
+  await page.getByRole('radio', {name:'本巣行き', exact:true}).check();
+  const options = list.getByRole('option');
+  await options.first().focus();
+  await page.keyboard.press('End');
+  await expect(options.last()).toBeInViewport({ratio:1});
+  for (const viewport of [{width:320, height:568}, {width:667, height:375}, {width:1440, height:1024}]) {
+    await page.setViewportSize(viewport);
+    await expectWholeRows();
+  }
+  await expect.poll(() => list.evaluate(node => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
+});
+
 test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrollable keyboard-selectable list',async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);
   await page.setViewportSize({width:390,height:844});await load(page);
