@@ -22,6 +22,16 @@ test('LIVE availability includes service boundaries and respects holidays', () =
   assert(activeServices(timetable,now).some(t=>t.id===train.id));
 });
 
+test('LIVE through services are selectable from section departure through section arrival in either direction', () => {
+  const ids = time => activeServices(timetable, Date.parse(`2026-11-22T${time}+09:00`)).map(train => train.id);
+  for (const [start, end, train] of [['12:03:00', '12:35:00', '20'], ['12:46:00', '13:20:00', '19']]) {
+    assert.deepEqual(ids(start), [train]);
+    assert.deepEqual(ids(end), [train]);
+  }
+  for (const time of ['12:02:59', '12:35:01', '12:45:59', '13:20:01']) assert.deepEqual(ids(time), []);
+  assert.deepEqual(ids('12:49:06'), ['19']);
+});
+
 test('only the 22 Motosu–Tarumi services can be selected, including through services from Ogaki', () => {
   const expected = read('timetable').trains.map(train => train.id).sort();
   for (const day of ['weekday', 'holiday']) {

@@ -73,7 +73,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   function update() {
     const now = Date.now(); liveChoices = activeServices(timetable, now);
     $('#menu-clock').textContent = serviceTime((now - serviceDayEpoch(japanDate(now))) / 1000, true);
-    $('#menu-service-status').textContent = liveChoices.length ? '運行中の列車を選んでください。' : '現在はダイヤ上の運行時間外です。CUSTOMで再生できます。';
+    $('#menu-service-status').textContent = liveChoices.length ? '本巣〜樽見間を運行中の列車を選んでください。' : '現在、本巣〜樽見間を運行中の列車はありません。CUSTOMで再生できます。';
     const signature = liveChoices.map(train => train.id).join(',');
     if (signature !== liveSignature) {
       liveSignature = signature; fill($('#menu-trains'), liveChoices, liveChoices.some(train => train.id === liveId) ? liveId : null, true);
@@ -107,7 +107,9 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && active) { event.preventDefault(); close(); } });
   dialog.addEventListener('close', () => { active = false; clearInterval(timer); clearTimeout(closeTimer); onClose(); });
   refreshCustom();
-  return { dialog, close, get active() { return active; }, setDismissible(value) { dismissible = value; $('.mode-close').hidden = !value; }, async open(mode = currentTab, selection) {
+  return { dialog, close, get active() { return active; },
+    get visibleLiveChoices() { return active && currentTab === 'live' ? liveChoices : null; },
+    setDismissible(value) { dismissible = value; $('.mode-close').hidden = !value; }, async open(mode = currentTab, selection) {
     if (opening) return;
     if (!active) { opening = true; await beforeOpen(); opening = false; }
     clearTimeout(closeTimer);

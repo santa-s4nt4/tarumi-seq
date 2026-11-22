@@ -21,10 +21,11 @@ export function services(timetable, direction, day) {
 }
 export function activeServices(timetable, now) {
   const seconds = (now - serviceDayEpoch(japanDate(now))) / 1000;
+  const day = serviceDayAt(now);
   return timetable.trains.filter(train => {
-    if (!servesExperienceSection(train)) return false;
-    if (train.operatingDays === 'holiday' && serviceDayAt(now) !== 'holiday') return false;
-    const plan = scheduleStops(timetable, train.id, train.stops[0].station, serviceDayAt(now));
+    if (!servesExperienceSection(train) || (train.operatingDays === 'holiday' && day !== 'holiday')) return false;
+    const [from, to] = train.direction === 'front' ? [9, 19] : [19, 9];
+    const plan = scheduleStops(timetable, train.id, from, day, to);
     return seconds >= plan.start && seconds <= plan.end;
   });
 }

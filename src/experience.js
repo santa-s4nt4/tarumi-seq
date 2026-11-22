@@ -9,7 +9,7 @@ import { CueQueue } from './cues.js';
 import { createRailProfile } from './rail-elevation.js';
 import { LiveTimetable } from './live-timetable.js';
 import { LivePrediction } from './live-prediction.js';
-import { customPlan, nearestRun, directionName } from './journey.js';
+import { activeServices, customPlan, nearestRun, directionName } from './journey.js';
 import { positionAlong, scheduledEventsAt, serviceTime } from './simulation.js';
 import { japanDate, serviceDayEpoch, serviceDayAt } from './timetable-reference.js';
 import { mapDuration, timelineDuration } from './menu-motion.js';
@@ -159,7 +159,13 @@ function configureRoute(target) {
         if (currentRoute) history.replaceState(null, '', target);
       }
     } catch { plan = null; }
-  } else if (selection.trainId) selected = fleet.runs.find(run => run.train.id === selection.trainId);
+  } else if (selection.trainId) {
+    const now = Date.now();
+    if (isPerformance) selected = fleet.runs.find(run => run.train.id === selection.trainId);
+    else if (activeServices(timetable, now).some(train => train.id === selection.trainId)) {
+      selected = fleet.at(now).active.find(run => run.train.id === selection.trainId);
+    }
+  }
 }
 
 function startReturn() {
@@ -264,7 +270,10 @@ function render(frame) {
   // Current position follows the display clock; fleet/GPS annotations below
   // can update less often without reducing the camera's motion cadence.
   if (frame - lastMap > 80) {
-    const runs = menu?.active && menuHasTrain ? [selected ?? plan] : overview ? active : [selected ?? plan];
+    const liveChoices = menu?.visibleLiveChoices;
+    const showFollowed = !overview || (menu?.active && menuHasTrain);
+    const runs = liveChoices ? active.filter(run => liveChoices.some(train => train.id === run.train.id))
+      : showFollowed ? [selected ?? plan] : active;
     const trains = runs.map(run => {
       const p = run === plan ? prediction.position : run.snapshot(run.secondsAt(now)).position;
       const [longitude, latitude] = profile.coordinateAt(p.s); return { run, longitude, latitude };

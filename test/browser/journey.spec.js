@@ -23,6 +23,7 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeVisible();
   await page.getByRole('tab',{name:'CUSTOM'}).click();
+  await page.getByRole('radio',{name:'樽見行き',exact:true}).check();
   await page.locator('#custom-service [data-train="23"]').click();
   await page.getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/custom\/\?train=23&day=weekday/);
@@ -152,6 +153,7 @@ test('tunnel countdown runs at entry and exit, pauses and clears on seeking outs
 });
 
 for (const trainId of ['18','23']) test(`LIVE only shows a focus countdown at tunnel entry and exit: train ${trainId}`,async({page})=>{
+  await page.clock.setFixedTime(new Date(`2026-11-20T${trainId === '18' ? '10:33' : '15:43'}:00+09:00`));
   await open(page,`/live/?train=${trainId}`);
   const times=await page.evaluate(async trainId=>{
     const {customPlan}=await import('/src/journey.js');

@@ -37,7 +37,7 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
   await page.clock.setFixedTime(new Date('2026-11-21T07:25:00+09:00'));
   await load(page,'/live/?train=8');
   await expect(page.locator('#mode-menu')).toBeVisible();
-  expect(await page.locator('#menu-trains [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train))).toEqual(['5','10']);
+  expect(await page.locator('#menu-trains [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train))).toEqual(['10']);
   const spaceAfterLastOption = list => list.evaluate(node =>
     node.getBoundingClientRect().bottom - node.lastElementChild.getBoundingClientRect().bottom);
   expect(await spaceAfterLastOption(page.locator('#menu-trains'))).toBeLessThanOrEqual(1);
@@ -55,6 +55,46 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
     expect(await spaceAfterLastOption(page.locator('#custom-service'))).toBeLessThanOrEqual(1);
   }
   await expect(page.getByRole('radio',{name:'本巣行き',exact:true})).toBeVisible();
+});
+
+test('LIVE matches the section map at 12:49 and expires a selection when it arrives', async ({page}) => {
+  await page.route('https://*.mapbox.com/**', route => route.abort());
+  await page.setViewportSize({width:390, height:844});
+  await page.clock.setFixedTime(new Date('2026-11-22T12:49:06+09:00'));
+  await load(page, '/live/?train=20');
+  const choices = page.locator('#menu-trains [role=option]');
+  const markers = page.locator('#line-map .line-train:visible');
+  await expect(choices).toHaveCount(1);
+  await expect(choices).toHaveAttribute('data-train', '19');
+  await expect(markers).toHaveCount(1);
+  await expect(markers).toHaveAttribute('data-train', '19');
+  await choices.click();
+  await page.clock.setFixedTime(new Date('2026-11-22T13:20:01+09:00'));
+  await expect(choices).toHaveCount(0);
+  await expect(markers).toHaveCount(0);
+  await expect(page.locator('#mode-live .mode-confirm')).toBeDisabled();
+});
+
+test('reopening LIVE or switching from CUSTOM shows one circle for each concurrent section service', async ({page}) => {
+  await page.route('https://*.mapbox.com/**', route => route.abort());
+  const trains = [...timetable.trains];
+  for (const [id, departure, arrival] of [['extra-1', '12:35', '13:06'], ['extra-2', '12:22', '12:55']]) {
+    trains.push({id, operatingDays:'daily', direction:'back', stops:[{station:19, departure}, {station:9, arrival}]});
+  }
+  await page.route('**/data/timetable-reference.json', route => route.fulfill({json:{...timetable, trains}}));
+  await page.clock.setFixedTime(new Date('2026-11-22T12:49:06+09:00'));
+  const ids = nodes => nodes.map(node => node.dataset.train).sort();
+  const choices = page.locator('#menu-trains [role=option]');
+  const markers = page.locator('#line-map .line-train:visible');
+  for (const path of ['/live/?train=19', '/custom/?train=18&day=holiday']) {
+    await load(page, path);
+    await page.getByRole('button', {name:'メニューを開く'}).click();
+    await page.getByRole('tab', {name:'LIVE', exact:true}).click();
+    await expect.poll(() => choices.evaluateAll(ids)).toEqual(['19', 'extra-1', 'extra-2']);
+    await expect.poll(() => markers.evaluateAll(ids)).toEqual(['19', 'extra-1', 'extra-2']);
+    await page.locator('#line-map .line-train[data-train="extra-2"]').click();
+    await expect(choices.filter({hasText:'12:22'})).toHaveAttribute('aria-selected','true');
+  }
 });
 
 test('CUSTOM fits whole timetable rows at rest, after scrolling and after resizing', async ({page}) => {
