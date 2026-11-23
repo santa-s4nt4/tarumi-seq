@@ -1,7 +1,7 @@
 /* Original brand assets and palette: tarumi-oto-fes-main. */
 .que-view {
   --ground: #ffffff;
-  --green: #00ff36;
+  --green: #00ff5b;
   --empty: #331e19;
   --ink: #000000;
   --river: #0a84ff;
@@ -11,9 +11,9 @@
   --surface: var(--ground);
   --text: var(--ink);
   --muted: var(--ink);
-  --line: #00ff36;
+  --line: #00ff5b;
   --panel: var(--ground);
-  --hover: #00ff3614;
+  --hover: #00ff5b14;
   --track: #00000020;
   --marker: var(--green);
   --map-ground: var(--plain);
@@ -37,7 +37,7 @@
 
 /* A quiet masthead; the original wordmark supplies the identity. */
 /* CONSOLE shares the header design with QUE/LIVE: same palette, font and navigation. */
-.console-view .header { --que-gutter: clamp(16px, 2vw, 32px); --green: #00ff36; --ink: #000000; --hover: #00ff3614; --fallback: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif; --font: "Tarumi OTO Stroke", var(--fallback); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; }
+.console-view .header { --que-gutter: clamp(16px, 2vw, 32px); --green: #00ff5b; --ink: #000000; --hover: #00ff5b14; --fallback: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif; --font: "Tarumi OTO Stroke", var(--fallback); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; }
 .console-view .header button, .console-view .header a { font-weight: 400; font-family: inherit; }
 :is(.que-view, .console-view) .header { height: 88px; padding: 0 var(--que-gutter); gap: 28px; border-bottom: 1px solid var(--green); }
 :is(.que-view, .console-view) .brand { color: var(--text); }
@@ -115,7 +115,7 @@
 :is(.que-view, .experience) .station-marker-name { margin-left: 6px; padding: 7px 10px; background: var(--panel); color: var(--text); border: 1px solid var(--green); border-radius: 0; font: 18px/1.2 var(--font); opacity: 1; text-shadow: none; box-shadow: none; }
 :is(.que-view, .experience) .station-marker-name small { display: none; }
 :is(.que-view, .experience) .station-marker.next-station .station-marker-name { background: var(--green); color: var(--ink); }
-:is(.que-view, .experience) .current-marker { width: 52px; height: 52px; border-radius: 50%; background: #00ff3626; box-shadow: none; z-index: 2; }
+:is(.que-view, .experience) .current-marker { width: 52px; height: 52px; border-radius: 50%; background: #00ff5b26; box-shadow: none; z-index: 2; }
 :is(.que-view, .experience) .current-marker span { width: 30px; height: 30px; border: 2px solid var(--ink); background: var(--green); box-shadow: 0 0 0 5px #ffffff80; }
 .que-view .mapboxgl-marker.terrain-buried { opacity: .2 !important; }
 .tunnel-marker { display: flex; align-items: center; gap: 6px; pointer-events: none; z-index: 1; }
@@ -162,7 +162,7 @@
 .que-view .loading-overlay p { font-size: 16px; }
 
 /* Entering a tunnel changes the ground, while the event green stays fixed. */
-:root[data-theme="dark"] .que-view { --surface: #000000; --text: #ffffff; --muted: #ffffff; --panel: #000000; --hover: #00ff3626; --track: #ffffff40; --map-ground: #18231b; }
+:root[data-theme="dark"] .que-view { --surface: #000000; --text: #ffffff; --muted: #ffffff; --panel: #000000; --hover: #00ff5b26; --track: #ffffff40; --map-ground: #18231b; }
 :root[data-theme="dark"] .que-view .bridge-line { background: #ffffff; }
 :root[data-theme="dark"] .que-view .mapboxgl-ctrl-attrib { color-scheme: dark; }
 
@@ -397,9 +397,9 @@
 /* Shared compact header and its on-demand controls. */
 :is(.que-view, .console-view, .live-view) .header {
   --que-gutter: 16px;
-  --green: #00ff36;
+  --green: #00ff5b;
   --ink: #000000;
-  --hover: #00ff3614;
+  --hover: #00ff5b14;
   --fallback: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
   --font: "Tarumi OTO Stroke", var(--fallback);
   position: absolute;
@@ -770,13 +770,13 @@
   flex-wrap: wrap;
   gap: 7px 12px;
 }
-.console-view .legend-line { background: #00ff36; }
+.console-view .legend-line { background: #00ff5b; }
 .console-view { --console-tunnel: #331e19; }
 :root[data-theme="dark"] .console-view { --console-tunnel: #d8b6a0; }
 .console-view .river-line { background: #a6d8f5; opacity: 1; }
 .console-view .tunnel-line { background: var(--console-tunnel); }
 .console-view .station-marker { gap: 6px; }
-.console-view .station-tick { width: 6px; height: 6px; flex-shrink: 0; border-radius: 0; background: #00ff36; box-shadow: 0 0 0 1px var(--surface); }
+.console-view .station-tick { width: 6px; height: 6px; flex-shrink: 0; border-radius: 0; background: #00ff5b; box-shadow: 0 0 0 1px var(--surface); }
 
 @media (max-width: 700px) {
   .console-view .map-legend { bottom: 34px; left: 12px; right: 12px; gap: 6px 9px; font-size: 11px; }

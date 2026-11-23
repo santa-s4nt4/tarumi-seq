@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { customPlan } from '../../src/journey.js';
 import { createRailProfile } from '../../src/rail-elevation.js';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 async function watchTerrain(page, railway, direction) {
   const profile=createRailProfile(railway), endpoints=railway.tunnels.flatMap(tunnel=>[true,false].map(start=>{
     const s=start?tunnel.start:tunnel.end;
@@ -43,7 +45,7 @@ async function centerError(page) {return page.evaluate(()=>{
   const panel=document.querySelector('.map-panel').getBoundingClientRect(), marker=document.querySelector('.current-marker').getBoundingClientRect();
   return Math.hypot(marker.x+marker.width/2-panel.x-panel.width/2,marker.y+marker.height/2-panel.y-panel.height/2);
 });}
-test('phone cue cards leave the stopped train and its station name visible after a resize', async ({page})=>{
+test('phone cue cards span the width and leave the stopped train and its station name visible after a resize', async ({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/custom/?train=23&day=weekday');
   await expect(page.locator('.current-marker')).toBeVisible();
@@ -57,7 +59,8 @@ test('phone cue cards leave the stopped train and its station name visible after
   });
   await expect.poll(layout).toEqual({clear:true,scale:1});
   await page.setViewportSize({width:390,height:640});
-  await expect.poll(async()=>{const {clear,scale}=await layout();return clear && scale<1;}).toBe(true);
+  await expect.poll(layout).toEqual({clear:true,scale:1});
+  expect(await page.locator('.cue-overlay').evaluate(node=>{const box=node.getBoundingClientRect();return [box.left,innerWidth-box.right];})).toEqual([12,12]);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(layout).toEqual({clear:true,scale:1});
 });
@@ -68,7 +71,7 @@ test('real terrain map centers the train, fixes view zooms, and does not oscilla
   expect(await page.locator('.station-tick').evaluateAll(nodes=>nodes.every(node=>node.textContent===''))).toBe(true);
   const name=page.locator('.station-marker[data-station="9"] .station-marker-name');
   await name.hover();expect(await name.evaluate(node=>getComputedStyle(node).textDecorationLine)).toBe('none');
-  await page.getByRole('button',{name:'進行方向',exact:true}).click();await expect(page.locator('#map')).toHaveAttribute('data-zoom','20');
+  await page.getByRole('button',{name:'斜俯瞰',exact:true}).click();await expect(page.locator('#map')).toHaveAttribute('data-zoom','20');
   await expect.poll(()=>centerError(page)).toBeLessThan(6);
   await seek(page,500);await expect.poll(()=>centerError(page)).toBeLessThan(6);
   await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await expect(page.locator('#map')).toHaveAttribute('data-zoom','19');
@@ -135,7 +138,7 @@ for (const trainId of ['18', '23']) test(`all nine tunnels clear real terrain in
   };
   expect(plan.tunnels).toHaveLength(9);
   for (const tunnel of plan.tunnels) {
-    for (const [mode, fractions] of [['鳥瞰',[.2,.5,.8]],['進行方向',[.5]],['自動',[.5]]]) {
+    for (const [mode, fractions] of [['鳥瞰',[.2,.5,.8]],['斜俯瞰',[.5]],['自動',[.5]]]) {
       await page.getByRole('button',{name:mode,exact:true}).click();
       for (const fraction of fractions) {
         await seekTime(tunnel.entryT+(tunnel.exitT-tunnel.entryT)*fraction);
@@ -175,7 +178,7 @@ for (const trainId of ['18','23']) test(`tunnel labels remain attached through z
   const time=Math.min(...plan.tunnels.map(tunnel=>tunnel.entryT))-2;
   const times=plan.stops.map((stop,i)=>i?stop.arrivalSeconds:stop.departureSeconds), i=times.findIndex((value,index)=>index>0&&time<=value);
   await seek(page,(i-1+(time-times[i-1])/(times[i]-times[i-1]))/(times.length-1)*1000);
-  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(1900);
+  await openMenu(page);await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(1900);
   await page.evaluate(()=>{
     window.portalFrames=[];
     window.terrainTestMap.on('render',()=>window.portalFrames.push(...window.portalMeasurements()));

@@ -1,30 +1,35 @@
-.experience { --green:#00ff36; --marker:#00ff36; --map-ground:#c4c1b0; --que-gutter:24px; --que-card-width:320px; height:100dvh; overflow:hidden; display:grid; grid-template-rows:minmax(0,1fr) auto; font-weight:400; }
-.experience .journey-workspace { min-width:0; min-height:0; }
+.experience { --green:#00ff5b; --marker:#00ff5b; --map-ground:#c4c1b0; --que-gutter:24px; --que-card-width:320px; height:100dvh; overflow:hidden; display:grid; grid-template-rows:minmax(0,1fr) auto; font-weight:400; }
+.experience .journey-workspace { grid-area:1 / 1 / -1 / -1; min-width:0; min-height:0; }
+/* The map credits stay at the page bottom, on either side of the transport. */
+.experience :is(.mapboxgl-ctrl-bottom-left,.mapboxgl-ctrl-bottom-right,.line-attribution) { z-index:6; }
 .experience .map-panel { position:relative; height:100%; min-height:0; border:0; overflow:hidden; background:var(--map-ground); }
 .experience :is(h2,strong,button,select) { font-weight:400; }
 .experience #map { position:absolute; inset:0; }
 /* Clip and recenter one drawing buffer while the timeline slides. Resizing a
    WebGL canvas every frame clears the map before it can be painted again. */
 .experience.timeline-moving #map { height:100dvh; top:calc((100% - 100dvh) / 2); bottom:auto; }
-.experience #journey-menu { position:absolute; right:24px; top:18px; width:40px; height:40px; display:flex; flex-direction:column; justify-content:center; gap:5px; padding:10px; background:var(--surface); color:var(--text); border:1px solid var(--green); z-index:6; }
-#journey-menu span { width:100%; height:1px; background:currentColor; }
-.journey-views { position:absolute; top:24px; left:24px; display:flex; padding:4px; gap:2px; background:var(--surface); z-index:4; }
-.journey-views button { min-height:40px; padding:7px 14px; background:transparent; color:var(--text); font-size:15px; }
+.experience #journey-menu { position:absolute; left:50%; top:0; transform:translateX(-50%); min-height:72px; padding:24px 16px 0; background:var(--surface); color:var(--text); font-size:20px; white-space:nowrap; z-index:6; transition:translate 280ms cubic-bezier(.4,0,.2,1); }
+.label-idle #journey-menu { translate:0 -100%; }
+/* Stands where the hidden label was, over the player that swallows input. */
+#journey-reveal { display:none; position:absolute; left:50%; top:0; translate:-50% 0; width:160px; height:72px; z-index:5; }
+.video-experience.label-idle:not(.menu-open) #journey-reveal { display:block; }
+.experience :is(button,select,a,input,summary):focus-visible { outline:none; }
+.journey-views { position:absolute; bottom:calc(12px + var(--timeline-height,0px)); left:50%; translate:-50% 0; display:flex; padding:4px; gap:2px; z-index:4; }
+.journey-views button { min-height:40px; padding:7px 14px; border-radius:4px; background:transparent; color:var(--text); font-size:15px; }
 .journey-views button[aria-pressed=true] { background:var(--green); color:#000; }
-.experience .cue-overlay { right:24px; top:76px; width:320px; max-height:calc(100% - 140px); }
+.experience .cue-overlay { right:24px; top:76px; width:320px; max-height:calc(100% - 140px - var(--timeline-height,0px)); }
 .experience .cue-card { padding:14px; }
 .experience .cue-primary { padding:22px; }
 .experience .cue-card h2 { font-size:18px; }
 .experience .cue-primary h2 { font-size:28px; }
 .experience .cue-primary strong { font-size:100px; }
-.experience .cue-card-label { margin-bottom:14px; }
-.experience .journey-cue-note { font-size:11px; line-height:1.5; margin-top:12px; padding-top:8px; border-top:1px solid currentColor; }
-.journey-instruments { position:absolute; left:24px; bottom:56px; color:var(--text); z-index:2; text-shadow:0 1px 3px var(--surface),1px 0 3px var(--surface); }
+.experience .journey-cue-note { font-size:11px; line-height:1.5; margin-top:12px; }
+.journey-instruments { position:absolute; left:24px; bottom:calc(56px + var(--timeline-height,0px)); color:var(--text); z-index:2; text-shadow:0 1px 3px var(--surface),1px 0 3px var(--surface); }
 .journey-instruments p { margin:0 0 20px; display:flex; align-items:baseline; gap:7px; }
 .journey-instruments strong { font-size:70px; line-height:1; }
 .journey-instruments p span { font-size:14px; }
 #journey-clock { display:block; font:48px/1 var(--font); font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
-.journey-legend { position:absolute; bottom:28px; right:24px; display:flex; gap:10px; font-size:10px; padding:6px 8px; background:var(--surface); z-index:2; }
+.journey-legend { position:absolute; bottom:calc(28px + var(--timeline-height,0px)); right:24px; display:flex; gap:10px; font-size:10px; padding:6px 8px; background:var(--surface); z-index:2; }
 .journey-legend span { display:flex; align-items:center; gap:4px; }
 .journey-legend i { width:16px; border-top:3px solid; }
 .journey-legend .river { color:#0a84ff; }.journey-legend .bridge { color:#6e3f22; }.journey-legend .tunnel { color:#00b72b; border-top-style:dashed; }
@@ -36,21 +41,29 @@
 
 .experience .gps-marker { position:absolute; width:12px; height:12px; border:2px solid white; border-radius:50%; background:#0a84ff; }
 .experience.countdown-mode :is(.cue-overlay,.journey-instruments,.journey-legend) { visibility:hidden; }
-.experience .countdown-focus { padding-top:82px; }
-#journey-video { position:absolute; inset:0; width:100%; height:100%; border:0; z-index:1; background:#000; }
-.video-view .journey-instruments, .video-view .journey-legend { display:none; }
+.experience .countdown-focus { padding-top:82px; padding-bottom:calc(64px + var(--timeline-height,0px)); }
+@media(min-width:601px) and (min-height:501px) { .experience .countdown-clock { width:min(88cqw,calc(100cqh - 90px)); } }
+#journey-video { position:absolute; inset:0; z-index:3; display:grid; place-items:center; background:#000; container-type:size; }
+#journey-video[hidden] { display:none; }
+.video-stage { position:relative; width:min(100cqw,100cqh * 16 / 9); aspect-ratio:16 / 9; }
+.video-stage :is(iframe,canvas) { position:absolute; inset:0; width:100%; height:100%; border:0; }
+.video-stage canvas { pointer-events:none; }
+.video-error { color:#fff; font-size:14px; padding:24px; text-align:center; }
 .menu-open #journey-video { visibility:hidden; }
 .mode-menu,.performance-dialog { width:min(520px,calc(100% - 32px)); padding:42px 40px 36px; border:1px solid var(--green); border-radius:0; background:var(--surface); box-shadow:0 20px 80px #0003; max-height:90dvh; }
 .mode-menu::backdrop,.performance-dialog::backdrop { background:#ffffff38; backdrop-filter:blur(2px); }
-.mode-close { position:absolute; top:5px; right:10px; background:transparent; font:26px var(--font); padding:2px 8px; }
-.mode-tabs { display:grid; grid-template-columns:1fr 1fr; margin-bottom:30px; border:0; border-bottom:1px solid var(--track); }
+.mode-close { position:absolute; top:5px; right:10px; width:36px; height:36px; padding:0; background:transparent; color:var(--text); }
+.mode-close::before,.mode-close::after { content:''; position:absolute; left:50%; top:50%; width:22px; height:1px; background:currentColor; }
+.mode-close::before { transform:translate(-50%,-50%) rotate(45deg); }
+.mode-close::after { transform:translate(-50%,-50%) rotate(-45deg); }
+.mode-tabs { display:grid; grid-template-columns:repeat(3,1fr); margin-bottom:30px; border:0; border-bottom:1px solid var(--track); }
 .mode-tabs:focus { outline:none; }
 .mode-tabs button { background:transparent; color:var(--text); padding:16px 8px; font-size:26px; border-bottom:3px solid transparent; margin-bottom:-1px; }
 .mode-tabs button[aria-selected=true] { border-bottom-color:var(--green); }
 #menu-clock { display:block; text-align:center; font-size:70px; line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.04em; margin:38px 0; }
 #menu-service-status { min-height:2.8em; font-size:13px; margin:22px 0 0; line-height:1.6; text-align:center; }
 #menu-trains { border-top:1px solid var(--green); margin-top:20px; font-size:14px; }
-#mode-custom fieldset { border:1px solid var(--green); border-radius:7px; margin:0 0 16px; padding:4px; display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:26px; }
+#mode-custom fieldset { border:1px solid transparent; border-radius:7px; margin:0 0 16px; padding:4px; display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:26px; }
 #mode-custom legend { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 #mode-custom label { position:relative; cursor:pointer; min-width:0; }
 #mode-custom fieldset label span { display:block; padding:9px 4px; text-align:center; border-radius:4px; background:var(--surface); color:var(--text); }
@@ -59,10 +72,11 @@
 #mode-custom input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
 #mode-custom .service-select-label { display:block; font-size:12px; margin-bottom:10px; }
 .mode-confirm { background:var(--green); color:#000; width:100%; padding:14px; font-size:24px; }
-#custom-timeline { padding:5px 24px 6px; border-top:1px solid var(--green); background:var(--surface); z-index:5; min-width:0; }
-#timeline-slot { min-width:0; min-height:0; overflow:hidden; z-index:5; }
+#custom-timeline { padding:5px 24px 12px; z-index:5; min-width:0; background:linear-gradient(to top,rgb(0 0 0 / .32),rgb(0 0 0 / 0)); }
+#custom-timeline .custom-station { text-shadow:0 1px 3px var(--surface),1px 0 3px var(--surface),-1px 0 3px var(--surface); }
+#timeline-slot { grid-area:2 / 1; min-width:0; min-height:0; overflow:hidden; z-index:5; }
 .station-timeline-scroll { padding:0 18px; }
-.station-timeline { --seek-y:34px; position:relative; height:calc(var(--seek-y) + 32px); margin:0 6px; }
+.station-timeline { --seek-y:34px; position:relative; height:calc(var(--seek-y) + 32px); margin:0 6px 8px; }
 .station-labels { position:absolute; inset:0; }
 .station-tunnels { position:absolute; left:0; right:0; top:calc(var(--seek-y) - 15px); height:5px; }
 .station-tunnels .timeline-tunnel { min-width:2px; }
@@ -71,12 +85,12 @@
 .outside-section { opacity:.35; }
 .station-track { position:absolute; left:0; right:0; top:calc(var(--seek-y) - 2px); height:4px; border-radius:3px; background:var(--track); }
 .station-progress { position:absolute; top:0; height:100%; border-radius:3px; background:var(--green); pointer-events:none; }
-.station-range { position:absolute; top:calc(var(--seek-y) + 12px); height:12px; background:var(--green); pointer-events:none; }
+.station-range { position:absolute; top:calc(var(--seek-y) + 12px); height:12px; background:#fff; pointer-events:none; }
 #custom-seek { position:absolute; left:-6px; top:calc(var(--seek-y) - 10px); width:calc(100% + 12px); height:20px; margin:0; appearance:none; background:transparent; cursor:pointer; }
 #custom-seek::-webkit-slider-thumb { appearance:none; width:12px; height:12px; border:0; border-radius:50%; background:var(--green); box-shadow:none; }
 #custom-seek::-moz-range-thumb { width:12px; height:12px; border:0; border-radius:50%; background:var(--green); box-shadow:none; }
 .range-marker { position:absolute; top:calc(var(--seek-y) + 6px); width:min(32px,var(--range-width,32px)); height:24px; padding:0; transform:translateX(-50%); display:grid; place-items:center; background:transparent; border:0; touch-action:none; cursor:ew-resize; }
-.range-marker::after { content:''; width:5px; height:8px; background:#fff; }
+.range-marker::after { content:''; width:5px; height:8px; background:var(--green); }
 .range-in::after { transform:translateX(5px); }
 .range-out::after { transform:translateX(-5px); }
 #custom-timeline .transport { --transport-control-size:41px; justify-content:center; }
@@ -88,8 +102,9 @@
 .performance-controls select { max-width:250px; margin:0 8px; font-size:12px; background:var(--surface); color:var(--text); }
 .performance-dialog { text-align:center; }.performance-dialog h2 { font-size:26px; margin:0 0 16px; }.performance-dialog p { font-size:14px; line-height:1.7; }.performance-dialog img { display:block; width:240px; max-width:100%; margin:20px auto; image-rendering:pixelated; }.performance-dialog a { color:var(--text); }.performance-dialog button { padding:10px 14px; background:var(--green); color:#000; margin:4px; }.performance-dialog input { width:100%; font:12px system-ui,sans-serif; padding:8px; margin:8px 0; }.performance-dialog details { text-align:left; margin:20px 0 0; font-size:13px; }
 @media(max-width:900px) { .experience .cue-overlay { width:270px; }.experience .cue-primary { padding:16px; }.experience .cue-primary strong { font-size:80px; }.experience .cue-primary h2 { font-size:24px; }.performance-controls { left:210px; right:20px; bottom:65px; } }
-@media(max-width:600px) { .experience { --que-gutter:12px; }.experience #journey-menu { top:12px; right:12px; }.journey-views { left:12px; top:12px; padding:2px; }.journey-views button { padding:8px; font-size:13px; }.experience .cue-overlay { width:200px; right:12px; top:66px; max-height:calc(100% - 170px); }.experience .cue-primary { padding:12px; }.experience .cue-card { padding:10px; }.experience .cue-primary h2 { font-size:20px; margin-bottom:8px; }.experience .cue-card h2 { font-size:14px; }.experience .cue-primary strong { font-size:64px; }.experience .cue-card:not(.cue-primary) strong { font-size:32px; }.experience .cue-card-label { font-size:10px; margin-bottom:9px; }.experience .cue-unit { font-size:12px; }.experience .cue-kind-icon svg { width:18px; height:18px; }.experience .cue-primary .cue-kind-icon svg { width:40px; height:40px; }.experience .journey-cue-note { font-size:10px; margin-top:8px; }.journey-instruments { left:12px; }.journey-instruments strong { font-size:52px; }#journey-clock { font-size:32px; }.journey-instruments p { margin-bottom:16px; }.journey-legend { right:12px; bottom:30px; gap:6px; padding:4px; font-size:8px; }.journey-legend i { width:10px; }.mode-menu,.performance-dialog { padding:38px 24px 24px; }.mode-tabs { margin-bottom:24px; }.mode-tabs button { font-size:23px; }#menu-clock { font-size:60px; }.live-directions button { font-size:22px; }#mode-custom fieldset { font-size:23px; }#custom-service { font-size:16px; }#custom-timeline { padding:4px 14px 5px; }.performance-controls { left:12px; right:12px; bottom:135px; }.performance-controls span { display:block; margin-top:5px; }.experience .countdown-focus { padding-top:70px; } }
+@media(max-width:600px) { .experience { --que-gutter:12px; }.experience #journey-menu { min-height:56px; padding-top:12px; font-size:13px; }.journey-views { padding:2px; }.journey-views button { padding:8px; font-size:13px; }.experience .cue-overlay { width:200px; right:12px; top:66px; max-height:calc(100% - 170px); }.experience .cue-primary { padding:12px; }.experience .cue-card { padding:10px; }.experience .cue-primary h2 { font-size:20px; margin-bottom:8px; }.experience .cue-card h2 { font-size:14px; }.experience .cue-primary strong { font-size:64px; }.experience .cue-card:not(.cue-primary) strong { font-size:32px; }.experience .cue-unit { font-size:12px; }.experience .cue-kind-icon svg { width:18px; height:18px; }.experience .cue-primary .cue-kind-icon svg { width:40px; height:40px; }.experience .journey-cue-note { font-size:10px; margin-top:8px; }.journey-instruments { left:12px; }.journey-instruments strong { font-size:52px; }#journey-clock { font-size:32px; }.journey-instruments p { margin-bottom:16px; }.journey-legend { right:12px; gap:6px; padding:4px; font-size:8px; }.journey-legend i { width:10px; }.mode-menu,.performance-dialog { padding:38px 24px 24px; }.mode-tabs { margin-bottom:24px; }.mode-tabs button { font-size:23px; }#menu-clock { font-size:60px; }.live-directions button { font-size:22px; }#mode-custom fieldset { font-size:23px; }#custom-service { font-size:16px; }#custom-timeline { padding:4px 14px 5px; }.performance-controls { left:12px; right:12px; bottom:135px; }.performance-controls span { display:block; margin-top:5px; }.experience .countdown-focus { padding-top:70px; } }
 @media(max-height:650px) and (min-width:601px) { .experience .cue-overlay { width:260px; top:67px; }.experience .cue-card { padding:10px; }.experience .cue-primary strong { font-size:72px; }.experience .cue-primary h2 { font-size:22px; }.journey-instruments strong { font-size:52px; } }
+@media(min-width:761px) { .experience .cue-overlay { top:24px; } }
 /* The fallback track and its train must move together after seeking. */
 .experience #line-map.positioned svg > g, .experience #line-map.positioned .line-train { transition:none; }
 .experience .line-train.is-followed { transform:translate(-50%,-50%); width:24px; height:24px; min-height:0; padding:0; border:4px solid white; border-radius:50%; background:var(--green); font-size:0; box-shadow:0 0 0 1px #000; }
@@ -98,6 +113,8 @@
 .experience .tunnel-marker { width:28px; height:28px; transform:var(--portal-screen,translate(-200vw,-200vh)) translate(-50%,-100%) !important; }
 .experience .tunnel-marker.exit { width:20px; height:20px; }
 .experience .tunnel-portal { flex-shrink:0; }
+/* Station and tunnel names on the map are bare text, with no box behind them. */
+.experience :is(.station-marker-name,.station-marker.next-station .station-marker-name,.tunnel-marker-label) { background:transparent; border:0; color:var(--text); }
 .experience .tunnel-marker-label { position:absolute; left:calc(100% + 6px); top:50%; transform:translateY(-50%); white-space:nowrap; }
 @media(max-width:600px) {
   /* Keep the centre point unobstructed even on a narrow phone display. */
@@ -108,7 +125,7 @@
   .experience .cue-primary .cue-kind-icon svg { width:26px; height:26px; }
   .experience .cue-card:not(.cue-primary) { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px; padding:8px; }
   .experience .cue-card:not(.cue-primary) h2 { font-size:13px; margin:0; }
-  .experience .cue-card:not(.cue-primary) :is(.cue-card-label,.cue-kind-icon,.journey-cue-note) { display:none; }
+  .experience .cue-card:not(.cue-primary) :is(.cue-kind-icon,.journey-cue-note) { display:none; }
   .experience .cue-card:not(.cue-primary) .cue-seconds { gap:3px; }
   .experience .cue-card:not(.cue-primary) .cue-unit { font-size:10px; }
 }
@@ -116,14 +133,14 @@
 /* The follow camera targets the train itself. Once it arrives, keep the dot on
    that pixel instead of applying Mapbox's separately rounded marker transform. */
 .custom-experience .current-marker.tracking-center { top:50%; left:50%; transform:translate(-50%,-50%) !important; }
-.custom-experience #cue-list { grid-template-columns:minmax(0,1fr); }
-.custom-experience .cue-card-label { display:none; }
-.custom-experience .cue-card:not(.cue-primary) { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:6px; }
-.custom-experience .cue-card:not(.cue-primary) h2 { margin:0; }
-.custom-experience .cue-card:not(.cue-primary) :is(.cue-kind-icon,.journey-cue-note) { display:none; }
+/* LIVE and CUSTOM share one cue list: the next cue large, the rest as rows. */
+.experience #cue-list { grid-template-columns:minmax(0,1fr); }
+.experience .cue-card:not(.cue-primary) { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:6px; }
+.experience .cue-card:not(.cue-primary) h2 { margin:0; }
+.experience .cue-card:not(.cue-primary) :is(.cue-kind-icon,.journey-cue-note) { display:none; }
 
 /* Docked selection menu. */
-.mode-menu { position:fixed; inset:0 0 0 auto; margin:0; width:min(480px,42vw); height:100dvh; max-width:none; max-height:none; padding:42px 32px 28px; border:0; border-left:1px solid var(--green); box-shadow:none; overflow:hidden; transform:translateX(100%); transition:transform var(--menu-duration,420ms) cubic-bezier(.4,0,.2,1); z-index:10; }
+.mode-menu { position:fixed; inset:0 0 0 auto; margin:0; width:min(480px,42vw); height:100dvh; max-width:none; max-height:none; padding:42px 32px 28px; border:0; border-left:1px solid transparent; box-shadow:none; overflow:hidden; transform:translateX(100%); transition:transform var(--menu-duration,420ms) cubic-bezier(.4,0,.2,1); z-index:10; }
 .mode-menu[open] { display:flex; flex-direction:column; }
 .mode-menu[data-state=open] { transform:translateX(0); }
 .mode-menu::backdrop { background:transparent; backdrop-filter:none; }
@@ -131,18 +148,22 @@
 .mode-menu .mode-tabs button { padding:12px 8px; }
 .mode-menu [role=tabpanel] { flex:1; min-height:0; display:flex; flex-direction:column; }
 .mode-menu #menu-clock { flex-shrink:0; font-size:64px; margin:16px 0 24px; }
-.mode-menu #menu-service-status { font-size:13px; min-height:0; margin:0 0 12px; text-align:left; }
-.mode-menu .service-list { flex:0 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--green); padding:0; margin:0 0 20px; background:var(--surface); }
+.mode-menu :is(#menu-service-status,.mode-video-note) { font-size:13px; min-height:0; margin:0 0 12px; text-align:left; }
+.mode-menu .service-list { flex:0 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid transparent; padding:0; margin:0 0 20px; background:var(--surface); }
 .mode-menu #menu-trains { border:0; }
+.mode-menu #menu-trains .service-option { min-height:74px; }
 .mode-menu .service-list:empty { display:none; }
 .mode-menu #custom-service .service-option:last-child { border-bottom:0; }
 .mode-menu .service-option { display:block; width:100%; min-height:46px; padding:12px; border:0; border-bottom:1px solid var(--green); background:var(--surface); color:var(--text); text-align:left; font-size:18px; line-height:1.35; }
 .mode-menu .service-option[aria-selected=true] { background:var(--green); color:#000; }
 .mode-menu .service-option:focus-visible { outline:2px solid var(--text); outline-offset:-3px; }
-.mode-menu .mode-confirm { flex-shrink:0; padding:12px; }
+.mode-menu #video-service .service-option { display:flex; align-items:center; gap:14px; }
+.mode-menu #video-service img { flex:none; width:160px; height:auto; aspect-ratio:16 / 9; object-fit:cover; background:#000; }
+.mode-menu .mode-confirm { flex-shrink:0; margin-top:auto; padding:12px; }
 .mode-menu #mode-custom fieldset { flex-shrink:0; }
 .mode-menu .service-select-label { margin-bottom:8px; }
 .mode-menu #mode-custom { margin:0; }
+.custom-experience.menu-open #journey-clock { visibility:hidden; }
 .mode-menu #custom-service {
   --row-min-height:50px;
   width:100%; height:calc(var(--service-count) * var(--row-min-height) + 2px);
@@ -159,7 +180,6 @@
 .menu-returning #journey-menu, .menu-preparing #journey-menu { visibility:hidden; }
 .experience :is(.journey-views,.cue-overlay,.journey-instruments p,.journey-legend) { transition:opacity 220ms linear; }
 .menu-open #journey-video,.menu-returning #journey-video { visibility:hidden; }
-.menu-open.video-view .journey-instruments { display:block; }
 .overview-train,.experience .line-train:not(.is-followed) { display:block; width:22px; height:22px; min-height:0; padding:0; border:2px solid #fff; border-radius:50%; background:var(--green); color:#000; box-shadow:0 0 0 1px #007d24; z-index:3; }
 .train-tooltip { position:absolute; top:calc(100% + 8px); left:0; padding:6px 9px; background:var(--surface); border:1px solid var(--green); color:var(--text); font-size:15px; line-height:1.3; white-space:nowrap; visibility:hidden; opacity:0; pointer-events:none; transition:opacity 120ms; }
 :is(.overview-train,.line-train):is(:hover,:focus) { z-index:4; }
@@ -187,7 +207,11 @@
 .experience #line-map[data-overview=true] .line-train { transform:translate(-50%,-50%); }
 .experience #line-map[data-overview=true] .line-train::after { left:-4px; right:auto; }
 @media(max-width:760px) {
-  .mode-menu { inset:0 0 auto; width:100%; height:auto; max-height:min(450px,58dvh); padding:32px 18px 14px; border-left:0; border-bottom:1px solid var(--green); transform:translateY(-100%); }
+  .journey-instruments { bottom:calc(68px + var(--timeline-height,0px)); }
+  .journey-legend { bottom:calc(72px + var(--timeline-height,0px)); }
+  .experience #journey-menu { left:auto; right:var(--que-gutter); transform:none; padding-inline:8px; }
+  #journey-reveal { left:auto; right:0; translate:none; width:120px; height:56px; }
+  .mode-menu { inset:0 0 auto; width:100%; height:auto; max-height:min(450px,58dvh); padding:32px 18px 14px; border-left:0; border-bottom:1px solid transparent; transform:translateY(-100%); }
   .mode-menu[data-state=open] { transform:translateY(0); }
 }
 @media(max-width:760px) and (max-height:500px) {
@@ -202,14 +226,17 @@
   .mode-menu .service-list { margin-bottom:10px; }
   .mode-menu #custom-service { --row-min-height:34px; }
   .mode-menu .service-option { font-size:14px; min-height:34px; padding:7px 9px; }
+  .mode-menu #menu-trains .service-option { min-height:51px; }
+  .mode-menu #video-service .service-option { gap:10px; }
+  .mode-menu #video-service img { width:96px; }
   .mode-menu .mode-confirm { padding:6px; font-size:20px; }
   .mode-menu #menu-clock { font-size:42px; margin:2px 0 10px; }
-  .mode-menu #menu-service-status { font-size:11px; margin-bottom:8px; }
+  .mode-menu :is(#menu-service-status,.mode-video-note) { font-size:11px; margin-bottom:8px; }
 }
-@media(prefers-reduced-motion:reduce) { .experience :is(.journey-views,.cue-overlay,.journey-instruments p,.journey-legend,#custom-timeline) { transition:none; } }
+@media(prefers-reduced-motion:reduce) { .experience :is(.journey-views,.cue-overlay,.journey-instruments p,.journey-legend,#custom-timeline,#journey-menu) { transition:none; } }
 
 @media(max-width:760px), (pointer:coarse) and (max-width:1024px) {
-  .custom-experience .cue-overlay { bottom:auto; max-height:none; overflow:visible; transform:scale(var(--cue-scale,1)); transform-origin:top right; }
+  .experience .cue-overlay { bottom:auto; max-height:none; overflow:visible; transform:scale(var(--cue-scale,1)); transform-origin:top right; }
   .experience { --overview-line-width:2.5px; --tick-width:14px; --tick-height:3px; --endpoint-width:14px; --endpoint-height:3px; }
   #map[data-overview=true] :is(.station-marker,.section-endpoint) .station-marker-name,
   .experience #line-map[data-overview=true] [data-station] text { font-size:13px; }
@@ -218,14 +245,28 @@
   #map[data-overview=true] .station-marker-name .station-romaji, .experience #line-map[data-overview=true] .station-romaji { display:none; }
 }
 
-/* On phones, keep the entire seek range in view and name only its endpoints. */
+/* On phones, keep the entire seek range in view and name only its endpoints,
+   beside the range handles so the bar needs no row of its own for names. */
 @media(max-width:760px), (pointer:coarse) and (max-width:1024px) {
   .station-tunnels { display:none; }
   .custom-station:not(.range-start):not(.range-end) { visibility:hidden; }
   .custom-station::after { visibility:visible; }
-  .custom-station:is(.range-start,.range-end) { transform:translateX(calc(-50% + var(--label-shift,0px))); }
-  .custom-station:is(.range-start,.range-end)::after { left:calc(50% - var(--label-shift,0px)); }
-  .close-range-labels { --seek-y:50px; }
-  .close-range-labels .range-end { top:16px; }
-  .close-range-labels .range-end::after { top:calc(var(--seek-y) - 27px); }
+  .station-timeline { --seek-y:14px; }
+  .station-timeline-scroll { padding:0 30px; }
+  .custom-station:is(.range-start,.range-end) { top:calc(var(--seek-y) + 10px); font-size:12px; }
+  .custom-station.range-start { transform:translateX(calc(-100% - 6px)); }
+  .custom-station.range-end { transform:translateX(6px); }
+  .custom-station:is(.range-start,.range-end)::after { top:-21px; }
+  .custom-station.range-start::after { left:calc(100% + 6px); }
+  .custom-station.range-end::after { left:-6px; }
+}
+
+/* Phone portrait: the cues span the width, and the menu label may drop over them. */
+@media(max-width:600px) {
+  .experience .cue-overlay { left:12px; right:12px; top:12px; width:auto; transform:none; }
+  /* One row: the next cue takes the remaining width, each later one a quarter. */
+  .experience #cue-list { grid-template-columns:minmax(0,1fr); grid-auto-flow:column; grid-auto-columns:25%; }
+  .experience .cue-card:not(.cue-primary) { grid-column:auto; display:flex; flex-direction:column; justify-content:space-between; align-items:stretch; gap:6px; padding:10px 8px; }
+  .experience .cue-card:not(.cue-primary) h2 { font-size:11px; line-height:1.3; overflow-wrap:anywhere; }
+  .experience .cue-card:not(.cue-primary) strong { font-size:26px; }
 }

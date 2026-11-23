@@ -52,15 +52,6 @@ export function createStationTimeline({ container, plan, from, to, onSeek, onRan
   function layoutRangeLabels() {
     const width = track.clientWidth;
     if (!width) return;
-    const selected = [range.first, range.last].map(index => {
-      const label = labels[index], labelWidth = label.offsetWidth;
-      const centered = index / lastIndex * width - labelWidth / 2;
-      // Reserve the existing gutter for edge names without moving their ticks.
-      const left = Math.max(-16, Math.min(width + 16 - labelWidth, centered));
-      label.style.setProperty('--label-shift', `${left - centered}px`);
-      return { left, right: left + labelWidth };
-    });
-    track.classList.toggle('close-range-labels', selected[0].right + 8 > selected[1].left);
     const rangeWidth = (range.last - range.first) / lastIndex * width;
     track.style.setProperty('--range-width', `${rangeWidth}px`);
   }

@@ -15,6 +15,7 @@
     "test:production": "npm run build -- --base=/tarumi-seq/ && TARUMI_TEST_PRODUCTION=1 playwright test",
     "postbuild": "node scripts/prepare-pages.mjs",
     "api:sync-local": "node scripts/sync-local-api.mjs",
+    "video:sync": "node scripts/sync-video-labels.mjs",
     "dev:phone": "node scripts/dev-phone.mjs",
     "predev:phone": "npm run data:prepare"
   },

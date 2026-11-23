@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 const fixed = new Date('2026-11-20T15:30:00+09:00');
 test.beforeEach(async ({page}) => {
   await page.route('https://*.mapbox.com/**', route=>route.abort());
@@ -16,10 +18,10 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await expect(page).toHaveURL(/\/$/);
   await page.locator('#mode-live').getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/live\/\?train=/);await expect(page.locator('#loading')).toBeHidden();
-  await expect(page.locator('.journey-views button:visible')).toHaveText(['自動','進行方向','鳥瞰']);
+  await expect(page.locator('.journey-views button:visible')).toHaveText(['自動','斜俯瞰','鳥瞰']);
   await expect(page.locator('#journey-clock')).toHaveText('15:30:00');
   await expect(page.locator('footer')).toHaveCount(0);
-  await page.getByRole('button',{name:'メニューを開く'}).click();
+  await openMenu(page);
   await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.getByRole('button',{name:'メニューを閉じる'})).toBeVisible();
   await page.getByRole('tab',{name:'CUSTOM'}).click();
@@ -27,7 +29,7 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
   await page.locator('#custom-service [data-train="23"]').click();
   await page.getByRole('button',{name:'OK',exact:true}).click();
   await expect(page).toHaveURL(/\/custom\/\?train=23&day=weekday/);
-  await expect(page.locator('.journey-views button')).toHaveText(['自動','進行方向','鳥瞰','車窓']);
+  await expect(page.locator('.journey-views button')).toHaveText(['自動','斜俯瞰','鳥瞰']);
   expect(requests).toEqual([]);
 });
 test('off-hours LIVE confirmation is disabled while holiday CUSTOM remains available',async({page})=>{
@@ -49,7 +51,7 @@ test('CUSTOM station handles clamp the range, survive reload, and stop on OUT',a
   await seekPercent(page,1000);await expect(page.locator('#journey-clock')).toHaveText('15:49:30');
   await expect(page.locator('#custom-play')).toHaveAttribute('aria-label','再生');
   await page.locator('#custom-play').click();await expect(page.locator('#journey-clock')).toHaveText(/15:45:0\d/);
-  await page.getByRole('button',{name:'メニューを開く'}).click();const paused=await page.locator('#journey-clock').textContent();
+  await openMenu(page);const paused=await page.locator('#journey-clock').textContent();
   await page.waitForTimeout(1100);expect(await page.locator('#journey-clock').textContent()).toBe(paused);
 });
 test('CUSTOM does not enter countdown mode before or on a station arrival',async({page})=>{
@@ -84,13 +86,11 @@ for (const [train, from, to, start, end, names] of [
   await expect(page.locator('#custom-prev')).toBeDisabled();
   await page.reload(); await expect(page.locator('#journey-clock')).toHaveText(start);
 });
-test('legacy QUE links preserve station ranges and video is only a CUSTOM view',async({page})=>{
-  await page.route('https://www.youtube.com/**',r=>r.abort());
+test('legacy QUE links preserve station ranges and video is not a CUSTOM view',async({page})=>{
   await open(page,'/que/?mode=playback&train=23&day=weekday&from=9&to=18');
   await expect(page).toHaveURL(/\/custom\/\?train=23&day=weekday&from=9&to=18/);
   await expect(page.locator('#section-name')).toHaveText('本巣 → 水鳥');
-  await page.getByRole('button',{name:'車窓',exact:true}).click();await expect(page.locator('#journey-video')).toHaveAttribute('src',/m-jjJKsWI24/);
-  await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await expect(page.locator('#journey-video')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'車窓',exact:true})).toHaveCount(0);await expect(page.locator('#journey-video')).toBeHidden();
 });
 for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1440,height:1000}]) test(`CUSTOM fits ${viewport.width}px and range markers work with dragging`,async({page})=>{
   await page.setViewportSize(viewport);await open(page,'/custom/?train=23&day=weekday');
@@ -105,8 +105,10 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:144
   await expect(page.locator('.cue-card-label:visible')).toHaveCount(0);
   const cards=await page.locator('.cue-card').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().toJSON()));
   expect(cards).toHaveLength(3);
-  expect(cards[0].bottom).toBeLessThanOrEqual(cards[1].top);
-  expect(cards[1].bottom).toBeLessThanOrEqual(cards[2].top);
+  // Phones lay the cues out in one row; wider screens stack them.
+  const [start,end]=viewport.width<=600?['right','left']:['bottom','top'];
+  expect(cards[0][start]).toBeLessThanOrEqual(cards[1][end]);
+  expect(cards[1][start]).toBeLessThanOrEqual(cards[2][end]);
   const track=await page.locator('.station-timeline').boundingBox();
   const stationCount=await page.locator('.custom-station').count();
   const marker=page.locator('.range-in'), box=await marker.boundingBox();
@@ -164,7 +166,7 @@ for (const trainId of ['18','23']) test(`LIVE only shows a focus countdown at tu
   const epoch=Date.parse('2026-11-20T00:00:00+09:00');
   for (const seconds of [times.station-9,times.station]) {
     await page.clock.setFixedTime(new Date(epoch+seconds*1000));
-    await expect(page.locator('.cue-primary .cue-category')).toHaveText('駅');
+    await expect(page.locator('.cue-primary h2')).toContainText('駅まで');
     await expect(page.locator('.cue-primary strong')).toHaveText(seconds===times.station?'0':'9');
     await expect(page.locator('#cue-countdown-focus')).toBeHidden();
   }

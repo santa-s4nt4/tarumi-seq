@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { activeServices } from '../../src/journey.js';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 const timetable=JSON.parse(fs.readFileSync('public/data/timetable-reference.json'));
 test('QR scan switches to the map without starting GPS; iPad follows PC selection and camera',async({page,browser,baseURL,request})=>{
   await page.route('https://*.mapbox.com/**',r=>r.abort());
@@ -32,7 +34,7 @@ test('QR scan switches to the map without starting GPS; iPad follows PC selectio
     await page.getByRole('button',{name:'鳥瞰',exact:true}).click();
     await expect(ipad.locator('[data-view="bird"]')).toHaveAttribute('aria-pressed','true');
   }
-  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#performance-qr')).toBeVisible();
+  await openMenu(page);await expect(page.locator('#performance-qr')).toBeVisible();
   await phone.reload();await expect(page.locator('#performance-qr')).toBeHidden();
   await request.delete('/local-api/api/gps-links/'+keys.get('gps-send'),{headers:{Authorization:'Bearer '+reader}});
   await expect(page.locator('#performance-qr')).toBeVisible();await expect(page.locator('.performance-retry')).toBeVisible();

@@ -2,6 +2,7 @@ import { scheduleStops, buildScheduledRun, positionAlong, serviceSeconds } from 
 import { serviceDayAt, serviceDayEpoch, japanDate } from './timetable-reference.js';
 
 export const directionName = direction => direction === 'front' ? '樽見行き' : '大垣行き';
+export const serviceLabel = (train, stations) => `${stations.find(station => station.order === train.stops[0].station)?.name ?? ''}発　${train.stops[0].departure}–${train.stops.at(-1).arrival ?? train.stops.at(-1).departure}`;
 // Services terminating at Motosu from Ogaki never enter the experience section.
 export const servesExperienceSection = train => [9, 19].every(station => train.stops.some(stop => stop.station === station));
 // Keep the diagram's published section departure/arrival times, including

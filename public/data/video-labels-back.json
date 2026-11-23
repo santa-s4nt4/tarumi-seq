@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "source": {
+    "youtubeId": "7O6dZcTG2mQ",
+    "direction": "back",
+    "seededFrom": "tarumi-seq@24146a1:public/data/map-data.json"
+  },
+  "features": [
+    {
+      "id": "station-19",
+      "type": "station",
+      "name": "樽見",
+      "in": null,
+      "out": 0,
+      "inOk": false,
+      "outOk": false
+    },
+    {
+      "id": "tunnel-375632201",
+      "type": "tunnel",
+      "name": "トンネル9",
+      "in": 31.4,
+      "out": 97.757,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-18",
+      "type": "station",
+      "name": "水鳥",
+      "in": 174,
+      "out": 205.63,
+      "inOk": false,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375631096",
+      "type": "tunnel",
+      "name": "トンネル8",
+      "in": 262.932,
+      "out": 275.932,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375631094",
+      "type": "tunnel",
+      "name": "トンネル7",
+      "in": 299.932,
+      "out": 337.932,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-17",
+      "type": "station",
+      "name": "高尾",
+      "in": 378.932,
+      "out": 394.932,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375628399",
+      "type": "tunnel",
+      "name": "トンネル6",
+      "in": 415.932,
+      "out": 490.932,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375628398",
+      "type": "tunnel",
+      "name": "トンネル5",
+      "in": 533.932,
+      "out": 574.932,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-16",
+      "type": "station",
+      "name": "日当",
+      "in": 592.932,
+      "out": 610,
+      "inOk": true,
+      "outOk": false
+    },
+    {
+      "id": "tunnel-375627269",
+      "type": "tunnel",
+      "name": "トンネル4",
+      "in": 634.814,
+      "out": 643.814,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375626668",
+      "type": "tunnel",
+      "name": "トンネル3",
+      "in": 681.814,
+      "out": 711.814,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-15",
+      "type": "station",
+      "name": "鍋原",
+      "in": 775,
+      "out": 809.814,
+      "inOk": false,
+      "outOk": true
+    },
+    {
+      "id": "station-14",
+      "type": "station",
+      "name": "高科",
+      "in": 918,
+      "out": 936.49,
+      "inOk": false,
+      "outOk": true
+    },
+    {
+      "id": "station-13",
+      "type": "station",
+      "name": "神海",
+      "in": 1073.557,
+      "out": 1111.497,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-12",
+      "type": "station",
+      "name": "谷汲口",
+      "in": 1295,
+      "out": 1314.678,
+      "inOk": false,
+      "outOk": true
+    },
+    {
+      "id": "station-11",
+      "type": "station",
+      "name": "木知原",
+      "in": 1434.283,
+      "out": 1470.399,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375457113",
+      "type": "tunnel",
+      "name": "トンネル2",
+      "in": 1536.916,
+      "out": 1560.916,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "tunnel-375457112",
+      "type": "tunnel",
+      "name": "トンネル1",
+      "in": 1652.1,
+      "out": 1662.355,
+      "inOk": true,
+      "outOk": true
+    },
+    {
+      "id": "station-10",
+      "type": "station",
+      "name": "織部",
+      "in": 1741.781,
+      "out": null,
+      "inOk": true,
+      "outOk": false
+    },
+    {
+      "id": "station-9",
+      "type": "station",
+      "name": "本巣",
+      "in": null,
+      "out": null,
+      "inOk": false,
+      "outOk": false
+    }
+  ]
+}

@@ -108,7 +108,7 @@ export function createLiveMap({ profile, river, stations, onSelect, onReady, onE
         map.addSource(id, { type: 'geojson', data, lineMetrics: true });
         const clearance = id === 'route' ? 1 : id === 'tunnels' ? 2.5 : 4;
         map.addLayer({ id, type: 'line', slot: 'top', source: id, layout: { 'line-elevation-reference': 'sea', 'line-z-offset': railLineZOffsetWithClearance(clearance), 'line-elevation-ground-scale': 1 },
-          paint: { 'line-color': id === 'bridges' ? '#331e19' : '#00ff36', 'line-width': id === 'tunnels' ? 10 : 7, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.3,
+          paint: { 'line-color': id === 'bridges' ? '#331e19' : '#00ff5b', 'line-width': id === 'tunnels' ? 10 : 7, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.3,
             ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
       const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>'; element.hidden = true; element.setAttribute('aria-label', '追従中の列車の推定位置');

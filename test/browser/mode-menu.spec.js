@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { activeServices } from '../../src/journey.js';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 const fixed=new Date('2026-11-21T10:34:00+09:00');
 const timetable=JSON.parse(fs.readFileSync('public/data/timetable-reference.json'));
 const custom='/custom/?train=18&day=holiday&from=19&to=10';
@@ -88,7 +90,7 @@ test('reopening LIVE or switching from CUSTOM shows one circle for each concurre
   const markers = page.locator('#line-map .line-train:visible');
   for (const path of ['/live/?train=19', '/custom/?train=18&day=holiday']) {
     await load(page, path);
-    await page.getByRole('button', {name:'メニューを開く'}).click();
+    await openMenu(page);
     await page.getByRole('tab', {name:'LIVE', exact:true}).click();
     await expect.poll(() => choices.evaluateAll(ids)).toEqual(['19', 'extra-1', 'extra-2']);
     await expect.poll(() => markers.evaluateAll(ids)).toEqual(['19', 'extra-1', 'extra-2']);
@@ -146,7 +148,7 @@ test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrolla
   const tabs=await page.locator('[role=tab]').evaluateAll(nodes=>nodes.map(node=>({
     selected:node.getAttribute('aria-selected'),border:getComputedStyle(node).borderBottomColor,background:getComputedStyle(node).backgroundColor,
   })));
-  expect(tabs[0].border).toBe('rgba(0, 0, 0, 0)');expect(tabs[1].border).toBe('rgb(0, 255, 54)');
+  expect(tabs[0].border).toBe('rgba(0, 0, 0, 0)');expect(tabs[1].border).toBe('rgb(0, 255, 91)');
   expect(tabs.every(tab=>tab.background==='rgba(0, 0, 0, 0)')).toBe(true);
   await expect(page.locator('#custom-service select')).toHaveCount(0);
   const list=page.locator('#custom-service');expect(await list.evaluate(e=>e.scrollHeight>e.clientHeight)).toBe(true);
@@ -161,9 +163,9 @@ test('LIVE lists every active train and confirms explicitly; CUSTOM is a scrolla
 for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:320,height:640}]) test(`menu preserves the selected train, time, view and playback at ${viewport.width}px`,async({page})=>{
   await page.route('https://*.mapbox.com/**',route=>route.abort());await page.clock.setFixedTime(fixed);await page.setViewportSize(viewport);await load(page,custom);
   await page.getByRole('button',{name:'鳥瞰',exact:true}).click();await page.locator('#custom-play').click();
-  await expect(page.locator('#journey-clock')).toHaveText('10:33:01');await page.getByRole('button',{name:'メニューを開く'}).click();
+  await expect(page.locator('#journey-clock')).toHaveText('10:33:01');await openMenu(page);
   const time=await page.locator('#journey-clock').textContent();await page.waitForTimeout(2200);
-  await expect(page.locator('#journey-clock')).toHaveText(time);await expect(page.locator('#journey-clock')).toBeVisible();
+  await expect(page.locator('#journey-clock')).toHaveText(time);await expect(page.locator('#journey-clock')).toBeHidden();
   await expect(page.locator('#journey-speed')).toBeHidden();await expect(page.locator('#custom-timeline')).toBeHidden();await expect(page.locator('.cue-overlay')).toBeHidden();
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveCount(1);
   await expect(page.locator('#line-map .line-train:not([hidden])')).toHaveAttribute('data-train','18');
@@ -201,7 +203,7 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
       return result;
     };
   },mapboxModule);
-  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(100);
+  await openMenu(page);await expect(page.locator('#mode-menu')).toBeVisible();await page.waitForTimeout(100);
   expect(await page.evaluate(()=>window.menuMap.isMoving())).toBe(true);
   expect(await page.evaluate(()=>window.flight.duration)).toBe(1800);
   expect(await page.locator('#mode-menu').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0.42s');
@@ -250,7 +252,7 @@ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) test(`t
 
 test('reduced-motion menus close without leaving hidden controls or restarting a paused train',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.route('https://*.mapbox.com/**',r=>r.abort());await load(page,custom);
-  await page.getByRole('button',{name:'メニューを開く'}).click();
+  await openMenu(page);
   expect(await page.locator('#mode-menu').evaluate(e=>getComputedStyle(e).transitionDuration)).toBe('0s');
   await page.keyboard.press('Escape');await expect(page.locator('#mode-menu')).toBeHidden();
   await expect(page.locator('#custom-play')).toHaveAttribute('aria-pressed','false');await expect(page.locator('#journey-clock')).toHaveText('10:33:00');

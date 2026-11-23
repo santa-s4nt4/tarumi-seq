@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 const fixed = new Date('2026-11-21T10:34:00+09:00');
 
 async function recordPanels(page) {
@@ -49,7 +51,7 @@ for (const width of [1440, 390]) test(`OK keeps the map mounted and sequences th
   await page.locator('#custom-play').click();
   const footerHeight = (await page.locator('#custom-timeline').boundingBox()).height;
   await recordPanels(page);
-  await page.getByRole('button', {name:'メニューを開く'}).click();
+  await openMenu(page);
   await expect(page.locator('#mode-menu')).toBeVisible();
   frames = await panelFrames(page);
   expect(frames.some(frame => !frame.menu && frame.timeline === 'leaving' && frame.height > 0 && frame.height < footerHeight)).toBe(true);
@@ -102,7 +104,7 @@ test('sliding the timeline in terrain does not abruptly change the zoom before t
     }
     frame();
   });
-  await page.getByRole('button',{name:'メニューを開く'}).click(); await expect(page.locator('#mode-menu')).toBeVisible();
+  await openMenu(page); await expect(page.locator('#mode-menu')).toBeVisible();
   const zooms=await page.evaluate(()=>window.slideZooms);
   expect(zooms.length).toBeGreaterThan(5);
   expect(Math.max(...zooms.slice(1).map((zoom,index)=>Math.abs(zoom-zooms[index])))).toBeLessThan(.1);

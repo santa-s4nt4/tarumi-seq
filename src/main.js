@@ -33,7 +33,7 @@ try {
 } catch { /* Preferences are optional. */ }
 const quePitch = 72;
 // Palette from tarumi-oto-fes-main/app/globals.css and its original logo assets.
-const queRouteColors = { ahead: '#00ff36', passed: '#bfffcc', river: '#0a84ff', forest: '#1d3a22', plain: '#c4c1b0' };
+const queRouteColors = { ahead: '#00ff5b', passed: '#bfffcc', river: '#0a84ff', forest: '#1d3a22', plain: '#c4c1b0' };
 const consoleMapColors = { river: '#a6d8f5', tunnel: '#331e19', tunnelDark: '#d8b6a0' };
 document.body.classList.toggle('que-view', isPlayback);
 document.body.classList.toggle('console-view', !isPlayback);

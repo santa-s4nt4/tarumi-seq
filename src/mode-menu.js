@@ -1,16 +1,17 @@
-import { activeServices, services, customTimetable, directionName } from './journey.js';
+import { activeServices, services, customTimetable, directionName, serviceLabel } from './journey.js';
 import { serviceTime } from './simulation.js';
 import { serviceDayAt, japanDate, serviceDayEpoch } from './timetable-reference.js';
 import { menuDuration } from './menu-motion.js';
 
-export function createModeMenu({ timetable, stations, onLive, onCustom, dismissible = true, beforeOpen = () => {}, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
+export function createModeMenu({ timetable, stations, onLive, onCustom, onVideo, now: clock = Date.now, dismissible = true, beforeOpen = () => {}, onOpen = () => {}, onCloseStart = () => {}, onClose = () => {} }) {
   const customSchedule = customTimetable(timetable);
   const dialog = document.createElement('dialog');
   dialog.id = 'mode-menu'; dialog.className = 'mode-menu'; dialog.setAttribute('aria-label', 'モードを選ぶ');
-  dialog.innerHTML = `<button class="mode-close" aria-label="メニューを閉じる">×</button>
+  dialog.innerHTML = `<button class="mode-close" type="button" aria-label="メニューを閉じる"></button>
     <div class="mode-tabs" role="tablist" aria-label="モード" tabindex="-1">
       <button id="tab-live" role="tab" aria-selected="true" aria-controls="mode-live">LIVE</button>
       <button id="tab-custom" role="tab" aria-selected="false" aria-controls="mode-custom">CUSTOM</button>
+      <button id="tab-video" role="tab" aria-selected="false" aria-controls="mode-video">VIDEO</button>
     </div>
     <form id="mode-live" role="tabpanel" aria-labelledby="tab-live">
       <time id="menu-clock" aria-label="現在時刻"></time><p id="menu-service-status" role="status"></p>
@@ -23,9 +24,14 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
       <span class="service-select-label" id="custom-service-label">発車駅・ダイヤ</span>
       <div id="custom-service" class="service-list" role="listbox" aria-labelledby="custom-service-label"></div>
       <button class="mode-confirm" type="submit">OK</button>
+    </form>
+    <form id="mode-video" role="tabpanel" aria-labelledby="tab-video" hidden>
+      <p class="mode-video-note">車窓映像を再生します。合図は映像の再生位置に合わせて表示します。</p>
+      <div id="video-service" class="service-list" role="listbox" aria-label="車窓映像"></div>
+      <button class="mode-confirm" type="submit">OK</button>
     </form>`;
   document.body.append(dialog);
-  const $ = selector => dialog.querySelector(selector), name = order => stations.find(station => station.order === order)?.name ?? '';
+  const $ = selector => dialog.querySelector(selector);
   const customList = $('#custom-service');
   new ResizeObserver(([entry]) => {
     const option = customList.firstElementChild;
@@ -36,18 +42,19 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     customList.style.setProperty('--row-height', `${height / visibleRows}px`);
   }).observe(customList);
   $('.mode-close').hidden = !dismissible;
-  const label = train => `${name(train.stops[0].station)}発　${train.stops[0].departure}–${train.stops.at(-1).arrival ?? train.stops.at(-1).departure}`;
-  let currentTab = 'live', timer, closeTimer, active = false, opening = false, liveId = null, customId = null, liveChoices = [], customChoices = [], liveSignature;
+  const label = train => serviceLabel(train, stations);
+  const modes = ['live', 'custom', 'video'];
+  let currentTab = 'live', timer, closeTimer, active = false, opening = false, liveId = null, customId = null, videoId = 'back', liveChoices = [], customChoices = [], liveSignature;
   function tab(value) {
     currentTab = value;
-    for (const mode of ['live', 'custom']) {
+    for (const mode of modes) {
       $(`#tab-${mode}`).setAttribute('aria-selected', String(mode === value)); $(`#tab-${mode}`).tabIndex = mode === value ? 0 : -1;
       $(`#mode-${mode}`).hidden = mode !== value;
     }
     requestAnimationFrame(() => $(`#mode-${value} [role=option][aria-selected=true]`)?.scrollIntoView({ block:'nearest' }));
   }
   function choose(list, id, focus = false) {
-    if (list.id === 'menu-trains') liveId = id; else customId = id;
+    if (list.id === 'menu-trains') liveId = id; else if (list.id === 'video-service') videoId = id; else customId = id;
     for (const option of list.children) {
       const selected = option.dataset.train === id;
       option.setAttribute('aria-selected', String(selected)); option.tabIndex = selected ? 0 : -1;
@@ -71,7 +78,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
     fill(customList, customChoices, customChoices.some(train => train.id === selected) ? selected : customChoices[0]?.id ?? null);
   }
   function update() {
-    const now = Date.now(); liveChoices = activeServices(timetable, now);
+    const now = clock(); liveChoices = activeServices(timetable, now);
     $('#menu-clock').textContent = serviceTime((now - serviceDayEpoch(japanDate(now))) / 1000, true);
     $('#menu-service-status').textContent = liveChoices.length ? '本巣〜樽見間を運行中の列車を選んでください。' : '現在、本巣〜樽見間を運行中の列車はありません。CUSTOMで再生できます。';
     const signature = liveChoices.map(train => train.id).join(',');
@@ -79,10 +86,21 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
       liveSignature = signature; fill($('#menu-trains'), liveChoices, liveChoices.some(train => train.id === liveId) ? liveId : null, true);
     }
   }
-  for (const mode of ['live', 'custom']) $(`#tab-${mode}`).addEventListener('click', () => tab(mode));
+  // The thumbnails are YouTube's own, for the videos named in video-labels-*.json.
+  $('#video-service').replaceChildren(...[['front', '本巣発　樽見行き', 'm-jjJKsWI24'], ['back', '樽見発　本巣行き', '7O6dZcTG2mQ']].map(([direction, text, youtubeId]) => {
+    const item = document.createElement('button'); item.type = 'button'; item.className = 'service-option';
+    item.setAttribute('role', 'option'); item.dataset.train = direction;
+    const thumbnail = document.createElement('img'), name = document.createElement('span');
+    thumbnail.src = `https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`; thumbnail.alt = ''; thumbnail.loading = 'lazy';
+    thumbnail.width = 320; thumbnail.height = 180; thumbnail.onerror = () => thumbnail.remove();
+    name.textContent = text; item.append(thumbnail, name);
+    item.onclick = () => choose($('#video-service'), direction); return item;
+  }));
+  choose($('#video-service'), videoId);
+  for (const mode of modes) $(`#tab-${mode}`).addEventListener('click', () => tab(mode));
   $('.mode-tabs').addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    event.preventDefault(); tab(currentTab === 'live' ? 'custom' : 'live'); $(`#tab-${currentTab}`).focus();
+    event.preventDefault(); tab(modes.at((modes.indexOf(currentTab) + (event.key === 'ArrowLeft' ? -1 : 1)) % modes.length)); $(`#tab-${currentTab}`).focus();
   });
   for (const list of dialog.querySelectorAll('.service-list')) list.addEventListener('keydown', event => {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) || !list.children.length) return;
@@ -94,6 +112,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   $('#mode-custom').addEventListener('submit', event => {
     event.preventDefault(); if (customChoices.some(train => train.id === customId)) onCustom({ trainId: customId, day: $('input[name="day"]:checked').value });
   });
+  $('#mode-video').addEventListener('submit', event => { event.preventDefault(); onVideo(videoId); });
   $('#mode-live').addEventListener('submit', event => {
     event.preventDefault(); update(); const train = liveChoices.find(train => train.id === liveId); if (train) onLive(train);
   });
@@ -109,7 +128,8 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
   refreshCustom();
   return { dialog, close, get active() { return active; },
     get visibleLiveChoices() { return active && currentTab === 'live' ? liveChoices : null; },
-    setDismissible(value) { dismissible = value; $('.mode-close').hidden = !value; }, async open(mode = currentTab, selection) {
+    setDismissible(value) { dismissible = value; $('.mode-close').hidden = !value; },
+    setVideo(direction) { choose($('#video-service'), direction); }, async open(mode = currentTab, selection) {
     if (opening) return;
     if (!active) { opening = true; await beforeOpen(); opening = false; }
     clearTimeout(closeTimer);
@@ -119,7 +139,7 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, dismissi
       if (train) $(`input[name="direction"][value="${train.direction}"]`).checked = true;
       refreshCustom(selection.trainId); liveId = selection.trainId;
     } else if (!active) {
-      $(`input[name="day"][value="${serviceDayAt(Date.now())}"]`).checked = true; refreshCustom();
+      $(`input[name="day"][value="${serviceDayAt(clock())}"]`).checked = true; refreshCustom();
     }
     tab(mode); liveSignature = undefined; update(); active = true;
     dialog.dataset.state = 'opening'; dialog.style.setProperty('--menu-duration', `${menuDuration()}ms`);

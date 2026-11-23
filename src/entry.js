@@ -10,7 +10,7 @@ if (import.meta.env.DEV && path === 'console') {
   if (path === 'que' || (path === 'live' && url.searchParams.get('mode') === 'playback')) {
     url.pathname = base + 'custom/'; url.searchParams.delete('mode');
     history.replaceState(null, '', url);
-  } else if (!['', 'live', 'custom'].includes(path) && !(import.meta.env.DEV && path === 'performance')) {
+  } else if (!['', 'live', 'custom', 'video'].includes(path) && !(import.meta.env.DEV && path === 'performance')) {
     history.replaceState(null, '', base);
   }
   await import('./experience.js');

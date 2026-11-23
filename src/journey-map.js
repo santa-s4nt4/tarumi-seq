@@ -213,13 +213,13 @@ export function createJourneyMap({ profile, stations, river, onSelect, onError =
           paint: { 'line-color': '#331e19', 'line-width': 18, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.1 } });
         map.addLayer({ id, type: 'line', slot: 'top', source: id === 'travelled' ? 'route' : id, layout: { 'line-elevation-reference': 'sea',
           'line-z-offset': railLineZOffsetWithClearance(id === 'bridges' ? 1.5 : 1), 'line-elevation-ground-scale': 1 },
-        paint: { 'line-color': id === 'bridges' ? '#6e3f22' : id === 'travelled' ? '#bfffcc' : '#00ff36',
+        paint: { 'line-color': id === 'bridges' ? '#6e3f22' : id === 'travelled' ? '#bfffcc' : '#00ff5b',
           'line-width': id === 'bridges' ? 8 : id === 'tunnels' ? 13 : 5, 'line-emissive-strength': 1, 'line-occlusion-opacity': 0.25,
           ...(id === 'travelled' ? { 'line-trim-offset': [0, 1] } : {}),
           ...(id === 'tunnels' ? { 'line-dasharray': [0.7, 0.7] } : {}) } });
       }
       map.addSource('overview-route', { type: 'geojson', data: collection([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:section}}]) });
-      map.addLayer({ id:'overview-route',type:'line',slot:'top',source:'overview-route',paint:{'line-color':'#00ff36','line-width':6,'line-emissive-strength':1} });
+      map.addLayer({ id:'overview-route',type:'line',slot:'top',source:'overview-route',paint:{'line-color':'#00ff5b','line-width':6,'line-emissive-strength':1} });
       const element = document.createElement('div'); element.className = 'current-marker'; element.innerHTML = '<span></span>';
       element.setAttribute('aria-label', '列車の現在地'); element.hidden = true;
       marker = new mapboxgl.Marker({ element, occludedOpacity: 0.25 }).setLngLat(profile.coordinateAt(0)).addTo(map);

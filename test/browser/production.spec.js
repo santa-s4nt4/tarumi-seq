@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+// The menu label hides while idle; any pointer movement brings it back down.
+const openMenu = async page => { await page.mouse.move(40, 200); await page.mouse.move(48, 208); await page.getByRole('button', { name: 'メニューを開く' }).click(); };
 test.beforeEach(async({page})=>{await page.route('https://*.mapbox.com/**',r=>r.abort());});
 for(const path of ['./','console/','console/index.html','performance/']) test(`production ${path} opens top modal and excludes development screens`,async({page})=>{
   await page.goto(path);await expect(page).toHaveURL(/\/tarumi-seq\/$/);
@@ -13,7 +15,7 @@ test('production CUSTOM and shared QUE links support subpath deployment',async({
   await expect(page.locator('#section-name')).toHaveText('本巣 → 水鳥');
   await expect(page.locator('.custom-station')).toHaveCount(11);
   await expect(page.locator('#journey-clock')).toHaveText('15:43:00');
-  await page.getByRole('button',{name:'メニューを開く'}).click();await expect(page.locator('#mode-menu')).toBeVisible();
+  await openMenu(page);await expect(page.locator('#mode-menu')).toBeVisible();
   await page.locator('input[value=holiday]').check();await page.locator('input[value=back]').check();
   await expect(page.locator('#custom-service [data-train="18"]')).toHaveText('樽見発　10:33–11:04');
   await page.locator('#custom-service [data-train="18"]').click();await page.locator('#mode-custom .mode-confirm').click();
