@@ -35,7 +35,7 @@ test('top modal chooses LIVE and each screen returns to the same menu',async({pa
 test('off-hours LIVE confirmation is disabled while holiday CUSTOM remains available',async({page})=>{
   await page.clock.setFixedTime(new Date('2026-11-22T03:00:00+09:00')); await open(page);
   await expect(page.locator('#menu-trains [role=option]')).toHaveCount(0);await expect(page.locator('#mode-live .mode-confirm')).toBeDisabled();
-  await page.getByRole('tab',{name:'CUSTOM'}).click();await expect(page.locator('input[value="holiday"]')).toBeChecked();
+  await page.getByRole('tab',{name:'CUSTOM'}).click();await expect(page.locator('#mode-custom input[name=day]')).toHaveCount(0);
   await page.locator('input[value="back"]').check();await expect(page.locator('#custom-service [role=option]').first()).toContainText('発');
 });
 test('CUSTOM station handles clamp the range, survive reload, and stop on OUT',async({page})=>{

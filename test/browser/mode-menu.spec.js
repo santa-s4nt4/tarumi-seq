@@ -47,8 +47,8 @@ test('both menus exclude trains that only run between Ogaki and Motosu, includin
   await expect(page.locator('#mode-menu')).toBeVisible();
   await expect(page.locator('#custom-timeline')).toBeHidden();
   const section=JSON.parse(fs.readFileSync('public/data/timetable.json'));
-  for(const day of ['weekday','holiday']) for(const direction of ['front','back']) {
-    await page.locator(`input[name=day][value=${day}]`).check();
+  await expect(page.locator('#mode-custom fieldset')).toHaveCount(1);
+  for(const direction of ['front','back']) {
     await page.locator(`input[name=direction][value=${direction}]`).check();
     const ids=await page.locator('#custom-service [role=option]').evaluateAll(nodes=>nodes.map(node=>node.dataset.train));
     expect(ids).toEqual(section.trains.filter(train=>train.direction===direction).map(train=>train.id));
@@ -103,7 +103,6 @@ test('CUSTOM fits whole timetable rows at rest, after scrolling and after resizi
   await page.route('https://*.mapbox.com/**', route => route.abort());
   await page.setViewportSize({width:375, height:667});
   await load(page, '/custom/');
-  await page.getByRole('radio', {name:'平日', exact:true}).check();
   const list = page.locator('#custom-service');
   async function expectWholeRows() {
     await expect.poll(() => list.evaluate(node => {

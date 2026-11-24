@@ -19,7 +19,6 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onVideo,
       <button class="mode-confirm" type="submit" disabled>OK</button>
     </form>
     <form id="mode-custom" role="tabpanel" aria-labelledby="tab-custom" hidden>
-      <fieldset><legend>運行日</legend><label><input type="radio" name="day" value="weekday" checked><span>平日</span></label><label><input type="radio" name="day" value="holiday"><span>土・休日</span></label></fieldset>
       <fieldset><legend>方面</legend><label><input type="radio" name="direction" value="front" checked><span>樽見行き</span></label><label><input type="radio" name="direction" value="back"><span>本巣行き</span></label></fieldset>
       <span class="service-select-label" id="custom-service-label">発車駅・ダイヤ</span>
       <div id="custom-service" class="service-list" role="listbox" aria-labelledby="custom-service-label"></div>
@@ -72,8 +71,10 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onVideo,
     }));
     choose(list, selected);
   }
+  // One list for every operating day: the 'holiday' set is the daily trains
+  // plus any that run on holidays only.
   function refreshCustom(selected = customId) {
-    customChoices = services(customSchedule, $('input[name="direction"]:checked').value, $('input[name="day"]:checked').value);
+    customChoices = services(customSchedule, $('input[name="direction"]:checked').value, 'holiday');
     customList.style.setProperty('--service-count', customChoices.length);
     fill(customList, customChoices, customChoices.some(train => train.id === selected) ? selected : customChoices[0]?.id ?? null);
   }
@@ -110,7 +111,8 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onVideo,
   });
   for (const input of dialog.querySelectorAll('input')) input.addEventListener('change', () => refreshCustom());
   $('#mode-custom').addEventListener('submit', event => {
-    event.preventDefault(); if (customChoices.some(train => train.id === customId)) onCustom({ trainId: customId, day: $('input[name="day"]:checked').value });
+    event.preventDefault(); const train = customChoices.find(train => train.id === customId);
+    if (train) onCustom({ trainId: train.id, day: train.operatingDays === 'holiday' ? 'holiday' : serviceDayAt(clock()) });
   });
   $('#mode-video').addEventListener('submit', event => { event.preventDefault(); onVideo(videoId); });
   $('#mode-live').addEventListener('submit', event => {
@@ -135,12 +137,9 @@ export function createModeMenu({ timetable, stations, onLive, onCustom, onVideo,
     clearTimeout(closeTimer);
     if (selection) {
       const train = timetable.trains.find(train => train.id === selection.trainId);
-      $(`input[name="day"][value="${selection.day === 'holiday' ? 'holiday' : 'weekday'}"]`).checked = true;
       if (train) $(`input[name="direction"][value="${train.direction}"]`).checked = true;
       refreshCustom(selection.trainId); liveId = selection.trainId;
-    } else if (!active) {
-      $(`input[name="day"][value="${serviceDayAt(clock())}"]`).checked = true; refreshCustom();
-    }
+    } else if (!active) refreshCustom();
     tab(mode); liveSignature = undefined; update(); active = true;
     dialog.dataset.state = 'opening'; dialog.style.setProperty('--menu-duration', `${menuDuration()}ms`);
     if (!dialog.open) {

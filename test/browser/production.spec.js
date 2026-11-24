@@ -16,7 +16,7 @@ test('production CUSTOM and shared QUE links support subpath deployment',async({
   await expect(page.locator('.custom-station')).toHaveCount(11);
   await expect(page.locator('#journey-clock')).toHaveText('15:43:00');
   await openMenu(page);await expect(page.locator('#mode-menu')).toBeVisible();
-  await page.locator('input[value=holiday]').check();await page.locator('input[value=back]').check();
+  await page.locator('input[value=back]').check();
   await expect(page.locator('#custom-service [data-train="18"]')).toHaveText('樽見発　10:33–11:04');
   await page.locator('#custom-service [data-train="18"]').click();await page.locator('#mode-custom .mode-confirm').click();
   await expect(page).toHaveURL(/\/tarumi-seq\/custom\/\?train=18&day=holiday$/);
