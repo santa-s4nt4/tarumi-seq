@@ -14,6 +14,8 @@
   <style>
     #loading { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #fff; color: #000; font: 16px/1.5 system-ui, sans-serif; text-align: center; }
     #loading[hidden] { display: none !important; }
+    /* The loading screen shows no cursor; it returns if loading fails and the reload button appears. */
+    #loading:has(#reload-data[hidden]) { cursor: none; }
     /* The name is written stroke by stroke along the Tarumi font's centre lines
        (the font's stroke data: 60 units wide, round ends), each character in
        its stroke order, the seven overlapping to finish in one second. */

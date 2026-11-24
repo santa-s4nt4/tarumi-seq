@@ -31,7 +31,7 @@ document.body.insertAdjacentHTML('afterbegin', `<main class="journey-workspace">
   <div id="map"></div><div id="line-map" aria-label="全線路線図"><a class="line-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a></div>
   <button id="journey-menu" aria-haspopup="dialog"></button>
   <div class="journey-views" role="group" aria-label="地図の視点" hidden>
-    <button data-view="auto" aria-pressed="true">自動</button><button data-view="normal" aria-pressed="false">斜俯瞰</button><button data-view="bird" aria-pressed="false">鳥瞰</button>
+    <button data-view="auto" aria-pressed="false">自動</button><button data-view="normal" aria-pressed="true">斜俯瞰</button><button data-view="bird" aria-pressed="false">鳥瞰</button>
   </div>
   <div id="journey-video" aria-label="車窓映像" hidden></div><div id="journey-reveal" aria-hidden="true"></div>
   <aside class="cue-overlay" aria-label="次の合図" hidden><div id="cue-list"></div></aside>
@@ -83,7 +83,7 @@ showLabel();
 const countdown = createCueCountdown(panel);
 const queue = new CueQueue();
 let profile, map, fleet, timetable, railway, stations, selected, plan, timeline, menu, phone, gps, video;
-let time = 0, playing = false, resumeAfterMenu = false, view = 'auto', lastFrame, lastMap = -Infinity, measured = null;
+let time = 0, playing = false, resumeAfterMenu = false, view = 'normal', lastFrame, lastMap = -Infinity, measured = null;
 let menuHasTrain = false, menuTransitionDuration = 0;
 let selection, returnTimer, timelineMotion = 0, timelineAnimations = [];
 document.addEventListener('visibilitychange', () => { if (document.hidden && isCustom) { playing = false; resumeAfterMenu = false; lastFrame = undefined; } });
@@ -146,7 +146,7 @@ function configureRoute(target) {
   $('journey-clock').setAttribute('aria-label', isCustom ? '再生時刻' : '現在時刻');
   menu?.setDismissible(route !== 'home');
   selection = { trainId: target.searchParams.get('train'), day: target.searchParams.get('day') === 'holiday' ? 'holiday' : 'weekday' };
-  queue.reset(); countdown.update(null); map.reset(); setView('auto', false); lastMap = -Infinity;
+  queue.reset(); countdown.update(null); map.reset(); setView('normal', false); lastMap = -Infinity;
   if (isVideo) {
     const direction = target.searchParams.get('direction') === 'front' ? 'front' : 'back';
     video = createVideoMode({ container: $('journey-video'), base, direction, onActivity: showLabel }); menu?.setVideo(direction);

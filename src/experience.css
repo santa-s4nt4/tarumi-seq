@@ -8,7 +8,7 @@
 /* Clip and recenter one drawing buffer while the timeline slides. Resizing a
    WebGL canvas every frame clears the map before it can be painted again. */
 .experience.timeline-moving #map { height:100dvh; top:calc((100% - 100dvh) / 2); bottom:auto; }
-.experience #journey-menu { position:absolute; left:50%; top:0; transform:translateX(-50%); min-height:72px; padding:24px 16px 0; background:var(--surface); color:var(--text); font-size:20px; white-space:nowrap; z-index:6; transition:translate 280ms cubic-bezier(.4,0,.2,1); }
+.experience #journey-menu { position:absolute; left:50%; top:0; transform:translateX(-50%); min-height:72px; padding:24px 16px 0; background:var(--green); color:var(--ink); font-size:20px; white-space:nowrap; z-index:6; transition:translate 280ms cubic-bezier(.4,0,.2,1); }
 .label-idle #journey-menu { translate:0 -100%; }
 /* Stands where the hidden label was, over the player that swallows input. */
 #journey-reveal { display:none; position:absolute; left:50%; top:0; translate:-50% 0; width:160px; height:72px; z-index:5; }

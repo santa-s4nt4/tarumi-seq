@@ -1,3 +1,5 @@
+import './cursor.js';
+
 const base = import.meta.env.BASE_URL;
 const url = new URL(location.href);
 const path = url.pathname.slice(base.length).replace(/\/?index\.html$/, '').replace(/\/$/, '');
